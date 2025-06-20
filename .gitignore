@@ -1,0 +1,202 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Dependency directories
+node_modules/
+.pnp
+.pnp.js
+
+# Build output
+dist/
+dist-ssr/
+build/
+out/
+.next/
+.next/cache/
+coverage/
+lib/
+.eslintcache
+
+# Local environment files
+*.local
+.env
+.env.*.local
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Editor directories and files
+.vscode/
+!.vscode/extensions.json
+.idea/
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+Icon?
+Desktop.ini
+
+# Mac system files
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# npm
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Test output
+junit.xml
+test-results/
+test-output/
+
+# TypeScript
+*.tsbuildinfo
+
+# Firebase
+.firebase/
+.firebaserc
+
+# Misc
+*.tgz
+*.bak
+*.tmp
+*.temp
+*.orig
+
+# Logs and crash reports
+*.pid
+*.seed
+*.pid.lock
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Coverage directory used by tools like istanbul
+coverage/
+.nyc_output/
+
+# Next.js build output
+.next/
+out/
+
+# Storybook build outputs
+storybook-static/
+
+# VSCode settings
+.vscode/
+!.vscode/extensions.json
+
+# JetBrains IDEs
+.idea/
+
+# SvelteKit
+.svelte-kit/
+
+# Expo
+.expo/
+.expo-shared/
+
+# Android Studio
+*.iml
+.gradle
+/local.properties
+/.idea
+.DS_Store
+.cxx
+*.apk
+*.ap_
+output.json
+
+# Xcode
+*.xcworkspace
+*.xcuserstate
+*.xcuserdata
+*.xcodeproj
+*.xcconfig
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+
+# Miscellaneous
+*.orig
+*.rej
+*.swp
+*.swo
+*.swn
+*.bak
+*.tmp
+*.temp
+*.log
+
+# Ignore lock files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Ignore firebase emulators
+firebase-debug.log
+
+# Ignore local database
+*.sqlite
+*.sqlite3
+
+# Ignore test snapshots
+__snapshots__/
+
+# Ignore Cypress
+cypress/videos/
+cypress/screenshots/
+cypress/logs/
+
+# Ignore Playwright
+test-results/
+playwright-report/
+
+# Ignore Mac system files
+.DS_Store
+
+# Ignore Windows system files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Ignore Linux system files
+*~
+
+# Ignore output from various tools
+*.out
+*.log
+*.tmp
+*.temp
+
+# Ignore local SSL certificates
+*.pem
+
+# Ignore local secrets
+secrets.json
+
+# Ignore local cache
+.cache/
+.npm/
+bower_components/
+
+# Ignore node_modules (again for safety)
+node_modules/
