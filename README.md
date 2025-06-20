@@ -1,55 +1,42 @@
-# React + TypeScript + Vite
+# Gamification Features
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This application is designed to help startup founders on their journey using engaging gamification mechanics. Here's how gamification is integrated and what each feature means:
 
-Currently, two official plugins are available:
+## XP & Levels
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **XP (Experience Points):** Earned by completing quests, generating documents, and engaging with the AI Sage. XP helps you level up as a founder.
+- **Levels:** Your level increases as you gain more XP, visually tracking your progress and unlocking new achievements.
 
-## Expanding the ESLint configuration
+## Quests & Stages
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- **Quests:** Structured tasks grouped into stages (e.g., Fundamentals, Kickoff, Go-to-Market, Growth). Each quest represents a key startup milestone or learning goal.
+- **Stages:** Themed areas of your journey, each with its own set of quests and rewards.
 
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
-```
+## Achievements & Badges
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+- **Achievements:** Special milestones (e.g., completing onboarding, generating documents, consulting the AI Sage) that reward you with badges and bonus XP.
+- **Badges:** Visual icons representing your accomplishments, displayed in your dashboard and profile.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## CEO Avatars
 
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-})
-```
-# hypothesize-gamification
+- **CEO Avatars:** After onboarding, you're matched with a famous CEO avatar (e.g., Elon Musk, Satya Nadella) based on your profile. Each avatar offers unique advice and inspiration tailored to your style.
+
+## AI Sage
+
+- **AI Sage:** An AI-powered mentor that provides personalized, actionable advice and answers your questions throughout your journey. The Sage references your CEO avatar and startup context for relevant guidance.
+
+## Document Generation
+
+- **AI Documents:** Instantly generate key startup documents (e.g., elevator pitch, lean canvas, investor deck) using AI, earning XP and achievements for each document created.
+
+## Progress Dashboard
+
+- **Dashboard:** Visualize your XP, level, quest completion rate, achievements, and more in a dedicated dashboard.
+
+## Offline Support
+
+- **Offline Mode:** The app supports offline persistence for core data, so you can continue your journey even without an internet connection (with some limitations).
+
+---
+
+These gamification features are designed to make your startup journey more engaging, motivating, and rewarding. Progress, learn, and celebrate your wins as you build your company!
