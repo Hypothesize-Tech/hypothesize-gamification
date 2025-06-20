@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
 import {
   getAuth,
@@ -51,17 +51,15 @@ import {
   Copy,
   Trash2,
   CheckCircle,
-  Clock,
   BarChart3,
   Lightbulb,
   BookOpen,
-  Bell,
   Map as MapIcon,
-  Zap,
   Trophy,
   AlertCircle
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import Modal from './components/Modal';
 
 // Firebase Configuration
 const firebaseConfig = {
@@ -1501,464 +1499,445 @@ export default function App() {
         </div>
 
         {/* Quest Detail Modal */}
-        {selectedQuest && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={() => {
-            setSelectedQuest(null);
-            setSageResponse('');
-            setQuestChat('');
-          }}>
-            <div className="bg-gray-800 rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-2xl font-bold">{selectedQuest.name}</h3>
-                <button
-                  onClick={() => {
-                    setSelectedQuest(null);
-                    setSageResponse('');
-                    setQuestChat('');
-                  }}
-                  className="text-gray-400 hover:text-white text-2xl"
-                >
-                  ×
-                </button>
-              </div>
+        <Modal open={!!selectedQuest} onClose={() => { setSelectedQuest(null); setSageResponse(''); setQuestChat(''); }}>
+          {/* Modal content (copy from previous inner div) */}
+          <div className="p-6 max-w-2xl w-full">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-2xl font-bold">{selectedQuest.name}</h3>
+              <button
+                onClick={() => {
+                  setSelectedQuest(null);
+                  setSageResponse('');
+                  setQuestChat('');
+                }}
+                className="text-gray-400 hover:text-white text-2xl"
+              >
+                ×
+              </button>
+            </div>
 
-              <p className="text-gray-400 mb-4">{selectedQuest.description}</p>
+            <p className="text-gray-400 mb-4">{selectedQuest.description}</p>
 
-              {/* Show if quest is completed */}
-              {guildData?.questProgress?.[`${selectedQuest.stageId}_${selectedQuest.id}`]?.completed && (
-                <div className="bg-green-900/30 border border-green-700 rounded-lg p-4 mb-4">
-                  <div className="flex items-center space-x-2">
-                    <CheckCircle className="w-5 h-5 text-green-500" />
-                    <p className="font-medium text-green-400">Quest Completed!</p>
+            {/* Show if quest is completed */}
+            {guildData?.questProgress?.[`${selectedQuest.stageId}_${selectedQuest.id}`]?.completed && (
+              <div className="bg-green-900/30 border border-green-700 rounded-lg p-4 mb-4">
+                <div className="flex items-center space-x-2">
+                  <CheckCircle className="w-5 h-5 text-green-500" />
+                  <p className="font-medium text-green-400">Quest Completed!</p>
+                </div>
+                {guildData.questProgress[`${selectedQuest.stageId}_${selectedQuest.id}`].sageResponse && (
+                  <div className="mt-3 p-3 bg-gray-700/50 rounded">
+                    <p className="text-sm text-gray-400 mb-1">Your saved wisdom:</p>
+                    <ReactMarkdown>
+                      {guildData.questProgress[`${selectedQuest.stageId}_${selectedQuest.id}`].sageResponse}
+                    </ReactMarkdown>
                   </div>
-                  {guildData.questProgress[`${selectedQuest.stageId}_${selectedQuest.id}`].sageResponse && (
-                    <div className="mt-3 p-3 bg-gray-700/50 rounded">
-                      <p className="text-sm text-gray-400 mb-1">Your saved wisdom:</p>
-                      <ReactMarkdown>
-                        {guildData.questProgress[`${selectedQuest.stageId}_${selectedQuest.id}`].sageResponse}
-                      </ReactMarkdown>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div className="bg-gray-700 rounded-lg p-4 mb-4">
-                <div className="flex items-center mb-2">
-                  <Sparkles className="w-5 h-5 text-purple-400 mr-2" />
-                  <p className="font-medium">Quest Rewards</p>
-                </div>
-                <p className="text-sm text-gray-400">{selectedQuest.xp} Experience Points</p>
-              </div>
-
-              {/* AI Sage Consultation */}
-              <div className="mb-4">
-                <div className="flex items-center mb-2">
-                  <MessageCircle className="w-5 h-5 text-blue-400 mr-2" />
-                  <p className="font-medium">Consult the AI Sage</p>
-                </div>
-                <div className="flex space-x-2">
-                  <input
-                    type="text"
-                    value={questChat}
-                    onChange={(e) => setQuestChat(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && consultSageForQuest()}
-                    placeholder="Ask for guidance..."
-                    className="flex-1 p-2 bg-gray-700 rounded-lg text-white"
-                  />
-                  <button
-                    onClick={consultSageForQuest}
-                    disabled={sageLoading}
-                    className="px-4 py-2 bg-purple-600 rounded-lg hover:bg-purple-700 disabled:opacity-50"
-                  >
-                    Ask
-                  </button>
-                </div>
-                {sageLoading ? (
-                  <div className="mt-3 p-3 bg-gray-700 rounded-lg text-purple-400 animate-pulse text-center">
-                    The Sage is meditating and preparing your wisdom...
-                  </div>
-                ) : (
-                  sageResponse && (
-                    <div className="mt-3 p-3 bg-gray-700 rounded-lg">
-                      <ReactMarkdown>
-                        {sageResponse}
-                      </ReactMarkdown>
-                    </div>
-                  )
                 )}
               </div>
+            )}
 
-              {/* CEO Avatar Advice */}
-              {ceoAvatar && (
-                <div className={`mb-4 p-3 rounded-lg bg-gradient-to-r ${ceoAvatar.color} bg-opacity-20`}>
-                  <div className="flex items-center mb-2">
-                    <span className="text-2xl mr-2">{ceoAvatar.avatar}</span>
-                    <p className="font-medium">{ceoAvatar.name}'s Wisdom</p>
-                  </div>
-                  <p className="text-sm italic">"{ceoAvatar.advice}"</p>
-                </div>
-              )}
-
-              {/* Complete Quest Button */}
-              {!guildData?.questProgress?.[`${selectedQuest.stageId}_${selectedQuest.id}`]?.completed && (
-                <button
-                  onClick={completeQuest}
-                  disabled={completingQuest}
-                  className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white px-6 py-3 rounded-lg hover:from-green-600 hover:to-green-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
-                >
-                  {completingQuest ? (
-                    <>
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                      <span>Completing Quest...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Trophy className="w-5 h-5" />
-                      <span>Complete Quest (+{selectedQuest.xp} XP)</span>
-                    </>
-                  )}
-                </button>
-              )}
+            <div className="bg-gray-700 rounded-lg p-4 mb-4">
+              <div className="flex items-center mb-2">
+                <Sparkles className="w-5 h-5 text-purple-400 mr-2" />
+                <p className="font-medium">Quest Rewards</p>
+              </div>
+              <p className="text-sm text-gray-400">{selectedQuest.xp} Experience Points</p>
             </div>
-          </div>
-        )}
 
-        {/* Progress Dashboard Modal */}
-        {showDashboard && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={() => setShowDashboard(false)}>
-            <div className="bg-gray-800 rounded-lg p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-2xl font-bold">Progress Dashboard</h3>
+            {/* AI Sage Consultation */}
+            <div className="mb-4">
+              <div className="flex items-center mb-2">
+                <MessageCircle className="w-5 h-5 text-blue-400 mr-2" />
+                <p className="font-medium">Consult the AI Sage</p>
+              </div>
+              <div className="flex space-x-2">
+                <input
+                  type="text"
+                  value={questChat}
+                  onChange={(e) => setQuestChat(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && consultSageForQuest()}
+                  placeholder="Ask for guidance..."
+                  className="flex-1 p-2 bg-gray-700 rounded-lg text-white"
+                />
                 <button
-                  onClick={() => setShowDashboard(false)}
-                  className="text-gray-400 hover:text-white text-2xl"
+                  onClick={consultSageForQuest}
+                  disabled={sageLoading}
+                  className="px-4 py-2 bg-purple-600 rounded-lg hover:bg-purple-700 disabled:opacity-50"
                 >
-                  ×
+                  Ask
                 </button>
               </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div className="bg-gray-700 rounded-lg p-4">
-                  <p className="text-sm text-gray-400 mb-1">Total XP</p>
-                  <p className="text-2xl font-bold text-purple-400">{guildData?.xp || 0}</p>
+              {sageLoading ? (
+                <div className="mt-3 p-3 bg-gray-700 rounded-lg text-purple-400 animate-pulse text-center">
+                  The Sage is meditating and preparing your wisdom...
                 </div>
-                <div className="bg-gray-700 rounded-lg p-4">
-                  <p className="text-sm text-gray-400 mb-1">Quests Completed</p>
-                  <p className="text-2xl font-bold text-green-400">{stats.completedQuests}/{stats.totalQuests}</p>
-                </div>
-                <div className="bg-gray-700 rounded-lg p-4">
-                  <p className="text-sm text-gray-400 mb-1">Completion Rate</p>
-                  <p className="text-2xl font-bold text-blue-400">{stats.completionRate}%</p>
-                </div>
-              </div>
-
-              <div className="mb-6">
-                <h4 className="text-lg font-bold mb-3">Your Journey Stats</h4>
-                <div className="space-y-3">
-                  <div>
-                    <p className="text-sm text-gray-400 mb-1">Documents Generated</p>
-                    <div className="w-full bg-gray-700 rounded-full h-2">
-                      <div className="bg-yellow-500 h-2 rounded-full" style={{ width: `${Math.min(savedDocuments.length * 20, 100)}%` }}></div>
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-400 mb-1">AI Consultations</p>
-                    <div className="w-full bg-gray-700 rounded-full h-2">
-                      <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${Math.min(conversations.length * 5, 100)}%` }}></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <h4 className="text-lg font-bold mb-3">Recent Achievements</h4>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {guildData?.achievements?.slice(-8).map((achievementId: string) => {
-                    const achievement = ACHIEVEMENTS.find(a => a.id === achievementId);
-                    return achievement ? (
-                      <div key={achievementId} className="bg-gray-700 rounded-lg p-3 text-center">
-                        <div className="text-3xl mb-1">{achievement.icon}</div>
-                        <p className="text-xs font-medium">{achievement.name}</p>
-                      </div>
-                    ) : null;
-                  })}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Roadmap Modal */}
-        {showRoadmap && roadmapContent && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={() => setShowRoadmap(false)}>
-            <div className="bg-gray-800 rounded-lg p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-2xl font-bold">Your Personalized 90-Day Roadmap</h3>
-                <button
-                  onClick={() => setShowRoadmap(false)}
-                  className="text-gray-400 hover:text-white text-2xl"
-                >
-                  ×
-                </button>
-              </div>
-
-              <div className="bg-gray-700 rounded-lg p-6">
-                <ReactMarkdown >
-                  {roadmapContent}
-                </ReactMarkdown>
-              </div>
-
-              <div className="mt-4 flex space-x-3">
-                <button
-                  onClick={() => saveDocument({ id: 'roadmap', name: 'Personal Roadmap', xp: 50 }, roadmapContent)}
-                  className="px-4 py-2 bg-purple-600 rounded-lg hover:bg-purple-700 flex items-center space-x-2"
-                >
-                  <span>Save Roadmap</span>
-                </button>
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(roadmapContent);
-                    alert('Roadmap copied to clipboard!');
-                  }}
-                  className="px-4 py-2 bg-gray-700 rounded-lg hover:bg-gray-600 flex items-center space-x-2"
-                >
-                  <Copy className="w-4 h-4" />
-                  <span>Copy</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Resources Modal */}
-        {showResources && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={() => setShowResources(false)}>
-            <div className="bg-gray-800 rounded-lg p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-2xl font-bold">Recommended Resources</h3>
-                <button
-                  onClick={() => setShowResources(false)}
-                  className="text-gray-400 hover:text-white text-2xl"
-                >
-                  ×
-                </button>
-              </div>
-
-              <div className="bg-yellow-900/20 border border-yellow-700 rounded-lg p-4 mb-6">
-                <div className="flex items-start space-x-3">
-                  <Lightbulb className="w-5 h-5 text-yellow-500 mt-0.5" />
-                  <div>
-                    <p className="font-medium text-yellow-400">Based on your challenge:</p>
-                    <p className="text-sm text-gray-300">{guildData?.onboardingData?.biggestChallenge}</p>
-                  </div>
-                </div>
-              </div>
-
-              {Object.entries(RESOURCE_RECOMMENDATIONS).map(([challenge, resources]) => (
-                guildData?.onboardingData?.biggestChallenge === challenge && (
-                  <div key={challenge} className="space-y-3">
-                    {resources.map((resource, idx) => (
-                      <div key={idx} className="bg-gray-700 rounded-lg p-4 hover:bg-gray-600 transition-all cursor-pointer">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
-                            <span className="text-2xl">{resource.icon}</span>
-                            <div>
-                              <p className="font-medium">{resource.title}</p>
-                              <p className="text-sm text-gray-400">{resource.type}</p>
-                            </div>
-                          </div>
-                          <ChevronRight className="w-5 h-5 text-gray-400" />
-                        </div>
-                      </div>
-                    ))}
+              ) : (
+                sageResponse && (
+                  <div className="mt-3 p-3 bg-gray-700 rounded-lg">
+                    <ReactMarkdown>
+                      {sageResponse}
+                    </ReactMarkdown>
                   </div>
                 )
-              ))}
+              )}
             </div>
+
+            {/* CEO Avatar Advice */}
+            {ceoAvatar && (
+              <div className={`mb-4 p-3 rounded-lg bg-gradient-to-r ${ceoAvatar.color} bg-opacity-20`}>
+                <div className="flex items-center mb-2">
+                  <span className="text-2xl mr-2">{ceoAvatar.avatar}</span>
+                  <p className="font-medium">{ceoAvatar.name}'s Wisdom</p>
+                </div>
+                <p className="text-sm italic">"{ceoAvatar.advice}"</p>
+              </div>
+            )}
+
+            {/* Complete Quest Button */}
+            {!guildData?.questProgress?.[`${selectedQuest.stageId}_${selectedQuest.id}`]?.completed && (
+              <button
+                onClick={completeQuest}
+                disabled={completingQuest}
+                className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white px-6 py-3 rounded-lg hover:from-green-600 hover:to-green-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+              >
+                {completingQuest ? (
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                    <span>Completing Quest...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trophy className="w-5 h-5" />
+                    <span>Complete Quest (+{selectedQuest.xp} XP)</span>
+                  </>
+                )}
+              </button>
+            )}
           </div>
-        )}
+        </Modal>
 
-        {/* CEO Profile Modal */}
-        {showCEOProfile && ceoAvatar && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={() => setShowCEOProfile(false)}>
-            <div className="bg-gray-800 rounded-lg p-6 max-w-md w-full" onClick={e => e.stopPropagation()}>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-2xl font-bold">Your CEO Guide</h3>
-                <button
-                  onClick={() => setShowCEOProfile(false)}
-                  className="text-gray-400 hover:text-white text-2xl"
-                >
-                  ×
-                </button>
+        {/* Progress Dashboard Modal */}
+        <Modal open={showDashboard} onClose={() => setShowDashboard(false)}>
+          <div className="p-6 max-w-4xl w-full">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-2xl font-bold">Progress Dashboard</h3>
+              <button
+                onClick={() => setShowDashboard(false)}
+                className="text-gray-400 hover:text-white text-2xl"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <div className="bg-gray-700 rounded-lg p-4">
+                <p className="text-sm text-gray-400 mb-1">Total XP</p>
+                <p className="text-2xl font-bold text-purple-400">{guildData?.xp || 0}</p>
               </div>
-
-              <div className={`text-center mb-6 p-6 rounded-lg bg-gradient-to-r ${ceoAvatar.color} bg-opacity-20`}>
-                <div className="text-6xl mb-2">{ceoAvatar.avatar}</div>
-                <h4 className="text-xl font-bold">{ceoAvatar.name}</h4>
-                <p className="text-sm text-gray-300">{ceoAvatar.title}</p>
+              <div className="bg-gray-700 rounded-lg p-4">
+                <p className="text-sm text-gray-400 mb-1">Quests Completed</p>
+                <p className="text-2xl font-bold text-green-400">{stats.completedQuests}/{stats.totalQuests}</p>
               </div>
+              <div className="bg-gray-700 rounded-lg p-4">
+                <p className="text-sm text-gray-400 mb-1">Completion Rate</p>
+                <p className="text-2xl font-bold text-blue-400">{stats.completionRate}%</p>
+              </div>
+            </div>
 
+            <div className="mb-6">
+              <h4 className="text-lg font-bold mb-3">Your Journey Stats</h4>
               <div className="space-y-3">
                 <div>
-                  <p className="text-sm text-gray-400 mb-1">Industries</p>
-                  <div className="flex flex-wrap gap-2">
-                    {ceoAvatar.industries.map((ind: string) => (
-                      <span key={ind} className="px-2 py-1 bg-gray-700 rounded text-sm">
-                        {ind}
-                      </span>
-                    ))}
+                  <p className="text-sm text-gray-400 mb-1">Documents Generated</p>
+                  <div className="w-full bg-gray-700 rounded-full h-2">
+                    <div className="bg-yellow-500 h-2 rounded-full" style={{ width: `${Math.min(savedDocuments.length * 20, 100)}%` }}></div>
                   </div>
                 </div>
-
                 <div>
-                  <p className="text-sm text-gray-400 mb-1">Key Traits</p>
-                  <div className="flex flex-wrap gap-2">
-                    {ceoAvatar.traits.map((trait: string) => (
-                      <span key={trait} className="px-2 py-1 bg-gray-700 rounded text-sm">
-                        {trait}
-                      </span>
-                    ))}
+                  <p className="text-sm text-gray-400 mb-1">AI Consultations</p>
+                  <div className="w-full bg-gray-700 rounded-full h-2">
+                    <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${Math.min(conversations.length * 5, 100)}%` }}></div>
                   </div>
-                </div>
-
-                <div className="pt-3 border-t border-gray-700">
-                  <p className="text-sm text-gray-400 mb-1">Guiding Philosophy</p>
-                  <p className="italic">"{ceoAvatar.advice}"</p>
                 </div>
               </div>
             </div>
-          </div>
-        )}
 
-        {/* Conversation History Modal */}
-        {showHistory && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={() => setShowHistory(false)}>
-            <div className="bg-gray-800 rounded-lg p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-2xl font-bold">Conversation History</h3>
-                <button
-                  onClick={() => setShowHistory(false)}
-                  className="text-gray-400 hover:text-white text-2xl"
-                >
-                  ×
-                </button>
+            <div>
+              <h4 className="text-lg font-bold mb-3">Recent Achievements</h4>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {guildData?.achievements?.slice(-8).map((achievementId: string) => {
+                  const achievement = ACHIEVEMENTS.find(a => a.id === achievementId);
+                  return achievement ? (
+                    <div key={achievementId} className="bg-gray-700 rounded-lg p-3 text-center">
+                      <div className="text-3xl mb-1">{achievement.icon}</div>
+                      <p className="text-xs font-medium">{achievement.name}</p>
+                    </div>
+                  ) : null;
+                })}
               </div>
+            </div>
+          </div>
+        </Modal>
 
-              {conversations.length === 0 ? (
-                <p className="text-gray-400 text-center py-8">No conversations yet</p>
-              ) : (
-                <div className="space-y-4">
-                  {conversations.map((conv) => (
-                    <div key={conv.id} className="bg-gray-700 rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <p className="font-medium text-purple-400">{conv.questName}</p>
-                        <p className="text-sm text-gray-400">
-                          {new Date(conv.createdAt?.toDate()).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex items-start space-x-2">
-                          <User className="w-4 h-4 text-blue-400 mt-1" />
-                          <p className="text-sm">{conv.question}</p>
+        {/* Roadmap Modal */}
+        <Modal open={showRoadmap && !!roadmapContent} onClose={() => setShowRoadmap(false)}>
+          <div className="p-6 max-w-4xl w-full">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-2xl font-bold">Your Personalized 90-Day Roadmap</h3>
+              <button
+                onClick={() => setShowRoadmap(false)}
+                className="text-gray-400 hover:text-white text-2xl"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="bg-gray-700 rounded-lg p-6">
+              <ReactMarkdown >
+                {roadmapContent}
+              </ReactMarkdown>
+            </div>
+
+            <div className="mt-4 flex space-x-3">
+              <button
+                onClick={() => saveDocument({ id: 'roadmap', name: 'Personal Roadmap', xp: 50 }, roadmapContent)}
+                className="px-4 py-2 bg-purple-600 rounded-lg hover:bg-purple-700 flex items-center space-x-2"
+              >
+                <span>Save Roadmap</span>
+              </button>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(roadmapContent);
+                  alert('Roadmap copied to clipboard!');
+                }}
+                className="px-4 py-2 bg-gray-700 rounded-lg hover:bg-gray-600 flex items-center space-x-2"
+              >
+                <Copy className="w-4 h-4" />
+                <span>Copy</span>
+              </button>
+            </div>
+          </div>
+        </Modal>
+
+        {/* Resources Modal */}
+        <Modal open={showResources} onClose={() => setShowResources(false)}>
+          <div className="p-6 max-w-4xl w-full">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-2xl font-bold">Recommended Resources</h3>
+              <button
+                onClick={() => setShowResources(false)}
+                className="text-gray-400 hover:text-white text-2xl"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="bg-yellow-900/20 border border-yellow-700 rounded-lg p-4 mb-6">
+              <div className="flex items-start space-x-3">
+                <Lightbulb className="w-5 h-5 text-yellow-500 mt-0.5" />
+                <div>
+                  <p className="font-medium text-yellow-400">Based on your challenge:</p>
+                  <p className="text-sm text-gray-300">{guildData?.onboardingData?.biggestChallenge}</p>
+                </div>
+              </div>
+            </div>
+
+            {Object.entries(RESOURCE_RECOMMENDATIONS).map(([challenge, resources]) => (
+              guildData?.onboardingData?.biggestChallenge === challenge && (
+                <div key={challenge} className="space-y-3">
+                  {resources.map((resource, idx) => (
+                    <div key={idx} className="bg-gray-700 rounded-lg p-4 hover:bg-gray-600 transition-all cursor-pointer">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <span className="text-2xl">{resource.icon}</span>
+                          <div>
+                            <p className="font-medium">{resource.title}</p>
+                            <p className="text-sm text-gray-400">{resource.type}</p>
+                          </div>
                         </div>
-                        <div className="flex items-start space-x-2">
-                          <Sparkles className="w-4 h-4 text-purple-400 mt-1" />
-                          <ReactMarkdown>
-                            {conv.response}
-                          </ReactMarkdown>
-                        </div>
+                        <ChevronRight className="w-5 h-5 text-gray-400" />
                       </div>
                     </div>
                   ))}
                 </div>
-              )}
+              )
+            ))}
+          </div>
+        </Modal>
+
+        {/* CEO Profile Modal */}
+        <Modal open={showCEOProfile && ceoAvatar} onClose={() => setShowCEOProfile(false)}>
+          <div className="p-6 max-w-md w-full">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-2xl font-bold">Your CEO Guide</h3>
+              <button
+                onClick={() => setShowCEOProfile(false)}
+                className="text-gray-400 hover:text-white text-2xl"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className={`text-center mb-6 p-6 rounded-lg bg-gradient-to-r ${ceoAvatar.color} bg-opacity-20`}>
+              <div className="text-6xl mb-2">{ceoAvatar.avatar}</div>
+              <h4 className="text-xl font-bold">{ceoAvatar.name}</h4>
+              <p className="text-sm text-gray-300">{ceoAvatar.title}</p>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <p className="text-sm text-gray-400 mb-1">Industries</p>
+                <div className="flex flex-wrap gap-2">
+                  {ceoAvatar.industries.map((ind: string) => (
+                    <span key={ind} className="px-2 py-1 bg-gray-700 rounded text-sm">
+                      {ind}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <p className="text-sm text-gray-400 mb-1">Key Traits</p>
+                <div className="flex flex-wrap gap-2">
+                  {ceoAvatar.traits.map((trait: string) => (
+                    <span key={trait} className="px-2 py-1 bg-gray-700 rounded text-sm">
+                      {trait}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-gray-700">
+                <p className="text-sm text-gray-400 mb-1">Guiding Philosophy</p>
+                <p className="italic">"{ceoAvatar.advice}"</p>
+              </div>
             </div>
           </div>
-        )}
+        </Modal>
+
+        {/* Conversation History Modal */}
+        <Modal open={showHistory} onClose={() => setShowHistory(false)}>
+          <div className="p-6 max-w-4xl w-full">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-2xl font-bold">Conversation History</h3>
+              <button
+                onClick={() => setShowHistory(false)}
+                className="text-gray-400 hover:text-white text-2xl"
+              >
+                ×
+              </button>
+            </div>
+
+            {conversations.length === 0 ? (
+              <p className="text-gray-400 text-center py-8">No conversations yet</p>
+            ) : (
+              <div className="space-y-4">
+                {conversations.map((conv) => (
+                  <div key={conv.id} className="bg-gray-700 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="font-medium text-purple-400">{conv.questName}</p>
+                      <p className="text-sm text-gray-400">
+                        {new Date(conv.createdAt?.toDate()).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-start space-x-2">
+                        <User className="w-4 h-4 text-blue-400 mt-1" />
+                        <p className="text-sm">{conv.question}</p>
+                      </div>
+                      <div className="flex items-start space-x-2">
+                        <Sparkles className="w-4 h-4 text-purple-400 mt-1" />
+                        <ReactMarkdown>
+                          {conv.response}
+                        </ReactMarkdown>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </Modal>
 
         {/* Documents Modal */}
-        {showDocuments && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={() => setShowDocuments(false)}>
-            <div className="bg-gray-800 rounded-lg p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-2xl font-bold">Saved Documents</h3>
+        <Modal open={showDocuments} onClose={() => setShowDocuments(false)}>
+          <div className="p-6 max-w-4xl w-full">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-2xl font-bold">Saved Documents</h3>
+              <button
+                onClick={() => setShowDocuments(false)}
+                className="text-gray-400 hover:text-white text-2xl"
+              >
+                ×
+              </button>
+            </div>
+
+            {savedDocuments.length === 0 ? (
+              <p className="text-gray-400 text-center py-8">No documents yet</p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {savedDocuments.map((doc) => {
+                  const template = DOCUMENT_TEMPLATES.find(t => t.id === doc.templateId);
+                  return (
+                    <div key={doc.id} className="bg-gray-700 rounded-lg p-4 cursor-pointer hover:bg-gray-600"
+                      onClick={() => setSelectedDocument(doc)}>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center space-x-2">
+                          <span className="text-2xl">{template?.icon || '📄'}</span>
+                          <p className="font-medium">{doc.templateName}</p>
+                        </div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteDocument(doc.id);
+                          }}
+                          className="text-red-400 hover:text-red-300"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <p className="text-sm text-gray-400">
+                        Version {doc.version} • {new Date(doc.createdAt?.toDate()).toLocaleDateString()}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </Modal>
+
+        {/* Document View Modal */}
+        <Modal open={!!selectedDocument} onClose={() => setSelectedDocument(null)}>
+          <div className="p-6 max-w-4xl w-full">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-2xl font-bold">{selectedDocument.templateName}</h3>
+              <div className="flex items-center space-x-2">
                 <button
-                  onClick={() => setShowDocuments(false)}
+                  onClick={() => {
+                    navigator.clipboard.writeText(selectedDocument.content);
+                    alert('Copied to clipboard!');
+                  }}
+                  className="text-gray-400 hover:text-white"
+                >
+                  <Copy className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={() => setSelectedDocument(null)}
                   className="text-gray-400 hover:text-white text-2xl"
                 >
                   ×
                 </button>
               </div>
+            </div>
 
-              {savedDocuments.length === 0 ? (
-                <p className="text-gray-400 text-center py-8">No documents yet</p>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {savedDocuments.map((doc) => {
-                    const template = DOCUMENT_TEMPLATES.find(t => t.id === doc.templateId);
-                    return (
-                      <div key={doc.id} className="bg-gray-700 rounded-lg p-4 cursor-pointer hover:bg-gray-600"
-                        onClick={() => setSelectedDocument(doc)}>
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center space-x-2">
-                            <span className="text-2xl">{template?.icon || '📄'}</span>
-                            <p className="font-medium">{doc.templateName}</p>
-                          </div>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              deleteDocument(doc.id);
-                            }}
-                            className="text-red-400 hover:text-red-300"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                        <p className="text-sm text-gray-400">
-                          Version {doc.version} • {new Date(doc.createdAt?.toDate()).toLocaleDateString()}
-                        </p>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+            <div className="bg-gray-700 rounded-lg p-6">
+              <ReactMarkdown>
+                {selectedDocument.content}
+              </ReactMarkdown>
             </div>
           </div>
-        )}
-
-        {/* Document View Modal */}
-        {selectedDocument && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={() => setSelectedDocument(null)}>
-            <div className="bg-gray-800 rounded-lg p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-2xl font-bold">{selectedDocument.templateName}</h3>
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(selectedDocument.content);
-                      alert('Copied to clipboard!');
-                    }}
-                    className="text-gray-400 hover:text-white"
-                  >
-                    <Copy className="w-5 h-5" />
-                  </button>
-                  <button
-                    onClick={() => setSelectedDocument(null)}
-                    className="text-gray-400 hover:text-white text-2xl"
-                  >
-                    ×
-                  </button>
-                </div>
-              </div>
-
-              <div className="bg-gray-700 rounded-lg p-6">
-                <ReactMarkdown>
-                  {selectedDocument.content}
-                </ReactMarkdown>
-              </div>
-            </div>
-          </div>
-        )}
+        </Modal>
       </main>
     </div>
   );
