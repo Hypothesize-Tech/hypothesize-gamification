@@ -23,7 +23,7 @@ import {
   onSnapshot,
   deleteDoc,
   increment,
-  enableIndexedDbPersistence
+  enableIndexedDbPersistence,
 } from 'firebase/firestore';
 import { BedrockRuntimeClient, InvokeModelCommand } from '@aws-sdk/client-bedrock-runtime';
 import {
@@ -56,10 +56,12 @@ import {
   BookOpen,
   Map as MapIcon,
   Trophy,
-  AlertCircle
+  AlertCircle,
+  Database,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import Modal from './components/Modal';
+import DocumentHubAWS from './components/DocumentHubAWS';
 
 // Firebase Configuration
 const firebaseConfig = {
@@ -412,7 +414,9 @@ const ACHIEVEMENTS = [
   { id: 'funded', name: 'Treasure Secured', icon: '💰', description: 'Secure funding', xpRequired: 3000 },
   { id: 'scaling', name: 'Empire Builder', icon: '🏰', description: 'Start scaling operations', xpRequired: 5000 },
   { id: 'roadmap_created', name: 'Path Finder', icon: '🗺️', description: 'Generate your personalized roadmap', xpRequired: 100 },
-  { id: 'week_streak', name: 'Consistent Warrior', icon: '🔥', description: 'Check in for 7 days straight', xpRequired: 200 }
+  { id: 'week_streak', name: 'Consistent Warrior', icon: '🔥', description: 'Check in for 7 days straight', xpRequired: 200 },
+  { id: 'document_uploaded', name: 'Knowledge Keeper', icon: '📚', description: 'Upload your first document', xpRequired: 50 },
+  { id: 'rag_master', name: 'Document Sage', icon: '🧙', description: 'Use document analysis 10 times', xpRequired: 300 },
 ];
 
 // Document Templates
@@ -596,6 +600,10 @@ export default function App() {
   const [completingQuest, setCompletingQuest] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
   const [guildDataError, setGuildDataError] = useState<string | null>(null);
+  const [alertMessage, setAlertMessage] = useState<string | null>(null);
+  const [showDocumentHub, setShowDocumentHub] = useState(false);
+  const showAlert = (message: string) => setAlertMessage(message);
+  const closeAlert = () => setAlertMessage(null);
 
   // Monitor online status
   useEffect(() => {
@@ -735,7 +743,7 @@ export default function App() {
 
     // Check if online
     if (!navigator.onLine) {
-      alert('You are offline. Please check your internet connection to complete onboarding.');
+      showAlert('You are offline. Please check your internet connection to complete onboarding.');
       return;
     }
 
@@ -785,9 +793,9 @@ export default function App() {
     } catch (error: any) {
       console.error('Error creating guild:', error);
       if (error?.code === 'unavailable' || error?.message?.includes('offline')) {
-        alert('Unable to save your profile. Please check your internet connection.');
+        showAlert('Unable to save your profile. Please check your internet connection.');
       } else {
-        alert('Error creating profile. Please try again.');
+        showAlert('Error creating profile. Please try again.');
       }
     }
 
@@ -861,7 +869,7 @@ export default function App() {
 
     // Check if online
     if (!navigator.onLine) {
-      alert('You are offline. Please check your internet connection and try again.');
+      showAlert('You are offline. Please check your internet connection and try again.');
       return;
     }
 
@@ -912,7 +920,7 @@ export default function App() {
       });
 
       // Show success notification
-      alert(`Quest completed! +${selectedQuest.xp} XP earned!`);
+      showAlert(`Quest completed! +${selectedQuest.xp} XP earned!`);
 
       // Close modal
       setSelectedQuest(null);
@@ -922,9 +930,9 @@ export default function App() {
     } catch (error: any) {
       console.error('Error completing quest:', error);
       if (error?.code === 'unavailable' || error?.message?.includes('offline')) {
-        alert('Unable to save progress. Please check your internet connection.');
+        showAlert('Unable to save progress. Please check your internet connection.');
       } else {
-        alert('Error completing quest. Please try again.');
+        showAlert('Error completing quest. Please try again.');
       }
     } finally {
       setCompletingQuest(false);
@@ -1041,7 +1049,7 @@ export default function App() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center">
         <div className="bg-gray-800 p-8 rounded-lg shadow-2xl text-center max-w-md">
-          <Crown className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
+          <img src="/logo.webp" alt="Hypothesize" className="w-16 h-16 mx-auto mb-4" />
           <h1 className="text-3xl font-bold text-white mb-2">AI Startup Quest</h1>
           <p className="text-gray-400 mb-6">Begin your epic journey to startup success</p>
           <button
@@ -1293,7 +1301,7 @@ export default function App() {
       <header className="bg-gray-800 shadow-lg">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <Crown className="w-8 h-8 text-yellow-500" />
+            <img src="/logo.webp" alt="Hypothesize" className="w-8 h-8" />
             <h1 className="text-2xl font-bold">AI Startup Quest</h1>
             {!isOnline && (
               <div className="flex items-center space-x-1 px-2 py-1 bg-orange-900/50 rounded-lg text-orange-400 text-sm">
@@ -1334,6 +1342,13 @@ export default function App() {
                 title="Progress Dashboard"
               >
                 <BarChart3 className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => setShowDocumentHub(true)}
+                className="text-gray-400 hover:text-white"
+                title="Document Intelligence"
+              >
+                <Database className="w-5 h-5" />
               </button>
               <button
                 onClick={() => setShowHistory(true)}
@@ -1500,120 +1515,121 @@ export default function App() {
 
         {/* Quest Detail Modal */}
         <Modal open={!!selectedQuest} onClose={() => { setSelectedQuest(null); setSageResponse(''); setQuestChat(''); }}>
-          {/* Modal content (copy from previous inner div) */}
-          <div className="p-6 max-w-2xl w-full">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-2xl font-bold">{selectedQuest.name}</h3>
-              <button
-                onClick={() => {
-                  setSelectedQuest(null);
-                  setSageResponse('');
-                  setQuestChat('');
-                }}
-                className="text-gray-400 hover:text-white text-2xl"
-              >
-                ×
-              </button>
-            </div>
-
-            <p className="text-gray-400 mb-4">{selectedQuest.description}</p>
-
-            {/* Show if quest is completed */}
-            {guildData?.questProgress?.[`${selectedQuest.stageId}_${selectedQuest.id}`]?.completed && (
-              <div className="bg-green-900/30 border border-green-700 rounded-lg p-4 mb-4">
-                <div className="flex items-center space-x-2">
-                  <CheckCircle className="w-5 h-5 text-green-500" />
-                  <p className="font-medium text-green-400">Quest Completed!</p>
-                </div>
-                {guildData.questProgress[`${selectedQuest.stageId}_${selectedQuest.id}`].sageResponse && (
-                  <div className="mt-3 p-3 bg-gray-700/50 rounded">
-                    <p className="text-sm text-gray-400 mb-1">Your saved wisdom:</p>
-                    <ReactMarkdown>
-                      {guildData.questProgress[`${selectedQuest.stageId}_${selectedQuest.id}`].sageResponse}
-                    </ReactMarkdown>
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div className="bg-gray-700 rounded-lg p-4 mb-4">
-              <div className="flex items-center mb-2">
-                <Sparkles className="w-5 h-5 text-purple-400 mr-2" />
-                <p className="font-medium">Quest Rewards</p>
-              </div>
-              <p className="text-sm text-gray-400">{selectedQuest.xp} Experience Points</p>
-            </div>
-
-            {/* AI Sage Consultation */}
-            <div className="mb-4">
-              <div className="flex items-center mb-2">
-                <MessageCircle className="w-5 h-5 text-blue-400 mr-2" />
-                <p className="font-medium">Consult the AI Sage</p>
-              </div>
-              <div className="flex space-x-2">
-                <input
-                  type="text"
-                  value={questChat}
-                  onChange={(e) => setQuestChat(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && consultSageForQuest()}
-                  placeholder="Ask for guidance..."
-                  className="flex-1 p-2 bg-gray-700 rounded-lg text-white"
-                />
+          {selectedQuest && (
+            <div className="p-6 max-w-2xl w-full">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-2xl font-bold">{selectedQuest.name}</h3>
                 <button
-                  onClick={consultSageForQuest}
-                  disabled={sageLoading}
-                  className="px-4 py-2 bg-purple-600 rounded-lg hover:bg-purple-700 disabled:opacity-50"
+                  onClick={() => {
+                    setSelectedQuest(null);
+                    setSageResponse('');
+                    setQuestChat('');
+                  }}
+                  className="text-gray-400 hover:text-white text-2xl"
                 >
-                  Ask
+                  ×
                 </button>
               </div>
-              {sageLoading ? (
-                <div className="mt-3 p-3 bg-gray-700 rounded-lg text-purple-400 animate-pulse text-center">
-                  The Sage is meditating and preparing your wisdom...
-                </div>
-              ) : (
-                sageResponse && (
-                  <div className="mt-3 p-3 bg-gray-700 rounded-lg">
-                    <ReactMarkdown>
-                      {sageResponse}
-                    </ReactMarkdown>
+
+              <p className="text-gray-400 mb-4">{selectedQuest.description}</p>
+
+              {/* Show if quest is completed */}
+              {guildData?.questProgress?.[`${selectedQuest.stageId}_${selectedQuest.id}`]?.completed && (
+                <div className="bg-green-900/30 border border-green-700 rounded-lg p-4 mb-4">
+                  <div className="flex items-center space-x-2">
+                    <CheckCircle className="w-5 h-5 text-green-500" />
+                    <p className="font-medium text-green-400">Quest Completed!</p>
                   </div>
-                )
+                  {guildData.questProgress[`${selectedQuest.stageId}_${selectedQuest.id}`].sageResponse && (
+                    <div className="mt-3 p-3 bg-gray-700/50 rounded">
+                      <p className="text-sm text-gray-400 mb-1">Your saved wisdom:</p>
+                      <ReactMarkdown>
+                        {guildData.questProgress[`${selectedQuest.stageId}_${selectedQuest.id}`].sageResponse}
+                      </ReactMarkdown>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="bg-gray-700 rounded-lg p-4 mb-4">
+                <div className="flex items-center mb-2">
+                  <Sparkles className="w-5 h-5 text-purple-400 mr-2" />
+                  <p className="font-medium">Quest Rewards</p>
+                </div>
+                <p className="text-sm text-gray-400">{selectedQuest.xp} Experience Points</p>
+              </div>
+
+              {/* AI Sage Consultation */}
+              <div className="mb-4">
+                <div className="flex items-center mb-2">
+                  <MessageCircle className="w-5 h-5 text-blue-400 mr-2" />
+                  <p className="font-medium">Consult the AI Sage</p>
+                </div>
+                <div className="flex space-x-2">
+                  <input
+                    type="text"
+                    value={questChat}
+                    onChange={(e) => setQuestChat(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && consultSageForQuest()}
+                    placeholder="Ask for guidance..."
+                    className="flex-1 p-2 bg-gray-700 rounded-lg text-white"
+                  />
+                  <button
+                    onClick={consultSageForQuest}
+                    disabled={sageLoading}
+                    className="px-4 py-2 bg-purple-600 rounded-lg hover:bg-purple-700 disabled:opacity-50"
+                  >
+                    Ask
+                  </button>
+                </div>
+                {sageLoading ? (
+                  <div className="mt-3 p-3 bg-gray-700 rounded-lg text-purple-400 animate-pulse text-center">
+                    The Sage is meditating and preparing your wisdom...
+                  </div>
+                ) : (
+                  sageResponse && (
+                    <div className="mt-3 p-3 bg-gray-700 rounded-lg">
+                      <ReactMarkdown>
+                        {sageResponse}
+                      </ReactMarkdown>
+                    </div>
+                  )
+                )}
+              </div>
+
+              {/* CEO Avatar Advice */}
+              {ceoAvatar && (
+                <div className={`mb-4 p-3 rounded-lg bg-gradient-to-r ${ceoAvatar.color} bg-opacity-20`}>
+                  <div className="flex items-center mb-2">
+                    <span className="text-2xl mr-2">{ceoAvatar.avatar}</span>
+                    <p className="font-medium">{ceoAvatar.name}'s Wisdom</p>
+                  </div>
+                  <p className="text-sm italic">"{ceoAvatar.advice}"</p>
+                </div>
+              )}
+
+              {/* Complete Quest Button */}
+              {!guildData?.questProgress?.[`${selectedQuest.stageId}_${selectedQuest.id}`]?.completed && (
+                <button
+                  onClick={completeQuest}
+                  disabled={completingQuest}
+                  className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white px-6 py-3 rounded-lg hover:from-green-600 hover:to-green-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+                >
+                  {completingQuest ? (
+                    <>
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                      <span>Completing Quest...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Trophy className="w-5 h-5" />
+                      <span>Complete Quest (+{selectedQuest.xp} XP)</span>
+                    </>
+                  )}
+                </button>
               )}
             </div>
-
-            {/* CEO Avatar Advice */}
-            {ceoAvatar && (
-              <div className={`mb-4 p-3 rounded-lg bg-gradient-to-r ${ceoAvatar.color} bg-opacity-20`}>
-                <div className="flex items-center mb-2">
-                  <span className="text-2xl mr-2">{ceoAvatar.avatar}</span>
-                  <p className="font-medium">{ceoAvatar.name}'s Wisdom</p>
-                </div>
-                <p className="text-sm italic">"{ceoAvatar.advice}"</p>
-              </div>
-            )}
-
-            {/* Complete Quest Button */}
-            {!guildData?.questProgress?.[`${selectedQuest.stageId}_${selectedQuest.id}`]?.completed && (
-              <button
-                onClick={completeQuest}
-                disabled={completingQuest}
-                className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white px-6 py-3 rounded-lg hover:from-green-600 hover:to-green-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
-              >
-                {completingQuest ? (
-                  <>
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                    <span>Completing Quest...</span>
-                  </>
-                ) : (
-                  <>
-                    <Trophy className="w-5 h-5" />
-                    <span>Complete Quest (+{selectedQuest.xp} XP)</span>
-                  </>
-                )}
-              </button>
-            )}
-          </div>
+          )}
         </Modal>
 
         {/* Progress Dashboard Modal */}
@@ -1708,7 +1724,7 @@ export default function App() {
               <button
                 onClick={() => {
                   navigator.clipboard.writeText(roadmapContent);
-                  alert('Roadmap copied to clipboard!');
+                  showAlert('Roadmap copied to clipboard!');
                 }}
                 className="px-4 py-2 bg-gray-700 rounded-lg hover:bg-gray-600 flex items-center space-x-2"
               >
@@ -1909,36 +1925,61 @@ export default function App() {
 
         {/* Document View Modal */}
         <Modal open={!!selectedDocument} onClose={() => setSelectedDocument(null)}>
-          <div className="p-6 max-w-4xl w-full">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-2xl font-bold">{selectedDocument.templateName}</h3>
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(selectedDocument.content);
-                    alert('Copied to clipboard!');
-                  }}
-                  className="text-gray-400 hover:text-white"
-                >
-                  <Copy className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={() => setSelectedDocument(null)}
-                  className="text-gray-400 hover:text-white text-2xl"
-                >
-                  ×
-                </button>
+          {selectedDocument && (
+            <div className="p-6 max-w-4xl w-full">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-2xl font-bold">{selectedDocument.templateName}</h3>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(selectedDocument.content);
+                      showAlert('Copied to clipboard!');
+                    }}
+                    className="text-gray-400 hover:text-white"
+                  >
+                    <Copy className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={() => setSelectedDocument(null)}
+                    className="text-gray-400 hover:text-white text-2xl"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+
+              <div className="bg-gray-700 rounded-lg p-6">
+                <ReactMarkdown>
+                  {selectedDocument.content}
+                </ReactMarkdown>
               </div>
             </div>
-
-            <div className="bg-gray-700 rounded-lg p-6">
-              <ReactMarkdown>
-                {selectedDocument.content}
-              </ReactMarkdown>
-            </div>
-          </div>
+          )}
         </Modal>
       </main>
+      <Modal open={!!alertMessage} onClose={closeAlert}>
+        <div className="p-6 max-w-sm w-full text-center">
+          <h3 className="text-xl font-bold mb-4">Notice</h3>
+          <p className="mb-6">{alertMessage}</p>
+          <button
+            onClick={closeAlert}
+            className="px-4 py-2 bg-purple-600 rounded-lg text-white hover:bg-purple-700"
+          >
+            OK
+          </button>
+        </div>
+      </Modal>
+      {/* Document Hub Modal */}
+      <Modal open={showDocumentHub} onClose={() => setShowDocumentHub(false)}>
+        <DocumentHubAWS
+          user={user}
+          guildData={guildData}
+          onClose={() => setShowDocumentHub(false)}
+          consultAISage={consultAISage}
+          showAlert={showAlert}
+          db={db}
+        />
+      </Modal>
     </div>
   );
 }
