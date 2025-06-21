@@ -1,5 +1,5 @@
 // src/components/DocumentRAG.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     FileText,
     Send,
@@ -13,6 +13,9 @@ import {
 import DocumentUpload from './DocumentUpload';
 import { ragService } from '../services/awsRAGService';
 import ReactMarkdown from 'react-markdown';
+import { Worker, Viewer, SpecialZoomLevel } from '@react-pdf-viewer/core';
+import '@react-pdf-viewer/core/lib/styles/index.css';
+import '@react-pdf-viewer/default-layout/lib/styles/index.css';
 
 interface DocumentRAGProps {
     userId: string;
@@ -34,18 +37,30 @@ interface ChatMessage {
     timestamp: Date;
 }
 
-export const DocumentRAG: React.FC<DocumentRAGProps> = ({ userId, userName, ceoAvatar }) => {
+export const DocumentRAG: React.FC<DocumentRAGProps> = ({ userId, ceoAvatar }) => {
     const [documents, setDocuments] = useState<UploadedDocument[]>([]);
     const [loading, setLoading] = useState(false);
     const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
     const [currentQuestion, setCurrentQuestion] = useState('');
     const [isProcessing, setIsProcessing] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const messagesEndRef = useRef<HTMLDivElement | null>(null);
+    const [selectedDocument, setSelectedDocument] = useState<UploadedDocument | null>(null);
+    const [documentContent, setDocumentContent] = useState<string | null>(null);
+    const [previewLoading, setPreviewLoading] = useState(false);
+    const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+    const [pdfError, setPdfError] = useState<string | null>(null);
 
     // Load user documents on mount
     useEffect(() => {
         loadDocuments();
     }, [userId]);
+
+    useEffect(() => {
+        if (messagesEndRef.current) {
+            messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
+    }, [chatMessages, isProcessing]);
 
     const loadDocuments = async () => {
         try {
@@ -130,6 +145,31 @@ export const DocumentRAG: React.FC<DocumentRAGProps> = ({ userId, userName, ceoA
         return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
     };
 
+    // Handle document click for preview
+    const handlePreviewDocument = async (doc: UploadedDocument) => {
+        setSelectedDocument(doc);
+        setDocumentContent(null);
+        setPreviewLoading(true);
+        setPdfUrl(null);
+        setPdfError(null);
+        try {
+            const ext = doc.name.split('.').pop()?.toLowerCase();
+            if (ext === 'pdf') {
+                // Fetch the S3 file URL for the PDF
+                const url = await ragService.getDocumentFileUrl(doc.id, userId);
+                setPdfUrl(url);
+            } else {
+                const content = await ragService.getDocumentContent(doc.id, userId);
+                setDocumentContent(content);
+            }
+        } catch (err) {
+            setDocumentContent('Failed to load document preview.');
+            setPdfError('Failed to load PDF preview.');
+        } finally {
+            setPreviewLoading(false);
+        }
+    };
+
     return (
         <div className="max-w-6xl mx-auto p-6">
             <div className="bg-gray-800 rounded-lg shadow-xl">
@@ -185,7 +225,8 @@ export const DocumentRAG: React.FC<DocumentRAGProps> = ({ userId, userName, ceoA
                                     {documents.map(doc => (
                                         <div
                                             key={doc.id}
-                                            className="bg-gray-700 rounded-lg p-3 hover:bg-gray-600 transition-all"
+                                            className="bg-gray-700 rounded-lg p-3 hover:bg-gray-600 transition-all cursor-pointer"
+                                            onClick={() => handlePreviewDocument(doc)}
                                         >
                                             <div className="flex items-start justify-between">
                                                 <div className="flex-1">
@@ -271,6 +312,7 @@ export const DocumentRAG: React.FC<DocumentRAGProps> = ({ userId, userName, ceoA
                                         </div>
                                     </div>
                                 )}
+                                <div ref={messagesEndRef} />
                             </div>
 
                             {/* Chat Input */}
@@ -302,6 +344,50 @@ export const DocumentRAG: React.FC<DocumentRAGProps> = ({ userId, userName, ceoA
                 {error && (
                     <div className="mx-6 mb-6 p-4 bg-red-900/30 border border-red-700 rounded-lg">
                         <p className="text-red-400">{error}</p>
+                    </div>
+                )}
+                {/* Document Preview Modal */}
+                {selectedDocument && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
+                        <div className="bg-gray-900 rounded-lg shadow-2xl max-w-2xl w-full p-6 relative">
+                            <button
+                                className="absolute top-3 right-3 text-gray-400 hover:text-white text-2xl"
+                                onClick={() => { setSelectedDocument(null); setDocumentContent(null); }}
+                            >
+                                ×
+                            </button>
+                            <h3 className="text-xl font-bold mb-4 text-white">{selectedDocument.name}</h3>
+                            {previewLoading ? (
+                                <div className="flex items-center justify-center h-40">
+                                    <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
+                                </div>
+                            ) : selectedDocument && selectedDocument.name.split('.').pop()?.toLowerCase() === 'pdf' ? (
+                                pdfUrl ? (
+                                    <div className="bg-gray-800 p-2 rounded-lg max-h-[80vh] overflow-auto">
+                                        <Worker workerUrl="https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js">
+                                            <Viewer fileUrl={pdfUrl} defaultScale={SpecialZoomLevel.PageFit} />
+                                        </Worker>
+                                    </div>
+                                ) : pdfError ? (
+                                    <div className="bg-gray-800 p-4 rounded-lg text-red-400">{pdfError}</div>
+                                ) : (
+                                    <div className="bg-gray-800 p-4 rounded-lg text-gray-400">Loading PDF preview...</div>
+                                )
+                            ) : documentContent ? (
+                                (() => {
+                                    const ext = selectedDocument.name.split('.').pop()?.toLowerCase();
+                                    if (ext === 'md') {
+                                        return <div className="prose max-w-none bg-gray-800 p-4 rounded-lg"><ReactMarkdown>{documentContent}</ReactMarkdown></div>;
+                                    } else if (ext === 'txt' || ext === 'csv') {
+                                        return <pre className="bg-gray-800 p-4 rounded-lg text-gray-100 overflow-x-auto max-h-96 whitespace-pre-wrap">{documentContent}</pre>;
+                                    } else {
+                                        return <div className="bg-gray-800 p-4 rounded-lg text-gray-400">Preview not supported for this file type.</div>;
+                                    }
+                                })()
+                            ) : (
+                                <div className="bg-gray-800 p-4 rounded-lg text-gray-400">No content to preview.</div>
+                            )}
+                        </div>
                     </div>
                 )}
             </div>

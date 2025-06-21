@@ -1312,7 +1312,7 @@ export default function App() {
           </div>
           <div className="flex items-center space-x-6">
             {/* CEO Avatar Display */}
-            {ceoAvatar && (
+            {ceoAvatar ? (
               <button
                 onClick={() => setShowCEOProfile(true)}
                 className={`flex items-center space-x-2 px-3 py-1 rounded-lg bg-gradient-to-r ${ceoAvatar.color} opacity-80 hover:opacity-100 transition-all`}
@@ -1320,7 +1320,7 @@ export default function App() {
                 <span className="text-2xl">{ceoAvatar.avatar}</span>
                 <span className="text-sm font-medium">{ceoAvatar.name}</span>
               </button>
-            )}
+            ) : null}
 
             <div className="text-right">
               <p className="text-sm text-gray-400">Level {levelInfo.level} Founder</p>
@@ -1598,7 +1598,7 @@ export default function App() {
               </div>
 
               {/* CEO Avatar Advice */}
-              {ceoAvatar && (
+              {ceoAvatar ? (
                 <div className={`mb-4 p-3 rounded-lg bg-gradient-to-r ${ceoAvatar.color} bg-opacity-20`}>
                   <div className="flex items-center mb-2">
                     <span className="text-2xl mr-2">{ceoAvatar.avatar}</span>
@@ -1606,7 +1606,7 @@ export default function App() {
                   </div>
                   <p className="text-sm italic">"{ceoAvatar.advice}"</p>
                 </div>
-              )}
+              ) : null}
 
               {/* Complete Quest Button */}
               {!guildData?.questProgress?.[`${selectedQuest.stageId}_${selectedQuest.id}`]?.completed && (
@@ -1782,53 +1782,55 @@ export default function App() {
         </Modal>
 
         {/* CEO Profile Modal */}
-        <Modal open={showCEOProfile && ceoAvatar} onClose={() => setShowCEOProfile(false)}>
-          <div className="p-6 max-w-md w-full">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-2xl font-bold">Your CEO Guide</h3>
-              <button
-                onClick={() => setShowCEOProfile(false)}
-                className="text-gray-400 hover:text-white text-2xl"
-              >
-                ×
-              </button>
-            </div>
+        <Modal open={showCEOProfile && !!ceoAvatar} onClose={() => setShowCEOProfile(false)}>
+          {ceoAvatar ? (
+            <div className="p-6 max-w-md w-full">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-2xl font-bold">Your CEO Guide</h3>
+                <button
+                  onClick={() => setShowCEOProfile(false)}
+                  className="text-gray-400 hover:text-white text-2xl"
+                >
+                  ×
+                </button>
+              </div>
 
-            <div className={`text-center mb-6 p-6 rounded-lg bg-gradient-to-r ${ceoAvatar.color} bg-opacity-20`}>
-              <div className="text-6xl mb-2">{ceoAvatar.avatar}</div>
-              <h4 className="text-xl font-bold">{ceoAvatar.name}</h4>
-              <p className="text-sm text-gray-300">{ceoAvatar.title}</p>
-            </div>
+              <div className={`text-center mb-6 p-6 rounded-lg bg-gradient-to-r ${ceoAvatar.color} bg-opacity-20`}>
+                <div className="text-6xl mb-2">{ceoAvatar.avatar}</div>
+                <h4 className="text-xl font-bold">{ceoAvatar.name}</h4>
+                <p className="text-sm text-gray-300">{ceoAvatar.title}</p>
+              </div>
 
-            <div className="space-y-3">
-              <div>
-                <p className="text-sm text-gray-400 mb-1">Industries</p>
-                <div className="flex flex-wrap gap-2">
-                  {ceoAvatar.industries.map((ind: string) => (
-                    <span key={ind} className="px-2 py-1 bg-gray-700 rounded text-sm">
-                      {ind}
-                    </span>
-                  ))}
+              <div className="space-y-3">
+                <div>
+                  <p className="text-sm text-gray-400 mb-1">Industries</p>
+                  <div className="flex flex-wrap gap-2">
+                    {ceoAvatar.industries.map((ind: string) => (
+                      <span key={ind} className="px-2 py-1 bg-gray-700 rounded text-sm">
+                        {ind}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-sm text-gray-400 mb-1">Key Traits</p>
+                  <div className="flex flex-wrap gap-2">
+                    {ceoAvatar.traits.map((trait: string) => (
+                      <span key={trait} className="px-2 py-1 bg-gray-700 rounded text-sm">
+                        {trait}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-gray-700">
+                  <p className="text-sm text-gray-400 mb-1">Guiding Philosophy</p>
+                  <p className="italic">"{ceoAvatar.advice}"</p>
                 </div>
               </div>
-
-              <div>
-                <p className="text-sm text-gray-400 mb-1">Key Traits</p>
-                <div className="flex flex-wrap gap-2">
-                  {ceoAvatar.traits.map((trait: string) => (
-                    <span key={trait} className="px-2 py-1 bg-gray-700 rounded text-sm">
-                      {trait}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <div className="pt-3 border-t border-gray-700">
-                <p className="text-sm text-gray-400 mb-1">Guiding Philosophy</p>
-                <p className="italic">"{ceoAvatar.advice}"</p>
-              </div>
             </div>
-          </div>
+          ) : null}
         </Modal>
 
         {/* Conversation History Modal */}
@@ -1973,7 +1975,6 @@ export default function App() {
         <div className="w-full max-w-7xl">
           <DocumentRAG
             userId={user.uid}
-            userName={user.displayName}
             ceoAvatar={ceoAvatar}
           />
         </div>
