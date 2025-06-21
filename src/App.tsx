@@ -28,7 +28,6 @@ import {
 import { BedrockRuntimeClient, InvokeModelCommand } from '@aws-sdk/client-bedrock-runtime';
 import {
   Shield,
-  Crown,
   Users,
   Sparkles,
   ChevronRight,
@@ -61,6 +60,7 @@ import {
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import Modal from './components/Modal';
+import DocumentRAG from './components/DocumentRAG';
 
 // Firebase Configuration
 const firebaseConfig = {
@@ -602,6 +602,7 @@ export default function App() {
   const [alertMessage, setAlertMessage] = useState<string | null>(null);
   const showAlert = (message: string) => setAlertMessage(message);
   const closeAlert = () => setAlertMessage(null);
+  const [showDocumentRAG, setShowDocumentRAG] = useState(false);
 
   // Monitor online status
   useEffect(() => {
@@ -1245,7 +1246,8 @@ export default function App() {
         { id: 'problem', name: 'Identify the Problem', xp: 150, description: 'Validate the problem' },
         { id: 'solution', name: 'Craft Your Solution', xp: 150, description: 'Design your approach' },
         { id: 'market', name: 'Scout the Territory', xp: 200, description: 'Research your market' },
-        { id: 'legal', name: 'Forge the Legal Shield', xp: 100, description: 'Set up foundations' }
+        { id: 'legal', name: 'Forge the Legal Shield', xp: 100, description: 'Set up foundations' },
+        { id: 'document_analysis', name: 'Knowledge Repository', xp: 200, description: 'Upload and analyze key documents' },
       ]
     },
     KICKOFF: {
@@ -1354,6 +1356,13 @@ export default function App() {
                 title="Saved Documents"
               >
                 <FileText className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => setShowDocumentRAG(true)}
+                className="text-gray-400 hover:text-white"
+                title="Document Intelligence"
+              >
+                <Database className="w-5 h-5" />
               </button>
               <button
                 onClick={handleSignOut}
@@ -1958,6 +1967,15 @@ export default function App() {
           >
             OK
           </button>
+        </div>
+      </Modal>
+      <Modal open={showDocumentRAG} onClose={() => setShowDocumentRAG(false)}>
+        <div className="w-full max-w-7xl">
+          <DocumentRAG
+            userId={user.uid}
+            userName={user.displayName}
+            ceoAvatar={ceoAvatar}
+          />
         </div>
       </Modal>
     </div>
