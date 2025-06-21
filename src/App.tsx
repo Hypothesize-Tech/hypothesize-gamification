@@ -61,7 +61,6 @@ import {
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import Modal from './components/Modal';
-import DocumentHubAWS from './components/DocumentHubAWS';
 
 // Firebase Configuration
 const firebaseConfig = {
@@ -601,7 +600,6 @@ export default function App() {
   const [isOnline, setIsOnline] = useState(true);
   const [guildDataError, setGuildDataError] = useState<string | null>(null);
   const [alertMessage, setAlertMessage] = useState<string | null>(null);
-  const [showDocumentHub, setShowDocumentHub] = useState(false);
   const showAlert = (message: string) => setAlertMessage(message);
   const closeAlert = () => setAlertMessage(null);
 
@@ -1344,13 +1342,6 @@ export default function App() {
                 <BarChart3 className="w-5 h-5" />
               </button>
               <button
-                onClick={() => setShowDocumentHub(true)}
-                className="text-gray-400 hover:text-white"
-                title="Document Intelligence"
-              >
-                <Database className="w-5 h-5" />
-              </button>
-              <button
                 onClick={() => setShowHistory(true)}
                 className="text-gray-400 hover:text-white"
                 title="Conversation History"
@@ -1968,17 +1959,6 @@ export default function App() {
             OK
           </button>
         </div>
-      </Modal>
-      {/* Document Hub Modal */}
-      <Modal open={showDocumentHub} onClose={() => setShowDocumentHub(false)}>
-        <DocumentHubAWS
-          user={user}
-          guildData={guildData}
-          onClose={() => setShowDocumentHub(false)}
-          consultAISage={consultAISage}
-          showAlert={showAlert}
-          db={db}
-        />
       </Modal>
     </div>
   );
