@@ -125,15 +125,6 @@ const bedrockClient = new BedrockRuntimeClient({
     : {})
 });
 
-// Email Configuration
-const emailConfig = {
-  smtpHost: import.meta.env.VITE_SMTP_HOST,
-  smtpPort: import.meta.env.VITE_SMTP_PORT,
-  smtpUser: import.meta.env.VITE_SMTP_USER,
-  smtpPass: import.meta.env.VITE_SMTP_PASS,
-  fromEmail: import.meta.env.VITE_FROM_EMAIL || 'noreply@startupquest.com'
-};
-
 // Sound Manager
 class SoundManager {
   private sounds: { [key: string]: HTMLAudioElement } = {};
@@ -860,43 +851,6 @@ const generateAIDocument = async (template: any, userData: any) => {
   return consultAISage(context, prompts[template.id] || "Create a startup document", userData);
 };
 
-// Send Guild Invitation Email
-const sendGuildInvitation = async (email: string, role: string, inviterName: string, guildName: string) => {
-  try {
-    // In a real app, you would use a backend service to send emails
-    // For now, we'll just log and show a success message
-    console.log('Sending email to:', email);
-    console.log('Role:', role);
-    console.log('From:', inviterName);
-    console.log('Guild:', guildName);
-
-    // Email template
-    const emailTemplate = `
-      Subject: You're invited to join ${guildName} on AI Startup Quest!
-      
-      Hi there,
-      
-      ${inviterName} has invited you to join their guild "${guildName}" as a ${GUILD_ROLES[role as keyof typeof GUILD_ROLES].name}.
-      
-      AI Startup Quest is a gamified platform that transforms the startup journey into an epic adventure. Complete quests, earn XP and gold, and level up your founder skills!
-      
-      Your role: ${GUILD_ROLES[role as keyof typeof GUILD_ROLES].name}
-      ${GUILD_ROLES[role as keyof typeof GUILD_ROLES].description}
-      
-      Click here to join: [Link would go here]
-      
-      See you in the game!
-      The AI Startup Quest Team
-    `;
-
-    console.log('Email template:', emailTemplate);
-    return true;
-  } catch (error) {
-    console.error('Error sending email:', error);
-    return false;
-  }
-};
-
 // Daily Bonus Component
 const DailyBonus = ({
   guildData,
@@ -995,26 +949,15 @@ const DailyBonus = ({
 // Guild Management Component
 const GuildManagement = ({
   guildData,
-  onInviteMember,
+  onAssignRole,
   onClose
 }: {
   guildData: any;
-  onInviteMember: (email: string, role: string) => void;
   onAssignRole: (memberId: string, role: string) => void;
   onClose: () => void;
 }) => {
-  const [inviteEmail, setInviteEmail] = useState('');
   const [selectedRole, setSelectedRole] = useState('');
   const [sending, setSending] = useState(false);
-
-  const handleInvite = async () => {
-    if (!inviteEmail || !selectedRole) return;
-    setSending(true);
-    await onInviteMember(inviteEmail, selectedRole);
-    setSending(false);
-    setInviteEmail('');
-    setSelectedRole('');
-  };
 
   const filledRoles = new Set(guildData.members?.map((m: any) => m.role) || []);
   const availableRoles = Object.entries(GUILD_ROLES).filter(([key]) => !filledRoles.has(key) || key === 'member');
@@ -1090,57 +1033,6 @@ const GuildManagement = ({
                   </div>
                 </div>
               ))}
-            </div>
-          </div>
-
-          {/* Invite New Member */}
-          <div>
-            <h3 className="text-lg font-bold mb-4">Invite New Member</h3>
-            <div className="bg-gray-700 rounded-lg p-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Email Address</label>
-                  <input
-                    type="email"
-                    value={inviteEmail}
-                    onChange={(e) => setInviteEmail(e.target.value)}
-                    placeholder="teammate@example.com"
-                    className="w-full p-3 bg-gray-600 rounded-lg text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Assign Role</label>
-                  <select
-                    value={selectedRole}
-                    onChange={(e) => setSelectedRole(e.target.value)}
-                    className="w-full p-3 bg-gray-600 rounded-lg text-white"
-                  >
-                    <option value="">Select a role</option>
-                    {availableRoles.map(([key, role]) => (
-                      <option key={key} value={key}>
-                        {role.icon} {role.name} - {role.description}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <button
-                onClick={handleInvite}
-                disabled={!inviteEmail || !selectedRole || sending}
-                className="mt-4 w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-3 rounded-lg transition-all flex items-center justify-center space-x-2"
-              >
-                {sending ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    <span>Sending Invite...</span>
-                  </>
-                ) : (
-                  <>
-                    <Mail className="w-5 h-5" />
-                    <span>Send Invitation</span>
-                  </>
-                )}
-              </button>
             </div>
           </div>
         </div>
@@ -2379,39 +2271,6 @@ export default function App() {
     }
   };
 
-  // Invite Guild Member
-  const handleInviteMember = async (email: string, role: string) => {
-    if (!user || !guildData) return;
-
-    try {
-      // Send email invitation
-      const emailSent = await sendGuildInvitation(
-        email,
-        role,
-        user.displayName || 'A fellow founder',
-        guildData.guildName
-      );
-
-      if (emailSent) {
-        alert(`Invitation sent to ${email} for the ${GUILD_ROLES[role as keyof typeof GUILD_ROLES].name} role!`);
-      }
-
-      // Check full guild achievement
-      const filledRoles = new Set(guildData.members?.map((m: any) => m.role) || []);
-      filledRoles.add(role);
-
-      if (filledRoles.size >= 6 && !guildData.achievements?.includes('guild_master')) {
-        await updateDoc(doc(db, 'guilds', user.uid), {
-          achievements: arrayUnion('guild_master'),
-          xp: increment(200)
-        });
-      }
-    } catch (error) {
-      console.error('Error inviting member:', error);
-      alert('Error sending invitation. Please try again.');
-    }
-  };
-
   // Assign Role to Member
   const handleAssignRole = async (memberId: string, role: string) => {
     if (!user || !guildData) return;
@@ -2968,7 +2827,6 @@ export default function App() {
         {showGuildManagement && (
           <GuildManagement
             guildData={guildData}
-            onInviteMember={handleInviteMember}
             onAssignRole={handleAssignRole}
             onClose={() => setShowGuildManagement(false)}
           />
