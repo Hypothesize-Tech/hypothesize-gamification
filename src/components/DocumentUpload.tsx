@@ -83,10 +83,17 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
-                className={`border-2 border-dashed rounded-lg p-8 text-center transition-all ${isDragging
-                    ? 'border-purple-500 bg-purple-500/10'
-                    : 'border-gray-600 hover:border-gray-500'
-                    } ${uploading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                className={`
+                    border-2 border-dashed rounded-lg 
+                    p-4 sm:p-6 md:p-8 
+                    text-center transition-all duration-200 
+                    ${isDragging
+                        ? 'border-purple-500 bg-purple-500/10 scale-[1.02]'
+                        : 'border-gray-600 hover:border-gray-500 hover:bg-gray-800/30'
+                    } 
+                    ${uploading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer active:scale-[0.98]'}
+                    touch-manipulation
+                `}
             >
                 <input
                     type="file"
@@ -95,22 +102,40 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
                     onChange={handleFileInput}
                     accept=".pdf,.doc,.docx,.txt,.md,.csv"
                     disabled={uploading}
+                    aria-describedby="file-upload-description"
                 />
 
-                <label htmlFor="file-upload" className="cursor-pointer">
-                    <div className="flex flex-col items-center space-y-3">
+                <label
+                    htmlFor="file-upload"
+                    className="cursor-pointer block w-full h-full"
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            document.getElementById('file-upload')?.click();
+                        }
+                    }}
+                >
+                    <div className="flex flex-col items-center space-y-3 sm:space-y-4">
                         {uploading ? (
-                            <Loader2 className="w-12 h-12 text-purple-500 animate-spin" />
+                            <Loader2 className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-purple-500 animate-spin" />
                         ) : (
-                            <Upload className="w-12 h-12 text-gray-400" />
+                            <Upload className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-gray-400 group-hover:text-gray-300 transition-colors" />
                         )}
 
-                        <div>
-                            <p className="text-lg font-medium text-white">
+                        <div className="space-y-1 sm:space-y-2">
+                            <p className="text-base sm:text-lg md:text-xl font-medium text-white">
                                 {uploading ? 'Uploading...' : 'Drop your document here'}
                             </p>
-                            <p className="text-sm text-gray-400 mt-1">
-                                or click to browse (PDF, Word, TXT, MD, CSV - Max {maxSizeMB}MB)
+                            <p
+                                id="file-upload-description"
+                                className="text-xs sm:text-sm text-gray-400 px-2"
+                            >
+                                or tap to browse
+                            </p>
+                            <p className="text-xs text-gray-500 px-2">
+                                PDF, Word, TXT, MD, CSV • Max {maxSizeMB}MB
                             </p>
                         </div>
                     </div>
@@ -118,9 +143,19 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
             </div>
 
             {error && (
-                <div className="mt-3 p-3 bg-red-900/30 border border-red-700 rounded-lg flex items-center justify-between">
-                    <p className="text-sm text-red-400">{error}</p>
-                    <button onClick={() => setError(null)} className="text-red-400 hover:text-red-300">
+                <div
+                    className="mt-3 p-3 sm:p-4 bg-red-900/30 border border-red-700 rounded-lg 
+                               flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4"
+                    role="alert"
+                    aria-live="polite"
+                >
+                    <p className="text-sm text-red-400 flex-1">{error}</p>
+                    <button
+                        onClick={() => setError(null)}
+                        className="text-red-400 hover:text-red-300 active:scale-95 transition-all
+                                 self-end sm:self-auto p-1 rounded focus:outline-none focus:ring-2 focus:ring-red-400/50"
+                        aria-label="Dismiss error"
+                    >
                         <X className="w-4 h-4" />
                     </button>
                 </div>
