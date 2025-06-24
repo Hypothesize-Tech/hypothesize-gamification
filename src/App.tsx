@@ -40,12 +40,8 @@ import {
   User,
   History,
   Brain,
-  Briefcase,
   DollarSign,
-  MapPin,
-  Calendar,
   Code,
-  Heart,
   Star,
   FileText,
   Copy,
@@ -54,7 +50,6 @@ import {
   BarChart3,
   Lightbulb,
   BookOpen,
-  Map as MapIcon,
   AlertCircle,
   Send,
   Save,
@@ -72,7 +67,6 @@ import {
   Zap,
   Gem,
   UserPlus,
-  Mail,
   Gift,
   Volume2,
   VolumeX
@@ -949,18 +943,13 @@ const DailyBonus = ({
 // Guild Management Component
 const GuildManagement = ({
   guildData,
-  onAssignRole,
   onClose
 }: {
   guildData: any;
-  onAssignRole: (memberId: string, role: string) => void;
   onClose: () => void;
 }) => {
-  const [selectedRole, setSelectedRole] = useState('');
-  const [sending, setSending] = useState(false);
 
   const filledRoles = new Set(guildData.members?.map((m: any) => m.role) || []);
-  const availableRoles = Object.entries(GUILD_ROLES).filter(([key]) => !filledRoles.has(key) || key === 'member');
 
   return (
     <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
@@ -982,7 +971,6 @@ const GuildManagement = ({
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               {Object.entries(GUILD_ROLES).map(([key, role]) => {
                 const member = guildData.members?.find((m: any) => m.role === key);
-                const RoleIcon = CORE_ATTRIBUTES[role.attribute as keyof typeof CORE_ATTRIBUTES].icon;
 
                 return (
                   <div
@@ -1155,18 +1143,6 @@ const FourPanelQuestInterface = ({
     soundManager.play('questComplete');
     triggerConfetti();
     setIsSaving(false);
-  };
-
-  const getResourceIcon = (type: string) => {
-    switch (type) {
-      case 'book': return <BookOpen className="w-4 h-4" />;
-      case 'video': return <Video className="w-4 h-4" />;
-      case 'article': return <FileText className="w-4 h-4" />;
-      case 'template': return <FileQuestion className="w-4 h-4" />;
-      case 'course': return <Lightbulb className="w-4 h-4" />;
-      case 'tool': return <Star className="w-4 h-4" />;
-      default: return <ExternalLink className="w-4 h-4" />;
-    }
   };
 
   return (
@@ -1362,7 +1338,7 @@ const FourPanelQuestInterface = ({
 
           <div className="space-y-4 overflow-y-auto flex-1 pr-2 scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800">
             {inputTemplate ? (
-              inputTemplate.fields.map((field) => (
+              inputTemplate.fields.map((field: any) => (
                 <div key={field.name}>
                   <label className="block text-sm font-medium mb-2">
                     {field.label}
@@ -1381,7 +1357,7 @@ const FourPanelQuestInterface = ({
                       className="w-full p-3 bg-gray-700 rounded-lg text-white"
                     >
                       <option value="">Select an option</option>
-                      {field.options?.map((option) => (
+                      {field.options?.map((option: any) => (
                         <option key={option} value={option}>{option}</option>
                       ))}
                     </select>
@@ -1770,7 +1746,11 @@ export default function App() {
     const styleEl = document.createElement('style');
     styleEl.textContent = customStyles;
     document.head.appendChild(styleEl);
-    return () => document.head.removeChild(styleEl);
+    return () => {
+      if (styleEl.parentNode) {
+        styleEl.parentNode.removeChild(styleEl);
+      }
+    };
   }, []);
 
   // Monitor online status
@@ -2159,12 +2139,10 @@ export default function App() {
 
       let stageBonus = 0;
       let newGuildLevel = guildData.guildLevel || 1;
-      let stageCompleted = false;
 
       if (completedStageQuests === stageQuests.length) {
         // Stage completed! Award 500 gold bonus
         stageBonus = 500;
-        stageCompleted = true;
         soundManager.play('levelUp');
         triggerConfetti({ particleCount: 200, spread: 100 });
 
@@ -2268,26 +2246,6 @@ export default function App() {
     } catch (error) {
       console.error('Error purchasing item:', error);
       alert('Error completing purchase. Please try again.');
-    }
-  };
-
-  // Assign Role to Member
-  const handleAssignRole = async (memberId: string, role: string) => {
-    if (!user || !guildData) return;
-
-    try {
-      const updatedMembers = guildData.members.map((m: any) =>
-        m.uid === memberId ? { ...m, role } : m
-      );
-
-      await updateDoc(doc(db, 'guilds', user.uid), {
-        members: updatedMembers
-      });
-
-      setGuildData({ ...guildData, members: updatedMembers });
-    } catch (error) {
-      console.error('Error assigning role:', error);
-      alert('Error assigning role. Please try again.');
     }
   };
 
@@ -2827,7 +2785,6 @@ export default function App() {
         {showGuildManagement && (
           <GuildManagement
             guildData={guildData}
-            onAssignRole={handleAssignRole}
             onClose={() => setShowGuildManagement(false)}
           />
         )}
@@ -3138,7 +3095,7 @@ export default function App() {
                       </div>
                       <div className="flex items-start space-x-2">
                         <Sparkles className="w-4 h-4 text-purple-400 mt-1" />
-                        <ReactMarkdown className="text-sm">
+                        <ReactMarkdown>
                           {conv.response}
                         </ReactMarkdown>
                       </div>
