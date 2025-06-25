@@ -126,13 +126,13 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
 
                         <div className="space-y-1 sm:space-y-2">
                             <p className="text-base sm:text-lg md:text-xl font-medium text-white">
-                                {uploading ? 'Uploading...' : 'Drop your file here'}
+                                {uploading ? 'Uploading...' : 'Upload your file here'}
                             </p>
                             <p
                                 id="file-upload-description"
                                 className="text-xs sm:text-sm text-gray-400 px-2"
                             >
-                                or tap to browse
+                                or click to browse
                             </p>
                             <p className="text-xs text-gray-500 px-2">
                                 PDF, Word, TXT, MD, CSV • Max {maxSizeMB}MB

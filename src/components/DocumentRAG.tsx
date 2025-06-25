@@ -312,10 +312,10 @@ export const DocumentRAG: React.FC<DocumentRAGProps> = ({ userId, ceoAvatar, ope
                                     <div className="flex-1">
                                         <h2 className="text-3xl font-bold old-paper-text flex items-center space-x-2" style={{ fontFamily: 'Georgia, serif' }}>
                                             <Database className="w-7 h-7 text-amber-700" />
-                                            <span>Document Oracle</span>
+                                            <span>Document Assistant</span>
                                         </h2>
                                         <p className="old-paper-text opacity-80 mt-1 text-sm italic">
-                                            Upload thy scrolls and let the Oracle divine their secrets
+                                            Upload your documents and let the Assistant analyze their content
                                         </p>
                                     </div>
                                     {ceoAvatar && (
@@ -335,7 +335,7 @@ export const DocumentRAG: React.FC<DocumentRAGProps> = ({ userId, ceoAvatar, ope
                                     <div className="parchment-inner rounded-lg p-5">
                                         <h3 className="text-lg font-semibold old-paper-text mb-3 flex items-center space-x-2">
                                             <FileText className="w-5 h-5 text-amber-700" />
-                                            <span>Upload Scroll</span>
+                                            <span>Upload Document</span>
                                         </h3>
                                         <DocumentUpload onUpload={handleUpload} />
                                     </div>
@@ -344,14 +344,14 @@ export const DocumentRAG: React.FC<DocumentRAGProps> = ({ userId, ceoAvatar, ope
                                     <div className="parchment-inner rounded-lg p-5">
                                         <h3 className="text-lg font-semibold old-paper-text mb-3 flex items-center space-x-2">
                                             <BookOpen className="w-5 h-5 text-amber-700" />
-                                            <span>Your Scrolls</span>
+                                            <span>Your Documents</span>
                                             {loading && <Loader2 className="w-4 h-4 animate-spin text-amber-700" />}
                                         </h3>
 
                                         {documents.length === 0 ? (
                                             <div className="text-center py-6">
                                                 <FileText className="w-12 h-12 mx-auto mb-2 opacity-50 text-amber-700" />
-                                                <p className="text-base old-paper-text opacity-70">No scrolls uploaded yet</p>
+                                                <p className="text-base old-paper-text opacity-70">No documents uploaded yet</p>
                                             </div>
                                         ) : (
                                             <div className="space-y-2 max-h-60 overflow-y-auto">
@@ -380,7 +380,7 @@ export const DocumentRAG: React.FC<DocumentRAGProps> = ({ userId, ceoAvatar, ope
                                                                     title="Delete document"
                                                                     onClick={async (e) => {
                                                                         e.stopPropagation();
-                                                                        if (window.confirm('Art thou certain ye wish to destroy this scroll?')) {
+                                                                        if (window.confirm('Are you sure you want to delete this document?')) {
                                                                             await deleteDocument(doc.id);
                                                                             await loadDocuments();
                                                                         }
@@ -402,7 +402,7 @@ export const DocumentRAG: React.FC<DocumentRAGProps> = ({ userId, ceoAvatar, ope
                                     {/* Chat Header */}
                                     <div className="mb-4 flex items-center space-x-2">
                                         <Sparkles className="w-5 h-5 text-amber-700" />
-                                        <h3 className="text-lg font-bold old-paper-text">Ask the Oracle</h3>
+                                        <h3 className="text-lg font-bold old-paper-text">Ask the Assistant</h3>
                                     </div>
 
                                     {/* Chat Messages */}
@@ -411,11 +411,11 @@ export const DocumentRAG: React.FC<DocumentRAGProps> = ({ userId, ceoAvatar, ope
                                             <div className="text-center py-8 flex flex-col justify-center">
                                                 <Search className="w-12 h-12 text-amber-700 opacity-50 mx-auto mb-3" />
                                                 <p className="old-paper-text opacity-70 text-base px-4">
-                                                    Upload a scroll and start asking questions!
+                                                    Upload a document and start asking questions!
                                                 </p>
                                                 <div className="mt-4 space-y-2 text-sm old-paper-text opacity-60 px-4 italic">
                                                     <p>Try questions like:</p>
-                                                    <p>"What are the key insights from this scroll?"</p>
+                                                    <p>"What are the key insights from this document?"</p>
                                                     <p>"How can I apply this to my guild?"</p>
                                                     <p>"Summarize the main points"</p>
                                                 </div>
@@ -451,7 +451,7 @@ export const DocumentRAG: React.FC<DocumentRAGProps> = ({ userId, ceoAvatar, ope
                                                 <div className="parchment-inner rounded-lg p-4 max-w-[85%]">
                                                     <div className="flex items-center space-x-2">
                                                         <Loader2 className="w-4 h-4 animate-spin text-amber-700" />
-                                                        <p className="text-base old-paper-text italic">The Oracle consults ancient wisdom...</p>
+                                                        <p className="text-base old-paper-text italic">The Assistant is processing your request...</p>
                                                     </div>
                                                 </div>
                                             </div>
@@ -466,7 +466,7 @@ export const DocumentRAG: React.FC<DocumentRAGProps> = ({ userId, ceoAvatar, ope
                                             value={currentQuestion}
                                             onChange={(e) => setCurrentQuestion(e.target.value)}
                                             onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleAskQuestion()}
-                                            placeholder="Ask the Oracle about thy scrolls..."
+                                            placeholder="Ask the Assistant about your documents..."
                                             className="flex-1 p-3 bg-amber-50/30 old-paper-text rounded-lg placeholder-amber-700/50 
                                                      border border-amber-700/30 focus:outline-none focus:border-amber-700/50 text-base
                                                      transition-all"

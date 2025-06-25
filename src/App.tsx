@@ -58,7 +58,8 @@ import DocumentRAG from './components/DocumentRAG';
 import * as THREE from 'three';
 import { Canvas, } from '@react-three/fiber';
 import DiamondSword3D from './components/DiamondSword3D';
-import medievalStyles from './utils/medievalStyles';
+import { medievalStyles } from './utils/medievalStyles';
+import { goldPurchaseStyles } from './utils/goldPurchaseStyles';
 import {
   AVATAR_TEMPLATES,
   CORE_ATTRIBUTES,
@@ -82,6 +83,7 @@ import { GuildManagement } from './components/GuildManagement';
 import { DailyBonus } from './components/DailyBonus';
 import { firebaseConfig } from './config/config';
 import { EpicMedievalLoader } from './components/EpicMedievalLoader';
+import { GoldPurchase } from './components/GoldPurchase';
 
 class SoundManager {
   private sounds: { [key: string]: HTMLAudioElement } = {};
@@ -125,6 +127,14 @@ class SoundManager {
 }
 
 const soundManager = new SoundManager();
+
+let userInteracted = false;
+function setUserInteracted() { userInteracted = true; }
+if (typeof window !== 'undefined') {
+  window.addEventListener('click', setUserInteracted, { once: true });
+  window.addEventListener('keydown', setUserInteracted, { once: true });
+  window.addEventListener('touchstart', setUserInteracted, { once: true });
+}
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -180,24 +190,40 @@ export default function App() {
   const [showArmory, setShowArmory] = useState(false);
   const [showGuildManagement, setShowGuildManagement] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [showGoldPurchase, setShowGoldPurchase] = useState(false);
 
   useEffect(() => {
+    // Create and append medieval styles
     const styleEl = document.createElement('style');
     styleEl.textContent = medievalStyles;
     document.head.appendChild(styleEl);
 
+    // Create and append gold purchase styles if needed
+    if (typeof goldPurchaseStyles !== 'undefined') {
+      const goldStyleEl = document.createElement('style');
+      goldStyleEl.textContent = goldPurchaseStyles;
+      document.head.appendChild(goldStyleEl);
+    }
+
+    // Create magical particles
     createMagicalParticles();
 
+    // Sound initialization
     const playAmbient = () => {
-      soundManager.play('swordDraw');
+      if (userInteracted) soundManager.play('swordDraw');
       document.removeEventListener('click', playAmbient);
     };
     document.addEventListener('click', playAmbient);
 
+    // Cleanup function
     return () => {
-      if (styleEl.parentNode) {
-        styleEl.parentNode.removeChild(styleEl);
-      }
+      // Remove all style elements we added
+      const styleElements = document.head.querySelectorAll('style');
+      styleElements.forEach(el => {
+        if (el.textContent?.includes('MedievalSharp') || el.textContent?.includes('gold-shine')) {
+          el.remove();
+        }
+      });
       document.removeEventListener('click', playAmbient);
     };
   }, []);
@@ -292,11 +318,11 @@ export default function App() {
       console.error('Error loading guild data:', error);
 
       if (error?.code === 'unavailable' || error?.message?.includes('offline')) {
-        setGuildDataError('Thou art offline. Unable to summon thy profile. Check thy connection and try again.');
+        setGuildDataError('You are offline. Unable to load your profile. Check your connection and try again.');
         return false;
       }
 
-      setGuildDataError('A mystical error has occurred. Please try thy quest again.');
+      setGuildDataError('An error has occurred. Please try again.');
       return false;
     }
   };
@@ -304,10 +330,10 @@ export default function App() {
   const handleSignIn = async () => {
     try {
       await signInWithPopup(auth, googleProvider);
-      soundManager.play('levelUp');
+      if (userInteracted) soundManager.play('levelUp');
     } catch (error) {
       console.error('Sign in error:', error);
-      soundManager.play('error');
+      if (userInteracted) soundManager.play('error');
     }
   };
 
@@ -317,7 +343,7 @@ export default function App() {
       setGuildData(null);
       setCeoAvatar(null);
       setShowOnboarding(false);
-      soundManager.play('swordDraw');
+      if (userInteracted) soundManager.play('swordDraw');
     } catch (error) {
       console.error('Sign out error:', error);
     }
@@ -326,7 +352,7 @@ export default function App() {
   // Handle Onboarding Answer
   const handleOnboardingAnswer = (questionId: string, answer: any) => {
     setOnboardingAnswers({ ...onboardingAnswers, [questionId]: answer });
-    soundManager.play('swordDraw');
+    if (userInteracted) soundManager.play('swordDraw');
   };
 
   // Complete Onboarding
@@ -334,7 +360,7 @@ export default function App() {
     if (!user || !vision) return;
 
     if (!navigator.onLine) {
-      alert('Thou art offline. Connect to the mystical network to establish thy guild.');
+      alert('You are offline. Connect to the internet to create your guild.');
       return;
     }
 
@@ -382,15 +408,15 @@ export default function App() {
       await setDoc(doc(db, 'guilds', user.uid), initialGuildData);
       setGuildData(initialGuildData);
       setShowOnboarding(false);
-      soundManager.play('levelUp');
+      if (userInteracted) soundManager.play('levelUp');
       triggerConfetti();
     } catch (error: any) {
       console.error('Error creating guild:', error);
-      soundManager.play('error');
+      if (userInteracted) soundManager.play('error');
       if (error?.code === 'unavailable' || error?.message?.includes('offline')) {
-        alert('Unable to forge thy guild charter. Check thy mystical connection.');
+        alert('Unable to create your guild. Check your internet connection.');
       } else {
-        alert('The guild creation spell has failed. Try again, brave founder.');
+        alert('Guild creation failed. Please try again.');
       }
     }
 
@@ -405,7 +431,7 @@ export default function App() {
       await addDoc(collection(db, 'conversations'), {
         userId: user.uid,
         questId: quest?.id || 'general',
-        questName: quest?.name || 'General Oracle Consultation',
+        questName: quest?.name || 'General Conversation',
         question: question,
         response: response,
         createdAt: serverTimestamp()
@@ -417,7 +443,7 @@ export default function App() {
           achievements: arrayUnion('conversation_pro'),
           xp: increment(50)
         });
-        soundManager.play('levelUp');
+        if (userInteracted) soundManager.play('levelUp');
       }
     } catch (error) {
       console.error('Error saving conversation:', error);
@@ -446,7 +472,7 @@ export default function App() {
       // Update local state
       const newXP = (guildData.xp || 0) + template.xp;
       setGuildData({ ...guildData, xp: newXP });
-      soundManager.play('questComplete');
+      if (userInteracted) soundManager.play('questComplete');
 
       // Check for document achievement
       if (savedDocuments.length + 1 >= 5 && !guildData.achievements?.includes('document_master')) {
@@ -454,7 +480,7 @@ export default function App() {
           achievements: arrayUnion('document_master'),
           xp: increment(50)
         });
-        soundManager.play('levelUp');
+        if (userInteracted) soundManager.play('levelUp');
       }
     } catch (error) {
       console.error('Error saving document:', error);
@@ -480,7 +506,7 @@ export default function App() {
           achievements: arrayUnion('gold_hoarder'),
           xp: increment(100)
         });
-        soundManager.play('levelUp');
+        if (userInteracted) soundManager.play('levelUp');
       }
     } catch (error) {
       console.error('Error updating gold:', error);
@@ -521,7 +547,7 @@ export default function App() {
         dailyStreak: newStreak
       });
 
-      soundManager.play('coinCollect');
+      if (userInteracted) soundManager.play('coinCollect');
       triggerConfetti({
         particleCount: 30,
         spread: 45,
@@ -534,7 +560,7 @@ export default function App() {
           achievements: arrayUnion('daily_champion'),
           xp: increment(200)
         });
-        soundManager.play('levelUp');
+        if (userInteracted) soundManager.play('levelUp');
       }
     } catch (error) {
       console.error('Error claiming daily bonus:', error);
@@ -546,7 +572,7 @@ export default function App() {
     if (!user || !guildData || !selectedQuest) return;
 
     if (!navigator.onLine) {
-      alert('Thou art offline. Connect to complete thy quest.');
+      alert('You are offline. Connect to complete your quest.');
       return;
     }
 
@@ -593,7 +619,7 @@ export default function App() {
 
       if (completedStageQuests === stageQuests.length) {
         stageBonus = 500;
-        soundManager.play('levelUp');
+        if (userInteracted) soundManager.play('levelUp');
         triggerConfetti({ particleCount: 200, spread: 100 });
 
         const stageAchievement = `stage_complete_${selectedQuest.stageId}`;
@@ -627,9 +653,9 @@ export default function App() {
       });
 
       // Show success notification
-      let message = `Quest completed! +${questData.xpReward} XP (${questData.rating}/5 stars)`;
+      let message = `Quest completed! +${questData.xpReward} XP (${questData.rating}/5)`;
       if (stageBonus > 0) {
-        message += `\n\n⚔️ Realm Conquered! +${stageBonus} Gold dragons!`;
+        message += `\n\nStage completed! +${stageBonus} gold coins!`;
       }
       alert(message);
 
@@ -638,8 +664,8 @@ export default function App() {
 
     } catch (error: any) {
       console.error('Error completing quest:', error);
-      soundManager.play('error');
-      alert('The quest completion spell has failed. Try again, brave warrior.');
+      if (userInteracted) soundManager.play('error');
+      alert('Quest completion failed. Please try again.');
     }
   };
 
@@ -650,8 +676,8 @@ export default function App() {
     const newGold = (guildData.gold || 0) - item.price;
 
     if (newGold < 0) {
-      alert('Thy coffers are too light for this purchase!');
-      soundManager.play('error');
+      alert('Not enough gold coins for this purchase!');
+      if (userInteracted) soundManager.play('error');
       return;
     }
 
@@ -688,24 +714,22 @@ export default function App() {
         ...(category === 'treasures' ? { treasures: [...(guildData.treasures || []), item.id] } : {})
       });
 
-      alert(`Acquired ${item.name} for ${item.price} gold dragons!`);
+      alert(`Purchased ${item.name} for ${item.price} gold coins.`);
     } catch (error) {
       console.error('Error purchasing item:', error);
-      soundManager.play('error');
-      alert('The merchant\'s spell has failed. Try thy purchase again.');
+      if (userInteracted) soundManager.play('error');
+      alert('Purchase failed. Please try again.');
     }
   };
 
   // Generate Document
   const handleGenerateDocument = async (template: any) => {
     setGeneratingDoc(true);
-    soundManager.play('magicCast');
+    if (userInteracted) soundManager.play('magicCast');
     const content = await generateAIDocument(template, { ...guildData, ceoAvatar }, awsModelId, bedrockClient);
     await saveDocument(template, content);
     setGeneratingDoc(false);
   };
-
-
 
   // Calculate Progress Stats
   const calculateStats = () => {
@@ -735,7 +759,7 @@ export default function App() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="parchment p-8 rounded-lg shadow-2xl text-center max-w-md">
           <AlertCircle className="w-16 h-16 text-orange-500 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-yellow-100 mb-2">Guild Charter Lost</h1>
+          <h1 className="text-2xl font-bold text-yellow-100">Guild Not Found</h1>
           <p className="text-gray-300 mb-6">{guildDataError}</p>
           <button
             onClick={async () => {
@@ -746,7 +770,7 @@ export default function App() {
             }}
             className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-lg hover:from-purple-500 hover:to-pink-500 transition-all magic-border"
           >
-            Retry Quest
+            Retry
           </button>
         </div>
       </div>
@@ -775,14 +799,14 @@ export default function App() {
             </Canvas>
           </div>
           <h1 className="text-3xl font-bold text-yellow-100 mb-2">AI Startup Quest</h1>
-          <p className="text-gray-300 mb-6">Begin thy epic journey to entrepreneurial glory</p>
+          <p className="text-gray-300 mb-6">Start your journey to building your company</p>
           <button
             onClick={handleSignIn}
             className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-8 py-4 rounded-lg hover:from-purple-500 hover:to-pink-500 transition-all transform hover:scale-105 magic-border"
           >
             <span className="flex items-center space-x-3">
               <Swords className="w-5 h-5" />
-              <span>Enter the Realm with Google</span>
+              <span>Sign in with Google</span>
               <Swords className="w-5 h-5 transform scale-x-[-1]" />
             </span>
           </button>
@@ -802,7 +826,7 @@ export default function App() {
             <>
               <h2 className="text-3xl font-bold text-yellow-100 mb-4">Your Vision</h2>
               <p className="text-gray-300 mb-6">
-                Founder, share your vision for your journey.
+                Please share your vision for your company.
               </p>
               <textarea
                 value={vision}
@@ -811,17 +835,17 @@ export default function App() {
                 className="w-full p-4 bg-gray-700 text-white rounded-lg mb-4 h-32 resize-none"
               />
               <button
-                onClick={() => { setOnboardingStep(1); soundManager.play('swordDraw'); }}
+                onClick={() => { setOnboardingStep(1); if (userInteracted) soundManager.play('swordDraw'); }}
                 disabled={!vision}
                 className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-lg hover:from-purple-500 hover:to-pink-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed magic-border"
               >
-                Continue to Character Creation
+                Continue
               </button>
             </>
           ) : onboardingStep <= ONBOARDING_QUESTIONS.length ? (
             <>
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-2xl font-bold text-yellow-100">Forge Your Destiny</h3>
+                <h3 className="text-2xl font-bold text-yellow-100">Profile Setup</h3>
                 <span className="text-gray-300">
                   Step {onboardingStep} of {ONBOARDING_QUESTIONS.length}
                 </span>
@@ -883,7 +907,7 @@ export default function App() {
               <div className="flex space-x-4">
                 {onboardingStep > 1 && (
                   <button
-                    onClick={() => { setOnboardingStep(onboardingStep - 1); soundManager.play('swordDraw'); }}
+                    onClick={() => { setOnboardingStep(onboardingStep - 1); if (userInteracted) soundManager.play('swordDraw'); }}
                     className="flex-1 bg-gray-700 text-white px-6 py-3 rounded-lg hover:bg-gray-600 transition-all"
                   >
                     Previous
@@ -893,7 +917,7 @@ export default function App() {
                   onClick={() => {
                     if (onboardingStep < ONBOARDING_QUESTIONS.length) {
                       setOnboardingStep(onboardingStep + 1);
-                      soundManager.play('swordDraw');
+                      if (userInteracted) soundManager.play('swordDraw');
                     } else {
                       completeOnboarding();
                     }
@@ -917,7 +941,7 @@ export default function App() {
                   </Suspense>
                 </Canvas>
               </div>
-              <p className="text-gray-300">Setting up your adventure...</p>
+              <p className="text-gray-300">Setting up your profile...</p>
             </div>
           )}
         </div>
@@ -946,7 +970,7 @@ export default function App() {
           <div className="flex items-center space-x-6">
             {ceoAvatar && (
               <button
-                onClick={() => { setShowCEOProfile(true); soundManager.play('swordDraw'); }}
+                onClick={() => { setShowCEOProfile(true); if (userInteracted) soundManager.play('swordDraw'); }}
                 className={`flex items-center space-x-2 px-3 py-1 rounded-lg bg-gradient-to-r ${ceoAvatar.color} bg-opacity-80 hover:bg-opacity-100 transition-all`}
               >
                 <span className="text-2xl">{ceoAvatar.avatar}</span>
@@ -955,7 +979,7 @@ export default function App() {
             )}
 
             <div className="text-right">
-              <p className="text-sm text-gray-300">Level {levelInfo.level} Hero</p>
+              <p className="text-sm text-gray-300">Level {levelInfo.level}</p>
               <div className="flex items-center space-x-2">
                 <div className="w-32 bg-gray-700 rounded-full h-2">
                   <div
@@ -971,28 +995,28 @@ export default function App() {
               <button
                 onClick={toggleSound}
                 className="text-gray-400 hover:text-white"
-                title={soundEnabled ? "Silence sounds" : "Enable sounds"}
+                title={soundEnabled ? "Mute sounds" : "Enable sounds"}
               >
                 {soundEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
               </button>
               <button
-                onClick={() => { setShowDashboard(true); soundManager.play('swordDraw'); }}
+                onClick={() => { setShowDashboard(true); if (userInteracted) soundManager.play('swordDraw'); }}
                 className="text-gray-400 hover:text-white"
-                title="Quest Journal"
+                title="Progress"
               >
                 <BarChart3 className="w-5 h-5" />
               </button>
               <button
-                onClick={() => { setShowHistory(true); soundManager.play('swordDraw'); }}
+                onClick={() => { setShowHistory(true); if (userInteracted) soundManager.play('swordDraw'); }}
                 className="text-gray-400 hover:text-white"
-                title="Oracle History"
+                title="Conversation History"
               >
                 <History className="w-5 h-5" />
               </button>
               <button
-                onClick={() => { setShowDocuments(true); soundManager.play('swordDraw'); }}
+                onClick={() => { setShowDocuments(true); if (userInteracted) soundManager.play('swordDraw'); }}
                 className="text-gray-400 hover:text-white"
-                title="Document Library"
+                title="Documents"
               >
                 <Scroll className="w-5 h-5" />
               </button>
@@ -1019,11 +1043,11 @@ export default function App() {
           </div>
           <div className="flex items-center space-x-4">
             <button
-              onClick={() => { setShowGuildManagement(true); soundManager.play('swordDraw'); }}
+              onClick={() => { setShowGuildManagement(true); if (userInteracted) soundManager.play('swordDraw'); }}
               className="flex items-center space-x-2 px-3 py-1 bg-blue-800 rounded-lg text-sm hover:bg-blue-700 transition-all"
             >
               <UserPlus className="w-4 h-4" />
-              <span>Guild Hall</span>
+              <span>Guild Management</span>
             </button>
             <div className="flex items-center space-x-2">
               <span className="text-2xl">{guildLevel.icon}</span>
@@ -1033,8 +1057,15 @@ export default function App() {
               <Coins className="w-5 h-5 text-yellow-500" />
               <span className="font-bold text-yellow-100">{guildData?.gold || 0}</span>
               <button
-                onClick={() => { setShowArmory(true); soundManager.play('swordDraw'); }}
-                className="px-3 py-1 bg-yellow-800 rounded-lg text-sm hover:bg-yellow-700 transition-all ml-2"
+                onClick={() => { setShowGoldPurchase(true); if (userInteracted) soundManager.play('coinCollect'); }}
+                className="px-3 py-1 bg-gradient-to-r from-yellow-600 to-amber-600 rounded-lg text-sm hover:from-yellow-500 hover:to-amber-500 transition-all ml-2 flex items-center space-x-1 magic-border"
+              >
+                <span>+</span>
+                <ShoppingBag className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => { setShowArmory(true); if (userInteracted) soundManager.play('swordDraw'); }}
+                className="px-3 py-1 bg-yellow-800 rounded-lg text-sm hover:bg-yellow-700 transition-all"
               >
                 <ShoppingBag className="w-4 h-4" />
               </button>
@@ -1067,7 +1098,7 @@ export default function App() {
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="flex items-center space-x-2">
               <Scroll className="w-5 h-5 text-yellow-400" />
-              <span className="text-sm font-medium text-yellow-100">Mystical Scroll Creation</span>
+              <span className="text-sm font-medium text-yellow-100">Document Creation</span>
             </div>
             <div className="flex items-center space-x-2 flex-wrap">
               {DOCUMENT_TEMPLATES.map(template => (
@@ -1076,8 +1107,8 @@ export default function App() {
                   onClick={() => handleGenerateDocument(template)}
                   disabled={generatingDoc}
                   className="px-3 py-1 parchment rounded-lg text-sm hover:transform hover:scale-105 transition-all disabled:opacity-50"
-                  title={`Summon ${template.name} (+${template.xp} XP)`}
-                  onMouseEnter={() => soundManager.play('swordDraw')}
+                  title={`Create ${template.name} (+${template.xp} XP)`}
+                  onMouseEnter={() => { if (userInteracted) soundManager.play('swordDraw'); }}
                 >
                   {template.icon} {template.name}
                 </button>
@@ -1086,7 +1117,7 @@ export default function App() {
           </div>
           {generatingDoc && (
             <div className="mt-2 text-center text-sm text-purple-400 animate-pulse">
-              The Oracle inscribes thy scroll...
+              Generating document...
             </div>
           )}
         </div>
@@ -1112,7 +1143,7 @@ export default function App() {
                     <h3 className="text-xl font-bold text-yellow-100">{stage.name}</h3>
                     <p className="text-sm text-gray-300">{stage.description}</p>
                     {isLocked && (
-                      <p className="text-xs text-orange-400 mt-1">⚠️ Complete previous realms to unlock</p>
+                      <p className="text-xs text-orange-400 mt-1">⚠️ Complete previous stages to unlock</p>
                     )}
                   </div>
                 </div>
@@ -1130,10 +1161,10 @@ export default function App() {
                         onClick={() => {
                           if (!isLocked) {
                             setSelectedQuest({ ...quest, stageId: stage.id });
-                            soundManager.play('swordDraw');
+                            if (userInteracted) soundManager.play('swordDraw');
                           }
                         }}
-                        onMouseEnter={() => !isLocked && soundManager.play('swordDraw')}
+                        onMouseEnter={() => { if (userInteracted) soundManager.play('swordDraw'); }}
                         className={`p-3 rounded-lg cursor-pointer transition-all ${isLocked
                           ? 'bg-gray-700/50 cursor-not-allowed'
                           : isCompleted
@@ -1186,46 +1217,52 @@ export default function App() {
         </div>
 
         {/* 4-Panel Quest Interface */}
-        {selectedQuest && (
-          <FourPanelQuestInterface
-            quest={selectedQuest}
-            guildData={guildData}
-            ceoAvatar={ceoAvatar}
-            onComplete={completeQuest}
-            onClose={() => { setSelectedQuest(null); soundManager.play('swordDraw'); }}
-            saveConversation={saveConversation}
-            updateGold={updateGold}
-            soundManager={soundManager}
-            awsModelId={awsModelId}
-            bedrockClient={bedrockClient}
-          />
-        )}
+        {
+          selectedQuest && (
+            <FourPanelQuestInterface
+              quest={selectedQuest}
+              guildData={guildData}
+              ceoAvatar={ceoAvatar}
+              onComplete={completeQuest}
+              onClose={() => { setSelectedQuest(null); if (userInteracted) soundManager.play('swordDraw'); }}
+              saveConversation={saveConversation}
+              updateGold={updateGold}
+              soundManager={soundManager}
+              awsModelId={awsModelId}
+              bedrockClient={bedrockClient}
+            />
+          )
+        }
 
         {/* Guild Management */}
-        {showGuildManagement && (
-          <GuildManagement
-            guildData={guildData}
-            onClose={() => { setShowGuildManagement(false); soundManager.play('swordDraw'); }}
-          />
-        )}
+        {
+          showGuildManagement && (
+            <GuildManagement
+              guildData={guildData}
+              onClose={() => { setShowGuildManagement(false); if (userInteracted) soundManager.play('swordDraw'); }}
+            />
+          )
+        }
 
         {/* Armory Interface */}
-        {showArmory && (
-          <ArmoryInterface
-            guildData={guildData}
-            onPurchase={handleArmoryPurchase}
-            onClose={() => { setShowArmory(false); soundManager.play('swordDraw'); }}
-            soundManager={soundManager}
-          />
-        )}
+        {
+          showArmory && (
+            <ArmoryInterface
+              guildData={guildData}
+              onPurchase={handleArmoryPurchase}
+              onClose={() => { setShowArmory(false); if (userInteracted) soundManager.play('swordDraw'); }}
+              soundManager={soundManager}
+            />
+          )
+        }
 
         {/* Progress Dashboard Modal */}
-        <Modal open={showDashboard} size='lg' onClose={() => { setShowDashboard(false); soundManager.play('swordDraw'); }}>
+        <Modal open={showDashboard} size='lg' onClose={() => { setShowDashboard(false); if (userInteracted) soundManager.play('swordDraw'); }}>
           <div className="p-6 max-w-4xl w-full">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-2xl font-bold text-yellow-100">Quest Journal</h3>
+              <h3 className="text-2xl font-bold text-yellow-100">Progress</h3>
               <button
-                onClick={() => { setShowDashboard(false); soundManager.play('swordDraw'); }}
+                onClick={() => { setShowDashboard(false); if (userInteracted) soundManager.play('swordDraw'); }}
                 className="text-gray-400 hover:text-white text-2xl"
               >
                 ×
@@ -1234,50 +1271,50 @@ export default function App() {
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
               <div className="parchment rounded-lg p-4">
-                <p className="text-sm text-gray-300 mb-1">Total Experience</p>
+                <p className="text-sm text-gray-300 mb-1">Total XP</p>
                 <p className="text-2xl font-bold text-purple-400">{guildData?.xp || 0}</p>
               </div>
               <div className="parchment rounded-lg p-4">
-                <p className="text-sm text-gray-300 mb-1">Gold Treasury</p>
+                <p className="text-sm text-gray-300 mb-1">Gold Coins</p>
                 <p className="text-2xl font-bold text-yellow-400">{guildData?.gold || 0}</p>
               </div>
               <div className="parchment rounded-lg p-4">
-                <p className="text-sm text-gray-300 mb-1">Quests Vanquished</p>
+                <p className="text-sm text-gray-300 mb-1">Quests Completed</p>
                 <p className="text-2xl font-bold text-green-400">{stats.completedQuests}/{stats.totalQuests}</p>
               </div>
               <div className="parchment rounded-lg p-4">
-                <p className="text-sm text-gray-300 mb-1">Guild Rank</p>
+                <p className="text-sm text-gray-300 mb-1">Guild Level</p>
                 <p className="text-2xl font-bold text-blue-400">{guildLevel.name}</p>
               </div>
             </div>
 
             <div className="mb-6">
-              <h4 className="text-lg font-bold mb-3 text-yellow-100">Thy Journey Progress</h4>
+              <h4 className="text-lg font-bold mb-3 text-yellow-100">Your Progress</h4>
               <div className="space-y-3">
                 <div>
-                  <p className="text-sm text-gray-300 mb-1">Scrolls Crafted</p>
+                  <p className="text-sm text-gray-300 mb-1">Documents Created</p>
                   <div className="w-full bg-gray-700 rounded-full h-2">
                     <div className="bg-yellow-500 h-2 rounded-full" style={{ width: `${Math.min(savedDocuments.length * 20, 100)}%` }}></div>
                   </div>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-300 mb-1">Oracle Consultations</p>
+                  <p className="text-sm text-gray-300 mb-1">Conversations</p>
                   <div className="w-full bg-gray-700 rounded-full h-2">
                     <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${Math.min(conversations.length * 5, 100)}%` }}></div>
                   </div>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-300 mb-1">Daily Crusade</p>
+                  <p className="text-sm text-gray-300 mb-1">Daily Streak</p>
                   <div className="w-full bg-gray-700 rounded-full h-2">
                     <div className="bg-orange-500 h-2 rounded-full" style={{ width: `${Math.min((guildData?.dailyStreak || 0) * 3.33, 100)}%` }}></div>
                   </div>
-                  <p className="text-xs text-gray-400 mt-1">{guildData?.dailyStreak || 0} days of valor</p>
+                  <p className="text-xs text-gray-400 mt-1">{guildData?.dailyStreak || 0} days</p>
                 </div>
               </div>
             </div>
 
             <div className="mb-6">
-              <h4 className="text-lg font-bold mb-3 text-yellow-100">Mastery of Arts</h4>
+              <h4 className="text-lg font-bold mb-3 text-yellow-100">Skills</h4>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 {Object.entries(CORE_ATTRIBUTES).map(([key, attr]) => {
                   const AttributeIcon = attr.icon;
@@ -1298,7 +1335,7 @@ export default function App() {
                       </div>
                       <p className="text-lg font-bold text-yellow-100">{attrXP} XP</p>
                       {guildData?.coreAttribute === key && (
-                        <span className="text-xs text-purple-400">Primary Art (+50% XP)</span>
+                        <span className="text-xs text-purple-400">Primary Skill (+50% XP)</span>
                       )}
                     </div>
                   );
@@ -1307,7 +1344,7 @@ export default function App() {
             </div>
 
             <div>
-              <h4 className="text-lg font-bold mb-3 text-yellow-100">Legendary Achievements</h4>
+              <h4 className="text-lg font-bold mb-3 text-yellow-100">Achievements</h4>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {ACHIEVEMENTS.map((achievement) => {
                   const earned = guildData?.achievements?.includes(achievement.id);
@@ -1329,12 +1366,12 @@ export default function App() {
         </Modal>
 
         {/* Resources Modal */}
-        <Modal open={showResources} onClose={() => { setShowResources(false); soundManager.play('swordDraw'); }}>
+        <Modal open={showResources} onClose={() => { setShowResources(false); if (userInteracted) soundManager.play('swordDraw'); }}>
           <div className="p-6 max-w-4xl w-full">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-2xl font-bold text-yellow-100">Ancient Knowledge Repository</h3>
+              <h3 className="text-2xl font-bold text-yellow-100">Resources</h3>
               <button
-                onClick={() => { setShowResources(false); soundManager.play('swordDraw'); }}
+                onClick={() => { setShowResources(false); if (userInteracted) soundManager.play('swordDraw'); }}
                 className="text-gray-400 hover:text-white text-2xl"
               >
                 ×
@@ -1345,10 +1382,10 @@ export default function App() {
               <div className="flex items-start space-x-3">
                 <Lightbulb className="w-5 h-5 text-yellow-500 mt-0.5" />
                 <div>
-                  <p className="font-medium text-yellow-400">Based on thy profile:</p>
+                  <p className="font-medium text-yellow-400">Based on your profile:</p>
                   <p className="text-sm text-gray-300">
-                    Primary Art: {guildData?.coreAttribute} •
-                    Hero Level: {levelInfo.level}
+                    Primary Skill: {guildData?.coreAttribute} •
+                    Level: {levelInfo.level}
                   </p>
                 </div>
               </div>
@@ -1358,20 +1395,20 @@ export default function App() {
               <div>
                 <h4 className="font-bold mb-3 flex items-center text-yellow-100">
                   <BookOpen className="w-5 h-5 mr-2 text-blue-500" />
-                  Sacred Tomes
+                  Recommended Reading
                 </h4>
                 <div className="space-y-2">
                   <a href="https://www.ycombinator.com/library" target="_blank" rel="noopener noreferrer"
                     className="block parchment rounded p-3 hover:transform hover:scale-105 transition-all"
-                    onMouseEnter={() => soundManager.play('swordDraw')}>
-                    <p className="font-medium text-yellow-100">YC Ancient Library</p>
-                    <p className="text-xs text-gray-300">Wisdom of the startup elders</p>
+                    onMouseEnter={() => { if (userInteracted) soundManager.play('swordDraw'); }}>
+                    <p className="font-medium text-yellow-100">YC Library</p>
+                    <p className="text-xs text-gray-300">Startup resources</p>
                   </a>
                   <a href="https://firstround.com/review/" target="_blank" rel="noopener noreferrer"
                     className="block parchment rounded p-3 hover:transform hover:scale-105 transition-all"
-                    onMouseEnter={() => soundManager.play('swordDraw')}>
-                    <p className="font-medium text-yellow-100">First Round Chronicles</p>
-                    <p className="text-xs text-gray-300">Tales from legendary founders</p>
+                    onMouseEnter={() => { if (userInteracted) soundManager.play('swordDraw'); }}>
+                    <p className="font-medium text-yellow-100">First Round Review</p>
+                    <p className="text-xs text-gray-300">Founder stories</p>
                   </a>
                 </div>
               </div>
@@ -1379,20 +1416,20 @@ export default function App() {
               <div>
                 <h4 className="font-bold mb-3 flex items-center text-yellow-100">
                   <Zap className="w-5 h-5 mr-2 text-yellow-500" />
-                  Magical Artifacts
+                  Tools
                 </h4>
                 <div className="space-y-2">
                   <a href="https://stripe.com/atlas" target="_blank" rel="noopener noreferrer"
                     className="block parchment rounded p-3 hover:transform hover:scale-105 transition-all"
-                    onMouseEnter={() => soundManager.play('swordDraw')}>
-                    <p className="font-medium text-yellow-100">Stripe Atlas Spell</p>
-                    <p className="text-xs text-gray-300">Summon thy company</p>
+                    onMouseEnter={() => { if (userInteracted) soundManager.play('swordDraw'); }}>
+                    <p className="font-medium text-yellow-100">Stripe Atlas</p>
+                    <p className="text-xs text-gray-300">Company formation</p>
                   </a>
                   <a href="https://www.notion.so/templates" target="_blank" rel="noopener noreferrer"
                     className="block parchment rounded p-3 hover:transform hover:scale-105 transition-all"
-                    onMouseEnter={() => soundManager.play('swordDraw')}>
-                    <p className="font-medium text-yellow-100">Notion Grimoire</p>
-                    <p className="text-xs text-gray-300">Enchanted templates</p>
+                    onMouseEnter={() => { if (userInteracted) soundManager.play('swordDraw'); }}>
+                    <p className="font-medium text-yellow-100">Notion Templates</p>
+                    <p className="text-xs text-gray-300">Productivity templates</p>
                   </a>
                 </div>
               </div>
@@ -1400,20 +1437,20 @@ export default function App() {
               <div>
                 <h4 className="font-bold mb-3 flex items-center text-yellow-100">
                   <Users className="w-5 h-5 mr-2 text-green-500" />
-                  Guilds & Fellowships
+                  Communities
                 </h4>
                 <div className="space-y-2">
                   <a href="https://www.indiehackers.com/" target="_blank" rel="noopener noreferrer"
                     className="block parchment rounded p-3 hover:transform hover:scale-105 transition-all"
-                    onMouseEnter={() => soundManager.play('swordDraw')}>
-                    <p className="font-medium text-yellow-100">Indie Hackers Guild</p>
-                    <p className="text-xs text-gray-300">Fellowship of founders</p>
+                    onMouseEnter={() => { if (userInteracted) soundManager.play('swordDraw'); }}>
+                    <p className="font-medium text-yellow-100">Indie Hackers</p>
+                    <p className="text-xs text-gray-300">Founder community</p>
                   </a>
                   <a href="https://news.ycombinator.com/" target="_blank" rel="noopener noreferrer"
                     className="block parchment rounded p-3 hover:transform hover:scale-105 transition-all"
-                    onMouseEnter={() => soundManager.play('swordDraw')}>
-                    <p className="font-medium text-yellow-100">Hacker News Tavern</p>
-                    <p className="text-xs text-gray-300">Tales and tidings</p>
+                    onMouseEnter={() => { if (userInteracted) soundManager.play('swordDraw'); }}>
+                    <p className="font-medium text-yellow-100">Hacker News</p>
+                    <p className="text-xs text-gray-300">Startup news</p>
                   </a>
                 </div>
               </div>
@@ -1421,20 +1458,20 @@ export default function App() {
               <div>
                 <h4 className="font-bold mb-3 flex items-center text-yellow-100">
                   <Video className="w-5 h-5 mr-2 text-purple-500" />
-                  Training Grounds
+                  Learning
                 </h4>
                 <div className="space-y-2">
                   <a href="https://www.startupschool.org/" target="_blank" rel="noopener noreferrer"
                     className="block parchment rounded p-3 hover:transform hover:scale-105 transition-all"
-                    onMouseEnter={() => soundManager.play('swordDraw')}>
-                    <p className="font-medium text-yellow-100">Startup Academy</p>
+                    onMouseEnter={() => { if (userInteracted) soundManager.play('swordDraw'); }}>
+                    <p className="font-medium text-yellow-100">Startup School</p>
                     <p className="text-xs text-gray-300">Free YC training</p>
                   </a>
                   <a href="https://www.coursera.org/browse/business/entrepreneurship" target="_blank" rel="noopener noreferrer"
                     className="block parchment rounded p-3 hover:transform hover:scale-105 transition-all"
-                    onMouseEnter={() => soundManager.play('swordDraw')}>
-                    <p className="font-medium text-yellow-100">Coursera Monastery</p>
-                    <p className="text-xs text-gray-300">Entrepreneurship scrolls</p>
+                    onMouseEnter={() => { if (userInteracted) soundManager.play('swordDraw'); }}>
+                    <p className="font-medium text-yellow-100">Coursera</p>
+                    <p className="text-xs text-gray-300">Entrepreneurship courses</p>
                   </a>
                 </div>
               </div>
@@ -1443,12 +1480,12 @@ export default function App() {
         </Modal>
 
         {/* CEO Profile Modal */}
-        <Modal open={showCEOProfile && ceoAvatar} onClose={() => { setShowCEOProfile(false); soundManager.play('swordDraw'); }}>
+        <Modal open={showCEOProfile && ceoAvatar} onClose={() => { setShowCEOProfile(false); if (userInteracted) soundManager.play('swordDraw'); }}>
           <div className="p-6 max-w-md w-full">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-2xl font-bold text-yellow-100">Thy Legendary Guide</h3>
+              <h3 className="text-2xl font-bold text-yellow-100">Your CEO Guide</h3>
               <button
-                onClick={() => { setShowCEOProfile(false); soundManager.play('swordDraw'); }}
+                onClick={() => { setShowCEOProfile(false); if (userInteracted) soundManager.play('swordDraw'); }}
                 className="text-gray-400 hover:text-white text-2xl"
               >
                 ×
@@ -1463,7 +1500,7 @@ export default function App() {
 
             <div className="space-y-3">
               <div>
-                <p className="text-sm text-gray-400 mb-1">Domains of Power</p>
+                <p className="text-sm text-gray-400 mb-1">Industries</p>
                 <div className="flex flex-wrap gap-2">
                   {ceoAvatar?.industries.map((ind: string) => (
                     <span key={ind} className="px-2 py-1 parchment rounded text-sm">
@@ -1474,7 +1511,7 @@ export default function App() {
               </div>
 
               <div>
-                <p className="text-sm text-gray-400 mb-1">Legendary Traits</p>
+                <p className="text-sm text-gray-400 mb-1">Traits</p>
                 <div className="flex flex-wrap gap-2">
                   {ceoAvatar?.traits.map((trait: string) => (
                     <span key={trait} className="px-2 py-1 parchment rounded text-sm">
@@ -1485,7 +1522,7 @@ export default function App() {
               </div>
 
               <div className="pt-3 border-t border-gray-700">
-                <p className="text-sm text-gray-400 mb-1">Ancient Wisdom</p>
+                <p className="text-sm text-gray-400 mb-1">Advice</p>
                 <p className="italic text-yellow-100">"{ceoAvatar?.advice}"</p>
               </div>
             </div>
@@ -1493,12 +1530,12 @@ export default function App() {
         </Modal>
 
         {/* Conversation History Modal */}
-        <Modal open={showHistory} onClose={() => { setShowHistory(false); soundManager.play('swordDraw'); }}>
+        <Modal open={showHistory} onClose={() => { setShowHistory(false); if (userInteracted) soundManager.play('swordDraw'); }}>
           <div className="p-6 max-w-4xl w-full">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-2xl font-bold text-yellow-100">Oracle Chronicles</h3>
+              <h3 className="text-2xl font-bold text-yellow-100">Conversations</h3>
               <button
-                onClick={() => { setShowHistory(false); soundManager.play('swordDraw'); }}
+                onClick={() => { setShowHistory(false); if (userInteracted) soundManager.play('swordDraw'); }}
                 className="text-gray-400 hover:text-white text-2xl"
               >
                 ×
@@ -1506,7 +1543,7 @@ export default function App() {
             </div>
 
             {conversations.length === 0 ? (
-              <p className="text-gray-400 text-center py-8">No consultations recorded yet</p>
+              <p className="text-gray-400 text-center py-8">No conversations recorded yet</p>
             ) : (
               <div className="space-y-4">
                 {conversations.map((conv) => (
@@ -1537,12 +1574,12 @@ export default function App() {
         </Modal>
 
         {/* Documents Modal */}
-        <Modal size="full" open={showDocuments} onClose={() => { setShowDocuments(false); soundManager.play('swordDraw'); }}>
+        <Modal size="full" open={showDocuments} onClose={() => { setShowDocuments(false); if (userInteracted) soundManager.play('swordDraw'); }}>
           <div className="flex flex-col h-full w-full">
             <div className="flex items-center justify-between p-6 border-b border-yellow-700 bg-gradient-to-r from-purple-900 to-indigo-900">
-              <h3 className="text-2xl font-bold text-yellow-100">Scroll Library</h3>
+              <h3 className="text-2xl font-bold text-yellow-100">Documents</h3>
               <button
-                onClick={() => { setShowDocuments(false); soundManager.play('swordDraw'); }}
+                onClick={() => { setShowDocuments(false); if (userInteracted) soundManager.play('swordDraw'); }}
                 className="text-gray-400 hover:text-white text-2xl"
               >
                 ×
@@ -1555,7 +1592,7 @@ export default function App() {
         </Modal>
 
         {/* Document View Modal */}
-        <Modal open={!!selectedDocument} onClose={() => { setSelectedDocument(null); soundManager.play('swordDraw'); }}>
+        <Modal open={!!selectedDocument} onClose={() => { setSelectedDocument(null); if (userInteracted) soundManager.play('swordDraw'); }}>
           <div className="p-6 max-w-4xl w-full">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-2xl font-bold text-yellow-100">{selectedDocument?.templateName}</h3>
@@ -1563,14 +1600,14 @@ export default function App() {
                 <button
                   onClick={() => {
                     navigator.clipboard.writeText(selectedDocument?.content || '');
-                    alert('Scroll copied to thy clipboard!');
+                    alert('Copied to clipboard!');
                   }}
                   className="text-gray-400 hover:text-white"
                 >
                   <Copy className="w-5 h-5" />
                 </button>
                 <button
-                  onClick={() => { setSelectedDocument(null); soundManager.play('swordDraw'); }}
+                  onClick={() => { setSelectedDocument(null); if (userInteracted) soundManager.play('swordDraw'); }}
                   className="text-gray-400 hover:text-white text-2xl"
                 >
                   ×
@@ -1585,7 +1622,28 @@ export default function App() {
             </div>
           </div>
         </Modal>
-      </main>
-    </div>
+
+        {/* Gold Purchase Modal */}
+        {
+          showGoldPurchase && (
+            <GoldPurchase
+              user={user}
+              guildData={guildData}
+              onClose={() => { setShowGoldPurchase(false); if (userInteracted) soundManager.play('swordDraw'); }}
+              soundManager={soundManager}
+              onPurchaseSuccess={(newGold, purchaseData) => {
+                setGuildData((prev: any) => ({
+                  ...prev,
+                  gold: newGold,
+                  purchaseHistory: [...(prev.purchaseHistory || []), purchaseData],
+                  totalSpent: (prev.totalSpent || 0) + purchaseData.amount,
+                  lastPurchase: purchaseData.timestamp
+                }));
+              }}
+            />
+          )
+        }
+      </main >
+    </div >
   );
 }

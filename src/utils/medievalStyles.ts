@@ -1,5 +1,4 @@
-// Export the main medieval styles string
-const medievalStyles = `
+export const medievalStyles = `
   @import url('https://fonts.googleapis.com/css2?family=MedievalSharp&family=Pirata+One&family=Almendra:wght@400;700&family=Uncial+Antiqua&display=swap');
 
   * {
@@ -259,5 +258,3 @@ const medievalStyles = `
     overflow: hidden;
   }
 `;
-
-export default medievalStyles; 

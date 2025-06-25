@@ -1,6 +1,10 @@
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { QUEST_INPUT_TEMPLATES } from "../utils/constant";
-import { consultAISage, rateQuestSubmission } from "../utils/helper";
+import { calculateGoldReward, calculateLevel, calculateXPWithBonuses, consultAISage, fetchDynamicResources, getSuggestedSageQuestions, rateQuestSubmission, triggerConfetti } from "../utils/helper";
+import { Canvas } from "@react-three/fiber";
+import DiamondSword3D from "./DiamondSword3D";
+import { BookOpen, Coins, Edit3, ExternalLink, Loader2, MessageCircle, RefreshCw, Save, Scroll, Send, Sparkles, Swords, Trophy, X } from "lucide-react";
+import ReactMarkdown from 'react-markdown';
 
 export const FourPanelQuestInterface = ({
     quest,
@@ -153,6 +157,15 @@ export const FourPanelQuestInterface = ({
         }
     };
 
+    // Utility to chunk array into rows of 2
+    function chunkArray<T>(arr: T[], size: number): T[][] {
+        const result: T[][] = [];
+        for (let i = 0; i < arr.length; i += size) {
+            result.push(arr.slice(i, i + size));
+        }
+        return result;
+    }
+
     return (
         <div className="fixed inset-0 bg-black/90 z-50 flex flex-col">
             {/* 3D Weapon Display */}
@@ -234,7 +247,7 @@ export const FourPanelQuestInterface = ({
                         {rating && (
                             <div className="parchment p-4 magic-border">
                                 <h4 className="font-semibold mb-2 flex items-center text-yellow-100">
-                                    Grand Master's Judgment: {'⭐'.repeat(rating.rating)}
+                                    Review: {'⭐'.repeat(rating.rating)}
                                 </h4>
                                 <p className="text-sm text-gray-300 mb-2">{rating.feedback}</p>
                                 <div className="flex items-center space-x-4 text-sm">
@@ -367,7 +380,7 @@ export const FourPanelQuestInterface = ({
                                     setResourcesLoading(false);
                                 }}
                                 className="text-gray-400 hover:text-white transition-colors"
-                                title="Summon new tomes"
+                                title="Refresh resources"
                             >
                                 <RefreshCw className="w-4 h-4" />
                             </button>
@@ -378,7 +391,7 @@ export const FourPanelQuestInterface = ({
                         {resourcesLoading ? (
                             <div className="text-center py-8">
                                 <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2 text-purple-500" />
-                                <p className="text-gray-400">Summoning ancient knowledge...</p>
+                                <p className="text-gray-400">Loading resources...</p>
                             </div>
                         ) : dynamicResources.length > 0 ? (
                             <>
@@ -419,7 +432,7 @@ export const FourPanelQuestInterface = ({
                         ) : (
                             <div className="text-center py-8 text-gray-400">
                                 <BookOpen className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                                <p>No tomes found. Try summoning again.</p>
+                                <p>No resources found. Try refreshing again.</p>
                             </div>
                         )}
                     </div>
@@ -430,11 +443,11 @@ export const FourPanelQuestInterface = ({
                     <div className="flex items-center justify-between mb-4 flex-shrink-0">
                         <div className="flex items-center">
                             <Sparkles className="w-5 h-5 text-purple-500 mr-2" />
-                            <h3 className="text-lg font-bold text-yellow-100">Oracle's Chamber</h3>
+                            <h3 className="text-lg font-bold text-yellow-100">Assistant Chat</h3>
                         </div>
                         <div className="flex items-center space-x-2 text-sm">
                             <Coins className="w-4 h-4 text-yellow-500" />
-                            <span className="font-medium text-yellow-100">20 gold per counsel</span>
+                            <span className="font-medium text-yellow-100">20 gold per response</span>
                         </div>
                     </div>
 
@@ -442,8 +455,8 @@ export const FourPanelQuestInterface = ({
                         {sageMessages.length === 0 ? (
                             <div className="text-center py-8 text-gray-400">
                                 <MessageCircle className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                                <p>Seek wisdom from the Oracle</p>
-                                <p className="text-sm mt-2">Each consultation requires 20 gold tribute</p>
+                                <p>Ask a question to the Assistant</p>
+                                <p className="text-sm mt-2">Each response requires 20 gold coins</p>
                             </div>
                         ) : (
                             sageMessages.map((message, index) => (
@@ -471,7 +484,7 @@ export const FourPanelQuestInterface = ({
                                 <div className="inline-block parchment rounded-lg p-3">
                                     <div className="flex items-center space-x-2">
                                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-500"></div>
-                                        <span className="text-sm">The Oracle consults the stars...</span>
+                                        <span className="text-sm">The Assistant is processing your request...</span>
                                     </div>
                                 </div>
                             </div>
@@ -480,17 +493,21 @@ export const FourPanelQuestInterface = ({
 
                     {/* Suggested Questions */}
                     {!isCompleted && !sageLoading && suggestedQuestions.length > 0 && (
-                        <div className="mb-3 flex flex-wrap gap-2">
-                            {suggestedQuestions.map((q: string, i: number) => (
-                                <button
-                                    key={i}
-                                    type="button"
-                                    className="px-3 py-1 bg-purple-900/70 text-purple-200 rounded-full text-xs hover:bg-purple-700 hover:text-white transition-all border border-purple-700 disabled:opacity-50"
-                                    onClick={() => handleSuggestedSageQuestion(q)}
-                                    disabled={sageLoading}
-                                >
-                                    {q}
-                                </button>
+                        <div className="mb-3 flex flex-col gap-2">
+                            {chunkArray(suggestedQuestions, 2).map((row, rowIndex) => (
+                                <div key={rowIndex} className="flex gap-2">
+                                    {row.map((q: string, i: number) => (
+                                        <button
+                                            key={i}
+                                            type="button"
+                                            className="flex-1 px-3 py-1 bg-purple-900/70 text-purple-200 rounded-full text-xs hover:bg-purple-700 hover:text-white transition-all border border-purple-700 disabled:opacity-50"
+                                            onClick={() => handleSuggestedSageQuestion(q)}
+                                            disabled={sageLoading}
+                                        >
+                                            {q}
+                                        </button>
+                                    ))}
+                                </div>
                             ))}
                         </div>
                     )}
@@ -500,7 +517,7 @@ export const FourPanelQuestInterface = ({
                             value={sageInput}
                             onChange={(e) => setSageInput(e.target.value)}
                             onKeyPress={(e) => e.key === 'Enter' && handleSageChat()}
-                            placeholder="Seek the Oracle's wisdom..."
+                            placeholder="Ask the Assistant a question..."
                             className="flex-1 p-3 bg-gray-700 rounded-lg text-white"
                             disabled={sageLoading || isCompleted}
                             ref={sageInputRef}
@@ -509,7 +526,7 @@ export const FourPanelQuestInterface = ({
                             onClick={handleSageChat}
                             disabled={sageLoading || !sageInput.trim() || guildData.gold < 20 || isCompleted}
                             className="px-4 py-3 bg-purple-800 rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                            title={guildData.gold < 20 ? 'Insufficient gold tribute' : ''}
+                            title={guildData.gold < 20 ? 'Insufficient gold coins' : ''}
                         >
                             <Send className="w-5 h-5" />
                         </button>

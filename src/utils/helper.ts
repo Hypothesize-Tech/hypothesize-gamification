@@ -91,7 +91,7 @@ export const consultAISage = async (
 ) => {
     try {
         const ceoContext = userData?.ceoAvatar ?
-            `Channel the wisdom of ${userData.ceoAvatar.name}, ${userData.ceoAvatar.title}.` : '';
+            `Channel the expertise of ${userData.ceoAvatar.name}, ${userData.ceoAvatar.title}.` : '';
         const command = new InvokeModelCommand({
             modelId: awsModelId,
             body: JSON.stringify({
@@ -100,7 +100,7 @@ export const consultAISage = async (
                         role: "user",
                         content: [
                             {
-                                text: `You are the Mystical AI Oracle, an ancient sage who guides brave founders on their entrepreneurial quests. \nSpeak with wisdom and mystical authority, using medieval fantasy language.\n${ceoContext}\nProvide actionable advice as if guiding a noble knight on their quest.`
+                                text: `You are the AI Advisor, an experienced mentor who guides founders on their business journeys. \nSpeak with clarity and authority, using professional and supportive language.\n${ceoContext}\nProvide actionable advice as if guiding a business leader on their path.`
                             },
                             { text: `Context: ${context}` },
                             { text: `Question: ${question}` }
@@ -113,10 +113,10 @@ export const consultAISage = async (
         });
         const response = await bedrockClient.send(command);
         const responseBody = JSON.parse(new TextDecoder().decode(response.body));
-        return responseBody.output?.message?.content?.[0]?.text || "The Oracle's crystal grows clouded. Seek counsel again, brave founder.";
+        return responseBody.output?.message?.content?.[0]?.text || "The Advisor is unavailable. Please try again.";
     } catch (error) {
-        console.error('AI Sage error:', error);
-        return "The Oracle's crystal grows clouded. Seek counsel again, brave founder.";
+        console.error('AI Advisor error:', error);
+        return "The Advisor is unavailable. Please try again.";
     }
 };
 
@@ -126,16 +126,16 @@ export const generateAIDocument = async (
     awsModelId: string,
     bedrockClient: BedrockRuntimeClient
 ) => {
-    const context = `\nNoble Vision: ${userData.vision}\nRealm of Operation: ${userData.onboardingData?.industry || 'General'}\nQuest Stage: ${userData.onboardingData?.stage || 'Early'}\nCore Strength: ${userData.coreAttribute}\n`;
+    const context = `\nVision: ${userData.vision}\nIndustry: ${userData.onboardingData?.industry || 'General'}\nStage: ${userData.onboardingData?.stage || 'Early'}\nCore Strength: ${userData.coreAttribute}\n`;
     const prompts: Record<string, string> = {
-        elevator_pitch: "Craft a battle cry that shall rally investors to thy cause",
-        lean_canvas: "Design a war map for thy business kingdom",
-        user_survey: "Create questions to divine thy customers' deepest desires",
-        investor_deck: "Forge a treasure map to attract dragon hoards of gold",
-        marketing_plan: "Plan thy conquest of the market realm",
-        product_roadmap: "Chronicle the quests ahead for thy product"
+        elevator_pitch: "Craft a compelling elevator pitch to attract investors to your business",
+        lean_canvas: "Design a business model canvas for your company",
+        user_survey: "Create questions to understand your customers' needs",
+        investor_deck: "Develop a pitch deck to attract investment",
+        marketing_plan: "Plan your marketing strategy",
+        product_roadmap: "Outline the product development roadmap"
     };
-    return consultAISage(context, prompts[template.id] || "Create a mystical business scroll", userData, awsModelId, bedrockClient);
+    return consultAISage(context, prompts[template.id] || "Create a business document", userData, awsModelId, bedrockClient);
 };
 
 export const fetchDynamicResources = async (
@@ -145,7 +145,7 @@ export const fetchDynamicResources = async (
     bedrockClient: BedrockRuntimeClient
 ) => {
     try {
-        const searchPrompt = `Find the best mystical tomes and scrolls for a guild founder working on: ${questTopic}. Context: ${questDescription}. \n\nReturn a JSON array with exactly 5 resources in this format:\n[\n  {\n    "title": "Resource Title",\n    "type": "tome|scroll|artifact|grimoire|manuscript|rune",\n    "description": "Brief description",\n    "url": "https://...",\n    "icon": "appropriate medieval emoji",\n    "difficulty": "apprentice|journeyman|master",\n    "timeToComplete": "e.g., 1 candle mark, 2 moon cycles"\n  }\n]\n\nFocus on high-quality, actionable resources from reputable sources.`;
+        const searchPrompt = `Find the best resources for a founder working on: ${questTopic}. Context: ${questDescription}. \n\nReturn a JSON array with exactly 5 resources in this format:\n[\n  {\n    "title": "Resource Title",\n    "type": "book|article|tool|course|guide|video",\n    "description": "Brief description",\n    "url": "https://...",\n    "icon": "appropriate emoji",\n    "difficulty": "beginner|intermediate|advanced",\n    "timeToComplete": "e.g., 1 hour, 2 weeks"\n  }\n]\n\nFocus on high-quality, actionable resources from reputable sources.`;
         const command = new InvokeModelCommand({
             modelId: awsModelId,
             body: JSON.stringify({
@@ -181,18 +181,18 @@ export const fetchDynamicResources = async (
 export const getDefaultResources = (questTopic: string) => {
     const defaults: Record<string, any[]> = {
         vision: [
-            { title: 'The Lean Grimoire', type: 'tome', icon: '📚', url: 'https://theleanstartup.com/', description: 'Ancient wisdom for founders', difficulty: 'apprentice', timeToComplete: '8 candle marks' },
-            { title: 'Simon\'s Prophecy: Start with Why', type: 'scroll', icon: '📜', url: 'https://www.ted.com/talks/simon_sinek_how_great_leaders_inspire_action', description: 'Mystical visions of purpose', difficulty: 'apprentice', timeToComplete: '18 sand grains' },
-            { title: 'Vision Rune Guide', type: 'rune', icon: '🔮', url: 'https://blog.hubspot.com/marketing/mission-statement', description: 'Carve thy destiny in stone', difficulty: 'journeyman', timeToComplete: '15 sand grains' },
-            { title: 'Y Combinator Academy', type: 'grimoire', icon: '🎓', url: 'https://www.startupschool.org/', description: 'The grand school of entrepreneurship', difficulty: 'journeyman', timeToComplete: '10 moon cycles' },
-            { title: 'Notion Vision Artifact', type: 'artifact', icon: '💎', url: 'https://www.notion.so/templates', description: 'Enchanted vision templates', difficulty: 'apprentice', timeToComplete: '30 sand grains' }
+            { title: 'The Lean Startup', type: 'book', icon: '📚', url: 'https://theleanstartup.com/', description: 'Essential reading for founders', difficulty: 'beginner', timeToComplete: '8 hours' },
+            { title: "Start with Why (Simon Sinek)", type: 'video', icon: '📺', url: 'https://www.ted.com/talks/simon_sinek_how_great_leaders_inspire_action', description: 'Purpose-driven leadership', difficulty: 'beginner', timeToComplete: '18 minutes' },
+            { title: 'Mission Statement Guide', type: 'guide', icon: '📝', url: 'https://blog.hubspot.com/marketing/mission-statement', description: 'How to write a mission statement', difficulty: 'intermediate', timeToComplete: '15 minutes' },
+            { title: 'Y Combinator Startup School', type: 'course', icon: '🎓', url: 'https://www.startupschool.org/', description: 'Free startup education', difficulty: 'intermediate', timeToComplete: '10 weeks' },
+            { title: 'Notion Templates', type: 'tool', icon: '💻', url: 'https://www.notion.so/templates', description: 'Business planning templates', difficulty: 'beginner', timeToComplete: '30 minutes' }
         ],
         problem: [
-            { title: 'The Mother\'s Test', type: 'tome', icon: '📚', url: 'http://momtestbook.com/', description: 'Divine customer wisdom', difficulty: 'apprentice', timeToComplete: '4 candle marks' },
-            { title: 'Problem Divination Guide', type: 'scroll', icon: '📜', url: 'https://www.ycombinator.com/library/5z-how-to-validate-your-startup-idea', description: 'YC oracle framework', difficulty: 'journeyman', timeToComplete: '20 sand grains' },
-            { title: 'Customer Interrogation Scroll', type: 'manuscript', icon: '📋', url: 'https://customerdevlabs.com/2013/11/05/how-i-interview-customers/', description: 'Interview incantations', difficulty: 'apprentice', timeToComplete: '15 sand grains' },
-            { title: 'Jobs to be Done Prophecy', type: 'scroll', icon: '📜', url: 'https://www.youtube.com/watch?v=sfGtw2C95Ms', description: 'Christensen\'s ancient wisdom', difficulty: 'master', timeToComplete: '1 candle mark' },
-            { title: 'Typeform Survey Artifact', type: 'artifact', icon: '🔧', url: 'https://www.typeform.com/', description: 'Magical survey creation', difficulty: 'apprentice', timeToComplete: 'Free enchantment' }
+            { title: 'The Mom Test', type: 'book', icon: '📚', url: 'http://momtestbook.com/', description: 'How to talk to customers', difficulty: 'beginner', timeToComplete: '4 hours' },
+            { title: 'Validating Startup Ideas', type: 'guide', icon: '📝', url: 'https://www.ycombinator.com/library/5z-how-to-validate-your-startup-idea', description: 'YC validation framework', difficulty: 'intermediate', timeToComplete: '20 minutes' },
+            { title: 'Customer Interview Guide', type: 'guide', icon: '📋', url: 'https://customerdevlabs.com/2013/11/05/how-i-interview-customers/', description: 'Interview techniques', difficulty: 'beginner', timeToComplete: '15 minutes' },
+            { title: 'Jobs to be Done (Clayton Christensen)', type: 'video', icon: '📺', url: 'https://www.youtube.com/watch?v=sfGtw2C95Ms', description: 'Understanding customer needs', difficulty: 'advanced', timeToComplete: '1 hour' },
+            { title: 'Typeform', type: 'tool', icon: '🛠️', url: 'https://www.typeform.com/', description: 'Survey creation tool', difficulty: 'beginner', timeToComplete: 'Free' }
         ]
     };
     return defaults[questTopic] || defaults.vision;
@@ -205,7 +205,7 @@ export const rateQuestSubmission = async (
     bedrockClient: BedrockRuntimeClient
 ) => {
     try {
-        const ratingPrompt = `As the Grand Master of the Founder's Guild, rate this quest submission on a scale of 1-5 stars.\n\nQuest: ${questData.questName}\nSubmission: ${JSON.stringify(questData.inputs)}\n\nProvide thy judgment as a JSON scroll:\n{\n  "rating": [1-5],\n  "feedback": "Brief words of wisdom",\n  "suggestions": ["Path to improvement 1", "Path to improvement 2"]\n}`;
+        const ratingPrompt = `As a business mentor, rate this Quest submission on a scale of 1-5 stars.\n\nQuest: ${questData.questName}\nSubmission: ${JSON.stringify(questData.inputs)}\n\nProvide your feedback as a JSON object:\n{\n  "rating": [1-5],\n  "feedback": "Brief feedback",\n  "suggestions": ["Improvement suggestion 1", "Improvement suggestion 2"]\n}`;
         const command = new InvokeModelCommand({
             modelId: awsModelId,
             body: JSON.stringify({
@@ -229,11 +229,11 @@ export const rateQuestSubmission = async (
             }
             return rating;
         } catch (e) {
-            return { rating: 3, feedback: "A valiant effort, young squire!", suggestions: [] };
+            return { rating: 3, feedback: "Good effort!", suggestions: [] };
         }
     } catch (error) {
         console.error('Rating error:', error);
-        return { rating: 3, feedback: "A valiant effort, young squire!", suggestions: [] };
+        return { rating: 3, feedback: "Good effort!", suggestions: [] };
     }
 };
 
@@ -246,7 +246,7 @@ export function getSuggestedSageQuestions({ quest, guildData, guildLevel }: { qu
             'What makes a compelling vision for a new founder?',
             'How can I inspire my team with our mission?',
             'What are common mistakes in startup vision statements?',
-            'How do I align my guild around our vision?'
+            'How do I align my Guild around our vision?'
         );
     } else if (quest.id === 'problem') {
         base.push(
@@ -260,7 +260,7 @@ export function getSuggestedSageQuestions({ quest, guildData, guildLevel }: { qu
             'How do I make my solution stand out?',
             'What features should I prioritize first?',
             'How do I test my solution with real users?',
-            'What makes a solution magical for customers?'
+            'What makes a solution valuable for customers?'
         );
     } else if (quest.id === 'market') {
         base.push(
@@ -278,21 +278,21 @@ export function getSuggestedSageQuestions({ quest, guildData, guildLevel }: { qu
         );
     } else {
         base.push(
-            `What advice do you have for this quest: ${quest.name}?`,
+            `What advice do you have for this Quest: ${quest.name}?`,
             'What are common pitfalls for founders at this stage?',
-            'How can I make progress on this quest?'
+            'How can I make progress on this Quest?'
         );
     }
 
     // Guild level context
     if (guildLevel.level >= 4) {
-        base.push('What advanced strategies should I consider at my guild level?');
+        base.push('What advanced strategies should I consider at my Guild level?');
     }
     if ((guildData?.xp || 0) > 1000) {
         base.push('How do experienced founders approach this challenge?');
     }
     if (guildData?.coreAttribute) {
-        base.push(`How can I use my strength in ${guildData.coreAttribute} to excel in this quest?`);
+        base.push(`How can I use my strength in ${guildData.coreAttribute} to excel in this Quest?`);
     }
     return base;
 }
@@ -307,73 +307,79 @@ export const triggerConfetti = (options = {}) => {
     confetti({ ...defaults, ...options });
 };
 
-export const createMagicalParticles = () => {
-    const particleCount = 50;
-    for (let i = 0; i < particleCount; i++) {
-        const particle = document.createElement('div');
-        particle.className = 'magic-particle';
-        particle.style.left = Math.random() * 100 + '%';
-        particle.style.animationDelay = Math.random() * 20 + 's';
-        particle.style.animationDuration = (15 + Math.random() * 10) + 's';
-        document.body.appendChild(particle);
-    }
-};
-
 export const QUEST_STAGES = {
     FUNDAMENTALS: {
         id: 'fundamentals',
-        name: 'Training Grounds',
-        description: 'Master the ancient arts of entrepreneurship',
+        name: 'Fundamentals',
+        description: 'Master the basics of entrepreneurship',
         icon: Shield,
         color: 'bg-green-600',
         quests: [
-            { id: 'vision', name: 'Vision Quest', xp: 100, description: 'Divine thy sacred purpose', attribute: 'marketing' },
-            { id: 'problem', name: 'Dragon Hunt', xp: 150, description: 'Identify the beast to slay', attribute: 'marketing' },
-            { id: 'solution', name: 'Forge the Blade', xp: 150, description: 'Craft thy magical solution', attribute: 'tech' },
-            { id: 'market', name: 'Scout the Realm', xp: 200, description: 'Map thy kingdom\'s borders', attribute: 'marketing' },
-            { id: 'legal', name: 'Royal Charter', xp: 100, description: 'Establish thy guild\'s law', attribute: 'legal' }
+            { id: 'vision', name: 'Vision Quest', xp: 100, description: 'Define your company vision', attribute: 'marketing' },
+            { id: 'problem', name: 'Problem Identification', xp: 150, description: 'Identify the problem to solve', attribute: 'marketing' },
+            { id: 'solution', name: 'Solution Design', xp: 150, description: 'Develop your solution', attribute: 'tech' },
+            { id: 'market', name: 'Market Research', xp: 200, description: 'Analyze your market', attribute: 'marketing' },
+            { id: 'legal', name: 'Legal Setup', xp: 100, description: 'Establish your company\'s legal structure', attribute: 'legal' }
         ]
     },
     KICKOFF: {
         id: 'kickoff',
-        name: 'Kickoff Citadel',
-        description: 'Launch thy venture into the world',
+        name: 'Kickoff',
+        description: 'Launch your business into the market',
         icon: Castle,
         color: 'bg-blue-600',
         quests: [
-            { id: 'mvp', name: 'First Fortress', xp: 300, description: 'Build thy minimum viable castle', attribute: 'tech' },
-            { id: 'team', name: 'Rally the Knights', xp: 200, description: 'Recruit thy fellowship', attribute: 'operations' },
-            { id: 'pitch', name: 'War Cry', xp: 150, description: 'Perfect thy battle cry', attribute: 'sales' },
-            { id: 'firstusers', name: 'First Subjects', xp: 250, description: 'Win thy first loyal followers', attribute: 'marketing' },
-            { id: 'feedback', name: 'Council of Elders', xp: 200, description: 'Hear the wisdom of thy users', attribute: 'marketing' }
+            { id: 'mvp', name: 'MVP Build', xp: 300, description: 'Build your minimum viable product', attribute: 'tech' },
+            { id: 'team', name: 'Team Formation', xp: 200, description: 'Recruit your team', attribute: 'operations' },
+            { id: 'pitch', name: 'Pitch Preparation', xp: 150, description: 'Perfect your pitch', attribute: 'sales' },
+            { id: 'firstusers', name: 'First Users', xp: 250, description: 'Acquire your first users', attribute: 'marketing' },
+            { id: 'feedback', name: 'User Feedback', xp: 200, description: 'Gather feedback from users', attribute: 'marketing' }
         ]
     },
     GTM: {
         id: 'gtm',
-        name: 'Market Conquest Plains',
-        description: 'Conquer the realm with thy strategy',
+        name: 'Go-To-Market',
+        description: 'Develop and execute your go-to-market strategy',
         icon: Swords,
         color: 'bg-purple-600',
         quests: [
-            { id: 'marketing', name: 'Herald\'s Campaign', xp: 250, description: 'Spread thy legend far and wide', attribute: 'marketing' },
-            { id: 'sales', name: 'Merchant\'s Guild', xp: 250, description: 'Master the art of commerce', attribute: 'sales' },
-            { id: 'channels', name: 'Trade Routes', xp: 200, description: 'Establish thy distribution paths', attribute: 'operations' },
-            { id: 'pricing', name: 'Gold Alchemy', xp: 150, description: 'Perfect thy pricing magic', attribute: 'finance' },
-            { id: 'metrics', name: 'Oracle\'s Vision', xp: 200, description: 'Divine thy key measurements', attribute: 'finance' }
+            { id: 'marketing', name: 'Marketing Campaign', xp: 250, description: 'Launch your marketing campaign', attribute: 'marketing' },
+            { id: 'sales', name: 'Sales Strategy', xp: 250, description: 'Develop your sales strategy', attribute: 'sales' },
+            { id: 'channels', name: 'Distribution Channels', xp: 200, description: 'Establish your distribution channels', attribute: 'operations' },
+            { id: 'pricing', name: 'Pricing Strategy', xp: 150, description: 'Set your pricing', attribute: 'finance' },
+            { id: 'metrics', name: 'Key Metrics', xp: 200, description: 'Identify your key business metrics', attribute: 'finance' }
         ]
     },
     GROWTH: {
         id: 'growth',
-        name: 'Empire Mountains',
-        description: 'Scale thy dominion to legendary heights',
+        name: 'Growth',
+        description: 'Scale your business to new heights',
         icon: Crown,
         color: 'bg-orange-600',
         quests: [
-            { id: 'funding', name: 'Dragon\'s Hoard', xp: 400, description: 'Secure thy war chest', attribute: 'finance' },
-            { id: 'scaling', name: 'Empire Expansion', xp: 350, description: 'Grow thy kingdom\'s borders', attribute: 'operations' },
-            { id: 'culture', name: 'Code of Honor', xp: 200, description: 'Establish thy guild\'s culture', attribute: 'operations' },
-            { id: 'partnerships', name: 'Alliance Pacts', xp: 300, description: 'Forge strategic alliances', attribute: 'sales' },
-            { id: 'exit', name: 'Legendary Victory', xp: 500, description: 'Plan thy ultimate triumph', attribute: 'finance' }
+            { id: 'funding', name: 'Fundraising', xp: 400, description: 'Raise capital for your business', attribute: 'finance' },
+            { id: 'scaling', name: 'Scaling Operations', xp: 350, description: 'Scale your operations', attribute: 'operations' },
+            { id: 'culture', name: 'Company Culture', xp: 200, description: 'Build your company culture', attribute: 'operations' },
+            { id: 'partnerships', name: 'Partnerships', xp: 300, description: 'Form strategic partnerships', attribute: 'sales' },
+            { id: 'exit', name: 'Exit Strategy', xp: 500, description: 'Plan your exit strategy', attribute: 'finance' }
         ]
+    }
+};
+
+
+export const createMagicalParticles = () => {
+    const particleCount = 30;
+
+    for (let i = 0; i < particleCount; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'magic-particle';
+        particle.style.left = `${Math.random() * 100}%`;
+        particle.style.animationDelay = `${Math.random() * 20}s`;
+        particle.style.animationDuration = `${15 + Math.random() * 10}s`;
+
+        // Ensure we're appending to body only after DOM is ready
+        if (document.body) {
+            document.body.appendChild(particle);
+        }
     }
 };

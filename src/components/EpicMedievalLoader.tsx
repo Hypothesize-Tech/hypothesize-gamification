@@ -1,23 +1,23 @@
 import { Canvas } from "@react-three/fiber";
 import { Suspense, useEffect, useState } from "react";
 import { Sword3D } from "./Sword3D";
-import EpicMedievalLoaderStyles from "../utils/medievalStyles";
+import EpicMedievalLoaderStyles from "../utils/EpicMedievalLoaderStyles";
 
 export const EpicMedievalLoader = () => {
     const [loadingPhrase, setLoadingPhrase] = useState(0);
     const [progress, setProgress] = useState(0);
 
     const loadingPhrases = [
-        "Summoning ancient dragons...",
-        "Forging legendary weapons...",
-        "Gathering the knights of the realm...",
-        "Consulting the mystical oracles...",
-        "Awakening the startup spirits...",
-        "Polishing thy noble armor...",
-        "Enchanting magical scrolls...",
-        "Rallying thy guild members...",
-        "Preparing the quest map...",
-        "Loading thy destiny..."
+        "Initializing resources...",
+        "Loading essential tools...",
+        "Connecting to the network...",
+        "Preparing your workspace...",
+        "Starting up services...",
+        "Optimizing performance...",
+        "Syncing your documents...",
+        "Collaborating with your team...",
+        "Setting up your dashboard...",
+        "Almost ready..."
     ];
 
     useEffect(() => {
@@ -214,9 +214,9 @@ export const EpicMedievalLoader = () => {
 
                 {/* Decorative bottom text */}
                 <div className="flex items-center space-x-4 text-gray-400 text-sm">
-                    <span className="animate-pulse">⚔️</span>
-                    <span style={{ fontFamily: 'Almendra' }}>Forging your destiny</span>
-                    <span className="animate-pulse">🛡️</span>
+                    <span className="animate-pulse">🔄</span>
+                    <span style={{ fontFamily: 'Almendra' }}>Preparing your experience</span>
+                    <span className="animate-pulse">💼</span>
                 </div>
                 {/* CSS Animations */}
                 <EpicMedievalLoaderStyles />

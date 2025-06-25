@@ -494,8 +494,6 @@ export class AWSRAGService {
                 continue;
             }
 
-            const fullContentLower = doc.fullContent.toLowerCase();
-
             // Strategy 1: Exact phrase match (highest priority)
             for (const chunk of doc.chunks) {
                 const chunkLower = chunk.content.toLowerCase();

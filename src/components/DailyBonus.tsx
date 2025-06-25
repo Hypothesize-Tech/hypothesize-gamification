@@ -17,15 +17,15 @@ export const DailyBonus = ({
                     <div className="flex items-center space-x-3">
                         <Gift className="w-8 h-8 text-yellow-500 treasure-glow" />
                         <div>
-                            <h3 className="font-bold text-yellow-100">Daily Tribute</h3>
-                            <p className="text-sm text-yellow-200/80">Awaiting thy claim...</p>
+                            <h3 className="font-bold text-yellow-100">Daily Reward</h3>
+                            <p className="text-sm text-yellow-200/80">Ready to collect...</p>
                         </div>
                     </div>
                     <button
                         disabled
                         className="px-4 py-2 rounded-lg font-semibold bg-gray-700 text-gray-400 cursor-not-allowed"
                     >
-                        Claim
+                        Collect
                     </button>
                 </div>
             </div>
@@ -53,7 +53,7 @@ export const DailyBonus = ({
                 const diff = tomorrow.getTime() - now.getTime();
                 const hours = Math.floor(diff / (1000 * 60 * 60));
                 const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-                setTimeUntilNext(`${hours} candle marks, ${minutes} sand grains`);
+                setTimeUntilNext(`${hours} hours, ${minutes} minutes`);
             }
         };
 
@@ -69,9 +69,9 @@ export const DailyBonus = ({
                 <div className="flex items-center space-x-3">
                     <Gift className={`w-8 h-8 ${canClaim ? 'text-yellow-500 treasure-glow' : 'text-gray-500'}`} />
                     <div>
-                        <h3 className="font-bold text-yellow-100">Daily Tribute</h3>
+                        <h3 className="font-bold text-yellow-100">Daily Reward</h3>
                         <p className="text-sm text-yellow-200/80">
-                            {canClaim ? 'The kingdom offers 5 gold coins!' : `Next tribute in ${timeUntilNext}`}
+                            {canClaim ? 'You received 5 gold coins!' : `Next reward in ${timeUntilNext}`}
                         </p>
                     </div>
                 </div>
@@ -83,12 +83,12 @@ export const DailyBonus = ({
                         : 'bg-gray-700 text-gray-400 cursor-not-allowed'
                         }`}
                 >
-                    {canClaim ? 'Claim +5 ⚡' : 'Claimed'}
+                    {canClaim ? 'Collect +5 ⚡' : 'Collected'}
                 </button>
             </div>
             {guildData.dailyStreak > 1 && (
                 <div className="mt-2 text-sm text-yellow-200/80">
-                    🔥 {guildData.dailyStreak} day crusade!
+                    🔥 {guildData.dailyStreak} consecutive days!
                 </div>
             )}
         </div>

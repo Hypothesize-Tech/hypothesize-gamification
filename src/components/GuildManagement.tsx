@@ -16,7 +16,7 @@ export const GuildManagement = ({
                 <div className="bg-gradient-to-r from-purple-900 to-indigo-900 px-6 py-4 flex items-center justify-between">
                     <div className="flex items-center space-x-3">
                         <Castle className="w-6 h-6 text-yellow-500" />
-                        <h2 className="text-2xl font-bold">Guild Hall</h2>
+                        <h2 className="text-2xl font-bold">Guild Management</h2>
                     </div>
                     <button onClick={onClose} className="text-gray-400 hover:text-white">
                         <X className="w-6 h-6" />
@@ -25,7 +25,7 @@ export const GuildManagement = ({
 
                 <div className="p-6 overflow-y-auto max-h-[calc(90vh-100px)]">
                     <div className="mb-8">
-                        <h3 className="text-lg font-bold mb-4 text-yellow-100">Guild Positions</h3>
+                        <h3 className="text-lg font-bold mb-4 text-yellow-100">Roles</h3>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                             {Object.entries(GUILD_ROLES).map(([key, role]) => {
                                 const member = guildData.members?.find((m: any) => m.role === key);
@@ -48,7 +48,7 @@ export const GuildManagement = ({
                                                 <p className="text-xs text-gray-400">{member.email}</p>
                                             </div>
                                         ) : (
-                                            <p className="text-sm text-gray-400 mt-2">Seeking Worthy Soul</p>
+                                            <p className="text-sm text-gray-400 mt-2">Position Open</p>
                                         )}
                                     </div>
                                 );
@@ -56,7 +56,7 @@ export const GuildManagement = ({
                         </div>
                         {filledRoles.size >= 6 && (
                             <div className="mt-4 parchment p-3 magic-border">
-                                <p className="text-green-400 font-medium">⚔️ Full Guild Assembled! +30% XP on all quests</p>
+                                <p className="text-green-400 font-medium">All roles filled! +30% XP on all quests</p>
                             </div>
                         )}
                     </div>

@@ -16,7 +16,7 @@ export const ArmoryInterface = ({
     onClose: () => void;
     soundManager: any;
 }) => {
-    const [selectedCategory, setSelectedCategory] = useState<'gear' | 'consumables' | 'treasures'>('gear');
+    const [selectedCategory, setSelectedCategory] = useState<'items' | 'supplies' | 'specials'>('items');
     const userLevel = calculateLevel(guildData.xp || 0).level;
 
     const canAfford = (price: number) => (guildData.gold || 0) >= price;
@@ -48,7 +48,7 @@ export const ArmoryInterface = ({
                         <ambientLight intensity={0.5} />
                         <pointLight position={[10, 10, 10]} />
                         <Suspense fallback={null}>
-                            <TreasureChest3D isOpen={selectedCategory === 'treasures'} />
+                            <TreasureChest3D isOpen={selectedCategory === 'specials'} />
                         </Suspense>
                     </Canvas>
                 </div>
@@ -57,7 +57,7 @@ export const ArmoryInterface = ({
                 <div className="bg-gradient-to-r from-orange-900 to-amber-900 px-6 py-4 flex items-center justify-between">
                     <div className="flex items-center space-x-3">
                         <ShoppingBag className="w-6 h-6 text-yellow-500 treasure-glow" />
-                        <h2 className="text-2xl font-bold text-yellow-100">The Royal Armory</h2>
+                        <h2 className="text-2xl font-bold text-yellow-100">Store</h2>
                         <div className="flex items-center space-x-2 ml-6">
                             <Coins className="w-5 h-5 text-yellow-500" />
                             <span className="font-bold text-yellow-100">{guildData.gold || 0}</span>
@@ -71,39 +71,39 @@ export const ArmoryInterface = ({
                 {/* Category Tabs */}
                 <div className="bg-gradient-to-r from-purple-900/50 to-indigo-900/50 px-6 py-3 flex space-x-4 border-b border-yellow-700">
                     <button
-                        onClick={() => setSelectedCategory('gear')}
-                        className={`px-4 py-2 rounded-lg transition-all ${selectedCategory === 'gear'
+                        onClick={() => setSelectedCategory('items')}
+                        className={`px-4 py-2 rounded-lg transition-all ${selectedCategory === 'items'
                             ? 'bg-purple-800 text-white magic-border'
                             : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                             }`}
                     >
                         <div className="flex items-center space-x-2">
                             <Shield className="w-4 h-4" />
-                            <span>Armor & Gear</span>
+                            <span>Items</span>
                         </div>
                     </button>
                     <button
-                        onClick={() => setSelectedCategory('consumables')}
-                        className={`px-4 py-2 rounded-lg transition-all ${selectedCategory === 'consumables'
+                        onClick={() => setSelectedCategory('supplies')}
+                        className={`px-4 py-2 rounded-lg transition-all ${selectedCategory === 'supplies'
                             ? 'bg-purple-800 text-white magic-border'
                             : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                             }`}
                     >
                         <div className="flex items-center space-x-2">
                             <PocketIcon className="w-4 h-4" />
-                            <span>Potions & Elixirs</span>
+                            <span>Supplies</span>
                         </div>
                     </button>
                     <button
-                        onClick={() => setSelectedCategory('treasures')}
-                        className={`px-4 py-2 rounded-lg transition-all ${selectedCategory === 'treasures'
+                        onClick={() => setSelectedCategory('specials')}
+                        className={`px-4 py-2 rounded-lg transition-all ${selectedCategory === 'specials'
                             ? 'bg-purple-800 text-white magic-border'
                             : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                             }`}
                     >
                         <div className="flex items-center space-x-2">
                             <Diamond className="w-4 h-4" />
-                            <span>Legendary Treasures</span>
+                            <span>Specials</span>
                         </div>
                     </button>
                 </div>
@@ -138,7 +138,7 @@ export const ArmoryInterface = ({
                                         </div>
                                         {owned && (
                                             <span className="px-2 py-1 bg-green-500/20 text-green-400 text-xs rounded">
-                                                Equipped
+                                                Owned
                                             </span>
                                         )}
                                     </div>
@@ -149,12 +149,12 @@ export const ArmoryInterface = ({
                                         <div className="mb-3 space-y-1">
                                             {item.stats.xpBonus && (
                                                 <p className="text-xs text-purple-400">
-                                                    +{item.stats.xpBonus}% Experience Blessing
+                                                    +{item.stats.xpBonus}% Experience Bonus
                                                 </p>
                                             )}
                                             {item.stats.goldBonus && (
                                                 <p className="text-xs text-yellow-400">
-                                                    +{item.stats.goldBonus}% Gold Fortune
+                                                    +{item.stats.goldBonus}% Gold Bonus
                                                 </p>
                                             )}
                                         </div>
@@ -182,10 +182,10 @@ export const ArmoryInterface = ({
                                                     : 'bg-gray-600 text-gray-400 cursor-not-allowed'
                                                 }`}
                                         >
-                                            {owned ? 'Equipped' :
+                                            {owned ? 'Owned' :
                                                 !levelMet ? `Level ${item.levelRequired}` :
                                                     !affordable ? 'Insufficient Gold' :
-                                                        'Purchase'}
+                                                        'Buy'}
                                         </button>
                                     </div>
                                 </div>
