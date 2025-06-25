@@ -1,4 +1,3 @@
-// src/components/DocumentRAG.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import {
     FileText,
@@ -19,94 +18,271 @@ import '@react-pdf-viewer/default-layout/lib/styles/index.css';
 import Modal from './Modal';
 import confetti from 'canvas-confetti';
 
-// Add this CSS to your global styles or as a styled component
 const parchmentStyles = `
   .parchment-container {
     position: relative;
     background: 
-      linear-gradient(to bottom, 
-        rgba(245, 235, 220, 0.95) 0%, 
-        rgba(235, 225, 210, 0.95) 20%,
-        rgba(225, 215, 200, 0.95) 40%,
-        rgba(235, 225, 210, 0.95) 60%,
-        rgba(245, 235, 220, 0.95) 100%);
+      radial-gradient(ellipse at top left, rgba(255, 253, 235, 0.9) 0%, transparent 40%),
+      radial-gradient(ellipse at bottom right, rgba(255, 248, 220, 0.9) 0%, transparent 40%),
+      radial-gradient(ellipse at center, rgba(245, 235, 215, 0.95) 0%, rgba(235, 225, 205, 0.95) 50%, rgba(225, 215, 195, 0.95) 100%),
+      url("data:image/svg+xml,%3Csvg width='100' height='100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='turbulence' baseFrequency='0.9' numOctaves='4' seed='2' /%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.02'/%3E%3C/svg%3E"),
+      linear-gradient(135deg, #f9f5e7 0%, #f5e6d3 25%, #f0ddc7 50%, #f5e6d3 75%, #f9f5e7 100%);
     box-shadow: 
-      inset 0 0 40px rgba(139, 69, 19, 0.2),
-      0 0 20px rgba(0, 0, 0, 0.5);
+      inset 0 0 120px rgba(166, 124, 82, 0.3),
+      inset 0 0 60px rgba(139, 69, 19, 0.2),
+      inset 0 0 30px rgba(101, 67, 33, 0.2),
+      0 0 40px rgba(0, 0, 0, 0.4),
+      0 10px 50px rgba(0, 0, 0, 0.3);
     overflow: hidden;
+    border-radius: 3px;
+  }
+
+  .parchment-container::before,
+  .parchment-container::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 25px;
+    z-index: 5;
+    pointer-events: none;
   }
 
   .parchment-container::before {
-    content: '';
-    position: absolute;
-    top: -10px;
-    left: -10px;
-    right: -10px;
-    bottom: -10px;
+    top: -5px;
     background: 
-      url("data:image/svg+xml,%3Csvg width='100' height='100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='roughPaper'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.04' numOctaves='5' result='noise' seed='1'/%3E%3CfeDiffuseLighting in='noise' lighting-color='white' surfaceScale='1'%3E%3CfeDistantLight azimuth='45' elevation='60'/%3E%3C/feDiffuseLighting%3E%3C/filter%3E%3Crect width='100' height='100' filter='url(%23roughPaper)' opacity='0.6'/%3E%3C/svg%3E");
-    opacity: 0.3;
+      linear-gradient(to bottom, 
+        rgba(139, 69, 19, 0.3) 0%, 
+        rgba(205, 133, 63, 0.2) 30%,
+        transparent 100%),
+      url("data:image/svg+xml,%3Csvg width='100' height='30' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0,20 Q10,10 20,15 T40,18 T60,16 T80,19 T100,17 L100,0 L0,0 Z' fill='%23f5e6d3' stroke='%238B6914' stroke-width='0.5' opacity='0.8'/%3E%3Cpath d='M0,25 Q15,15 30,20 T60,22 T90,20 L100,25 L100,30 L0,30 Z' fill='%23000000' opacity='0.2'/%3E%3C/svg%3E") repeat-x;
+    filter: drop-shadow(0 3px 5px rgba(0,0,0,0.3));
+  }
+
+  .parchment-container::after {
+    bottom: -5px;
+    background: 
+      linear-gradient(to top, 
+        rgba(139, 69, 19, 0.3) 0%, 
+        rgba(205, 133, 63, 0.2) 30%,
+        transparent 100%),
+      url("data:image/svg+xml,%3Csvg width='100' height='30' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0,10 Q10,20 20,15 T40,12 T60,14 T80,11 T100,13 L100,30 L0,30 Z' fill='%23f5e6d3' stroke='%238B6914' stroke-width='0.5' opacity='0.8'/%3E%3Cpath d='M0,5 Q15,15 30,10 T60,8 T90,10 L100,5 L100,0 L0,0 Z' fill='%23000000' opacity='0.2'/%3E%3C/svg%3E") repeat-x;
+    filter: drop-shadow(0 -3px 5px rgba(0,0,0,0.3));
+  }
+
+  .paper-texture {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    opacity: 0.4;
     pointer-events: none;
+    background-image: 
+      url("data:image/svg+xml,%3Csvg width='200' height='200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='roughPaper'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.04' numOctaves='5' result='noise' seed='3'/%3E%3CfeDiffuseLighting in='noise' lighting-color='white' surfaceScale='1.5'%3E%3CfeDistantLight azimuth='45' elevation='60'/%3E%3C/feDiffuseLighting%3E%3CfeGaussianBlur stdDeviation='0.5'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23roughPaper)' opacity='1'/%3E%3C/svg%3E");
+    mix-blend-mode: multiply;
   }
 
   .torn-edge-top {
     position: absolute;
-    top: -2px;
-    left: 0;
-    right: 0;
-    height: 20px;
-    background: url("data:image/svg+xml,%3Csvg width='100' height='20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0,15 Q5,5 10,15 T20,15 T30,15 T40,15 T50,15 T60,15 T70,15 T80,15 T90,15 T100,15 L100,0 L0,0 Z' fill='%23f5f5dc' opacity='0.9'/%3E%3C/svg%3E") repeat-x;
-    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+    top: -3px;
+    left: -3px;
+    right: -3px;
+    height: 35px;
+    background: url("data:image/svg+xml,%3Csvg width='120' height='35' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0,30 Q3,20 8,25 T16,22 Q20,18 25,20 T35,18 Q40,16 43,19 T50,17 Q55,15 58,18 T65,16 Q70,14 73,17 T80,15 Q85,13 88,16 T95,14 Q100,12 103,15 T110,13 Q115,11 120,14 L120,0 L0,0 Z' fill='%23f5e6d3' stroke='%23a0826d' stroke-width='0.3' opacity='0.95'/%3E%3Cpath d='M0,32 Q5,25 10,28 T20,26 T30,27 T40,25 T50,26 T60,24 T70,25 T80,23 T90,24 T100,22 T110,23 T120,21 L120,35 L0,35 Z' fill='%23000000' opacity='0.1'/%3E%3C/svg%3E") repeat-x;
+    filter: drop-shadow(0 2px 6px rgba(0,0,0,0.3));
   }
 
   .torn-edge-bottom {
     position: absolute;
-    bottom: -2px;
-    left: 0;
-    right: 0;
-    height: 20px;
-    background: url("data:image/svg+xml,%3Csvg width='100' height='20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0,5 Q5,15 10,5 T20,5 T30,5 T40,5 T50,5 T60,5 T70,5 T80,5 T90,5 T100,5 L100,20 L0,20 Z' fill='%23f5f5dc' opacity='0.9'/%3E%3C/svg%3E") repeat-x;
-    filter: drop-shadow(0 -2px 4px rgba(0,0,0,0.2));
+    bottom: -3px;
+    left: -3px;
+    right: -3px;
+    height: 35px;
+    background: url("data:image/svg+xml,%3Csvg width='120' height='35' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0,5 Q3,15 8,10 T16,13 Q20,17 25,15 T35,17 Q40,19 43,16 T50,18 Q55,20 58,17 T65,19 Q70,21 73,18 T80,20 Q85,22 88,19 T95,21 Q100,23 103,20 T110,22 Q115,24 120,21 L120,35 L0,35 Z' fill='%23f5e6d3' stroke='%23a0826d' stroke-width='0.3' opacity='0.95'/%3E%3Cpath d='M0,3 Q5,10 10,7 T20,9 T30,8 T40,10 T50,9 T60,11 T70,10 T80,12 T90,11 T100,13 T110,12 T120,14 L120,0 L0,0 Z' fill='%23000000' opacity='0.1'/%3E%3C/svg%3E") repeat-x;
+    filter: drop-shadow(0 -2px 6px rgba(0,0,0,0.3));
   }
 
   .torn-edge-left {
     position: absolute;
-    top: 0;
-    left: -2px;
-    bottom: 0;
-    width: 20px;
-    background: url("data:image/svg+xml,%3Csvg width='20' height='100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M15,0 Q5,5 15,10 T15,20 T15,30 T15,40 T15,50 T15,60 T15,70 T15,80 T15,90 T15,100 L0,100 L0,0 Z' fill='%23f5f5dc' opacity='0.9'/%3E%3C/svg%3E") repeat-y;
-    filter: drop-shadow(2px 0 4px rgba(0,0,0,0.2));
+    top: -3px;
+    left: -3px;
+    bottom: -3px;
+    width: 35px;
+    background: url("data:image/svg+xml,%3Csvg width='35' height='120' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30,0 Q20,3 25,8 T22,16 Q18,20 20,25 T18,35 Q16,40 19,43 T17,50 Q15,55 18,58 T16,65 Q14,70 17,73 T15,80 Q13,85 16,88 T14,95 Q12,100 15,103 T13,110 Q11,115 14,120 L0,120 L0,0 Z' fill='%23f5e6d3' stroke='%23a0826d' stroke-width='0.3' opacity='0.95'/%3E%3Cpath d='M32,0 Q25,5 28,10 T26,20 T27,30 T25,40 T26,50 T24,60 T25,70 T23,80 T24,90 T22,100 T23,110 T21,120 L35,120 L35,0 Z' fill='%23000000' opacity='0.1'/%3E%3C/svg%3E") repeat-y;
+    filter: drop-shadow(2px 0 6px rgba(0,0,0,0.3));
   }
 
   .torn-edge-right {
     position: absolute;
+    top: -3px;
+    right: -3px;
+    bottom: -3px;
+    width: 35px;
+    background: url("data:image/svg+xml,%3Csvg width='35' height='120' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M5,0 Q15,3 10,8 T13,16 Q17,20 15,25 T17,35 Q19,40 16,43 T18,50 Q20,55 17,58 T19,65 Q21,70 18,73 T20,80 Q22,85 19,88 T21,95 Q23,100 20,103 T22,110 Q24,115 21,120 L35,120 L35,0 Z' fill='%23f5e6d3' stroke='%23a0826d' stroke-width='0.3' opacity='0.95'/%3E%3Cpath d='M3,0 Q10,5 7,10 T9,20 T8,30 T10,40 T9,50 T11,60 T10,70 T12,80 T11,90 T13,100 T12,110 T14,120 L0,120 L0,0 Z' fill='%23000000' opacity='0.1'/%3E%3C/svg%3E") repeat-y;
+    filter: drop-shadow(-2px 0 6px rgba(0,0,0,0.3));
+  }
+
+  .paper-wrinkles {
+    position: absolute;
     top: 0;
-    right: -2px;
+    left: 0;
+    right: 0;
     bottom: 0;
-    width: 20px;
-    background: url("data:image/svg+xml,%3Csvg width='20' height='100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M5,0 Q15,5 5,10 T5,20 T5,30 T5,40 T5,50 T5,60 T5,70 T5,80 T5,90 T5,100 L20,100 L20,0 Z' fill='%23f5f5dc' opacity='0.9'/%3E%3C/svg%3E") repeat-y;
-    filter: drop-shadow(-2px 0 4px rgba(0,0,0,0.2));
+    opacity: 0.3;
+    pointer-events: none;
+    background-image: 
+      linear-gradient(115deg, transparent 40%, rgba(139, 69, 19, 0.1) 50%, transparent 60%),
+      linear-gradient(65deg, transparent 35%, rgba(139, 69, 19, 0.08) 45%, transparent 55%),
+      linear-gradient(-20deg, transparent 45%, rgba(139, 69, 19, 0.06) 50%, transparent 55%);
+    background-size: 200px 200px, 300px 300px, 250px 250px;
+    background-position: 0 0, 50px 50px, 100px 100px;
   }
 
-  .old-paper-text {
-    color: #3e2723;
-    text-shadow: 1px 1px 1px rgba(0,0,0,0.1);
+  .coffee-stain {
+    position: absolute;
+    border-radius: 50%;
+    background: radial-gradient(ellipse at center, 
+      rgba(139, 90, 43, 0.1) 0%, 
+      rgba(160, 82, 45, 0.08) 30%, 
+      rgba(139, 69, 19, 0.05) 60%, 
+      transparent 100%);
+    filter: blur(2px);
   }
 
-  .parchment-inner {
-    background: rgba(245, 235, 220, 0.4);
-    border: 1px solid rgba(139, 69, 19, 0.2);
-    box-shadow: inset 0 0 10px rgba(139, 69, 19, 0.1);
+  .tea-stain {
+    position: absolute;
+    border-radius: 40% 60% 60% 40% / 60% 40% 60% 40%;
+    background: radial-gradient(ellipse at center, 
+      rgba(184, 134, 11, 0.08) 0%, 
+      rgba(218, 165, 32, 0.06) 40%, 
+      transparent 100%);
+    filter: blur(3px);
   }
 
   .ink-stain {
     position: absolute;
+    background: radial-gradient(ellipse at center, 
+      rgba(46, 34, 24, 0.4) 0%, 
+      rgba(46, 34, 24, 0.2) 40%, 
+      transparent 70%);
+    border-radius: 40% 60% 50% 50% / 50% 50% 60% 40%;
+    filter: blur(6px);
+    transform: rotate(var(--rotation, 0deg));
+  }
+
+  .ink-splatter {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background: rgba(46, 34, 24, 0.3);
+    border-radius: 50%;
+    filter: blur(1px);
+  }
+
+  .old-paper-text {
+    color: #2e2218;
+    text-shadow: 
+      1px 1px 1px rgba(0,0,0,0.1),
+      0 0 1px rgba(139, 69, 19, 0.2);
+    font-family: 'Georgia', 'Times New Roman', serif;
+  }
+
+  .parchment-inner {
+    background: 
+      linear-gradient(105deg, 
+        rgba(255, 248, 220, 0.4) 0%, 
+        rgba(245, 235, 215, 0.5) 50%, 
+        rgba(255, 248, 220, 0.4) 100%);
+    border: 1px solid rgba(160, 130, 100, 0.3);
+    box-shadow: 
+      inset 0 1px 4px rgba(139, 69, 19, 0.1),
+      inset 0 0 20px rgba(222, 184, 135, 0.1);
+    position: relative;
+  }
+
+  .parchment-inner::before,
+  .parchment-inner::after {
+    content: '';
+    position: absolute;
     width: 40px;
     height: 40px;
-    background: radial-gradient(ellipse at center, rgba(46, 34, 24, 0.3) 0%, transparent 70%);
-    border-radius: 50%;
+    background: radial-gradient(ellipse at center, 
+      rgba(139, 69, 19, 0.15) 0%, 
+      transparent 70%);
+  }
+
+  .parchment-inner::before {
+    top: -5px;
+    right: -5px;
+    border-radius: 0 8px 0 50%;
+  }
+
+  .parchment-inner::after {
+    bottom: -5px;
+    left: -5px;
+    border-radius: 50% 0 8px 0;
+  }
+
+  .burn-mark {
+    position: absolute;
+    background: radial-gradient(ellipse at center,
+      rgba(92, 51, 23, 0.3) 0%,
+      rgba(139, 69, 19, 0.15) 40%,
+      transparent 70%);
     filter: blur(8px);
+  }
+
+  .folded-corner {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 0 30px 30px 0;
+    border-color: transparent #f5e6d3 transparent transparent;
+    filter: drop-shadow(-2px 2px 3px rgba(0,0,0,0.2));
+  }
+
+  .folded-corner::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: -30px;
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 0 30px 30px 0;
+    border-color: transparent rgba(139, 69, 19, 0.1) transparent transparent;
+  }
+
+  .parchment-inner:hover {
+    box-shadow: 
+      inset 0 1px 4px rgba(139, 69, 19, 0.15),
+      inset 0 0 25px rgba(222, 184, 135, 0.15),
+      0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .wax-seal {
+    position: absolute;
+    width: 60px;
+    height: 60px;
+    background: radial-gradient(circle at 30% 30%,
+      #d2691e 0%,
+      #8b4513 50%,
+      #654321 100%);
+    border-radius: 50%;
+    box-shadow: 
+      inset -2px -2px 4px rgba(0,0,0,0.3),
+      inset 2px 2px 4px rgba(255,255,255,0.2),
+      0 3px 6px rgba(0,0,0,0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: #3e2723;
+    text-shadow: -1px -1px 1px rgba(0,0,0,0.3);
   }
 `;
 
@@ -295,15 +471,37 @@ export const DocumentRAG: React.FC<DocumentRAGProps> = ({ userId, ceoAvatar, ope
             <div className="w-full min-h-screen px-2 sm:px-4 md:px-6 py-4 md:py-6">
                 <div className="max-w-7xl mx-auto">
                     <div className="parchment-container relative rounded-lg shadow-2xl overflow-visible">
+                        {/* Paper texture overlay */}
+                        <div className="paper-texture"></div>
+                        <div className="paper-wrinkles"></div>
+
                         {/* Torn edges */}
                         <div className="torn-edge-top"></div>
                         <div className="torn-edge-bottom"></div>
                         <div className="torn-edge-left"></div>
                         <div className="torn-edge-right"></div>
 
-                        {/* Ink stains for atmosphere */}
-                        <div className="ink-stain" style={{ top: '10%', right: '5%' }}></div>
-                        <div className="ink-stain" style={{ bottom: '15%', left: '8%' }}></div>
+                        {/* Coffee and tea stains */}
+                        <div className="coffee-stain" style={{ top: '15%', right: '10%', width: '120px', height: '100px' }}></div>
+                        <div className="tea-stain" style={{ bottom: '20%', left: '5%', width: '80px', height: '90px' }}></div>
+                        <div className="coffee-stain" style={{ top: '60%', left: '15%', width: '60px', height: '60px' }}></div>
+
+                        {/* Ink stains and splatters */}
+                        <div className="ink-stain" style={{ top: '10%', right: '5%', width: '40px', height: '40px', '--rotation': '45deg' } as any}></div>
+                        <div className="ink-stain" style={{ bottom: '15%', left: '8%', width: '35px', height: '35px', '--rotation': '-30deg' } as any}></div>
+                        <div className="ink-splatter" style={{ top: '12%', right: '8%' }}></div>
+                        <div className="ink-splatter" style={{ top: '8%', right: '6%' }}></div>
+                        <div className="ink-splatter" style={{ bottom: '18%', left: '6%' }}></div>
+
+                        {/* Burn marks */}
+                        <div className="burn-mark" style={{ top: '-10px', left: '30%', width: '60px', height: '20px' }}></div>
+                        <div className="burn-mark" style={{ bottom: '-10px', right: '25%', width: '80px', height: '25px' }}></div>
+
+                        {/* Folded corner */}
+                        <div className="folded-corner"></div>
+
+                        {/* Wax seal */}
+                        <div className="wax-seal" style={{ top: '20px', right: '20px' }}>📜</div>
 
                         <div className="relative z-10 p-8">
                             {/* Header */}
@@ -504,6 +702,7 @@ export const DocumentRAG: React.FC<DocumentRAGProps> = ({ userId, ceoAvatar, ope
             <Modal open={!!selectedDocument} onClose={() => { setSelectedDocument(null); setDocumentContent(null); setPdfUrl(null); setPdfError(null); }} size="xl">
                 {selectedDocument && (
                     <div className="p-6 max-w-4xl w-full parchment-container rounded-lg">
+                        <div className="paper-texture"></div>
                         <div className="relative z-10">
                             <div className="flex items-center justify-between mb-4">
                                 <h3 className="text-2xl font-bold old-paper-text">{selectedDocument.name}</h3>
