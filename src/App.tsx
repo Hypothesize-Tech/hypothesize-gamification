@@ -1421,28 +1421,32 @@ const FourPanelQuestInterface = ({
   saveConversation: (quest: any, question: string, response: string) => Promise<void>;
   updateGold: (amount: number) => Promise<void>;
 }) => {
-  const [sageMessages, setSageMessages] = useState<Array<{ type: 'user' | 'sage', content: string }>>([]);
+  const questKey = `${quest.stageId}_${quest.id}`;
+  const questProgress = guildData?.questProgress?.[questKey];
+  const isCompleted = !!questProgress?.completed;
+
+  const [sageMessages, setSageMessages] = useState<Array<{ type: 'user' | 'sage', content: string }>>(isCompleted ? (questProgress?.sageConversation || []) : []);
   const [sageInput, setSageInput] = useState('');
   const [sageLoading, setSageLoading] = useState(false);
-  const [userInputs, setUserInputs] = useState<Record<string, string>>({});
+  const [userInputs, setUserInputs] = useState<Record<string, string>>(isCompleted ? (questProgress?.inputs || {}) : {});
   const [isSaving, setIsSaving] = useState(false);
   const [dynamicResources, setDynamicResources] = useState<any[]>([]);
   const [resourcesLoading, setResourcesLoading] = useState(true);
-  const [rating, setRating] = useState<any>(null);
+  const [rating, setRating] = useState<any>(isCompleted ? { rating: questProgress?.rating, feedback: questProgress?.feedback } : null);
 
   useEffect(() => {
-    const loadResources = async () => {
-      setResourcesLoading(true);
-      const resources = await fetchDynamicResources(quest.name, quest.description);
-      setDynamicResources(resources);
-      setResourcesLoading(false);
-    };
-    loadResources();
-  }, [quest]);
+    if (isCompleted) {
+      setUserInputs(questProgress?.inputs || {});
+      setSageMessages(questProgress?.sageConversation || []);
+      setRating({ rating: questProgress?.rating, feedback: questProgress?.feedback });
+    }
+    // eslint-disable-next-line
+  }, [questKey]);
 
   const inputTemplate = QUEST_INPUT_TEMPLATES[quest.id as keyof typeof QUEST_INPUT_TEMPLATES];
 
   const handleSageChat = async () => {
+    if (isCompleted) return; // Prevent chat if completed
     if (!sageInput.trim()) return;
 
     if (guildData.gold < 20) {
@@ -1480,10 +1484,12 @@ const FourPanelQuestInterface = ({
   };
 
   const handleInputChange = (fieldName: string, value: string) => {
+    if (isCompleted) return; // Prevent editing if completed
     setUserInputs(prev => ({ ...prev, [fieldName]: value }));
   };
 
   const handleCompleteQuest = async () => {
+    if (isCompleted) return; // Prevent re-completion
     setIsSaving(true);
 
     const questRating = await rateQuestSubmission({
@@ -1498,16 +1504,45 @@ const FourPanelQuestInterface = ({
       sageConversation: sageMessages,
       completedAt: new Date().toISOString(),
       rating: questRating.rating,
-      feedback: questRating.feedback
+      feedback: questRating.feedback,
+      xpReward: calculateXPWithBonuses(quest.xp, questRating.rating, quest.attribute || 'general', guildData),
+      goldReward: calculateGoldReward(quest.xp / 2, questRating.rating, guildData)
     };
 
-    const xpReward = calculateXPWithBonuses(quest.xp, questRating.rating, quest.attribute || 'general', guildData);
-    const goldReward = calculateGoldReward(quest.xp / 2, questRating.rating, guildData);
-
-    await onComplete({ ...questData, xpReward, goldReward });
+    await onComplete({ ...questData });
     soundManager.play('questComplete');
     triggerConfetti();
     setIsSaving(false);
+  };
+
+  const levelInfo = calculateLevel(guildData?.xp || 0);
+  const suggestedQuestions = getSuggestedSageQuestions({ quest, guildData, guildLevel: levelInfo });
+  const sageInputRef = useRef<HTMLInputElement>(null);
+
+  // New: handle suggested question click
+  const handleSuggestedSageQuestion = async (question: string) => {
+    if (isCompleted || sageLoading) return;
+    setSageLoading(true);
+    setSageMessages(prev => [...prev, { type: 'user', content: question }]);
+    try {
+      await updateGold(-20);
+      soundManager.play('magicCast');
+      const response = await consultAISage(
+        `Quest: ${quest.name} - ${quest.description}. Seeker's progress: ${JSON.stringify(userInputs)}`,
+        question,
+        { ...guildData, ceoAvatar }
+      );
+      setSageMessages(prev => [...prev, { type: 'sage', content: response }]);
+      await saveConversation(quest, question, response);
+    } catch (error) {
+      setSageMessages(prev => [...prev, {
+        type: 'sage',
+        content: 'The Oracle\'s power wanes. Thy gold has been returned.'
+      }]);
+      await updateGold(20);
+    } finally {
+      setSageLoading(false);
+    }
   };
 
   return (
@@ -1531,6 +1566,13 @@ const FourPanelQuestInterface = ({
             <div>
               <h2 className="text-2xl font-bold text-yellow-100">{quest.name}</h2>
               <p className="text-sm text-gray-300">{quest.description} • {quest.xp} XP</p>
+              {isCompleted && (
+                <div className="mt-1 flex items-center space-x-2">
+                  <span className="px-2 py-0.5 bg-green-700/80 text-xs text-green-100 rounded-full font-semibold">Completed</span>
+                  <span className="px-2 py-0.5 bg-gradient-to-r from-green-600 to-emerald-600 text-xs text-white rounded-full font-semibold border border-green-400">+{questProgress?.xpReward} XP</span>
+                  <span className="px-2 py-0.5 bg-gradient-to-r from-yellow-600 to-orange-600 text-xs text-white rounded-full font-semibold border border-yellow-400">+{questProgress?.goldReward} Gold</span>
+                </div>
+              )}
             </div>
           </div>
           <button
@@ -1627,12 +1669,14 @@ const FourPanelQuestInterface = ({
                       onChange={(e) => handleInputChange(field.name, e.target.value)}
                       placeholder={field.placeholder}
                       className="w-full p-3 bg-gray-700 rounded-lg text-white resize-none h-24"
+                      disabled={isCompleted}
                     />
                   ) : field.type === 'select' ? (
                     <select
                       value={userInputs[field.name] || ''}
                       onChange={(e) => handleInputChange(field.name, e.target.value)}
                       className="w-full p-3 bg-gray-700 rounded-lg text-white"
+                      disabled={isCompleted}
                     >
                       <option value="">Choose wisely...</option>
                       {field.options?.map((option: any) => (
@@ -1646,6 +1690,7 @@ const FourPanelQuestInterface = ({
                       onChange={(e) => handleInputChange(field.name, e.target.value)}
                       placeholder={field.placeholder}
                       className="w-full p-3 bg-gray-700 rounded-lg text-white"
+                      disabled={isCompleted}
                     />
                   )}
                 </div>
@@ -1660,6 +1705,7 @@ const FourPanelQuestInterface = ({
                   onChange={(e) => handleInputChange('general', e.target.value)}
                   placeholder="Chronicle thy deeds for this quest..."
                   className="w-full p-3 bg-gray-700 rounded-lg text-white resize-none h-48"
+                  disabled={isCompleted}
                 />
               </div>
             )}
@@ -1671,13 +1717,14 @@ const FourPanelQuestInterface = ({
                   alert('Thy progress has been saved to the archives!');
                 }}
                 className="flex-1 px-4 py-2 bg-gray-700 rounded-lg hover:bg-gray-600 transition-all flex items-center justify-center space-x-2"
+                disabled={isCompleted}
               >
                 <Save className="w-4 h-4" />
                 <span>Save to Archives</span>
               </button>
               <button
                 onClick={handleCompleteQuest}
-                disabled={isSaving}
+                disabled={isSaving || isCompleted}
                 className="flex-1 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 rounded-lg hover:from-green-500 hover:to-emerald-500 transition-all disabled:opacity-50 flex items-center justify-center space-x-2 magic-border"
               >
                 {isSaving ? (
@@ -1688,7 +1735,7 @@ const FourPanelQuestInterface = ({
                 ) : (
                   <>
                     <Trophy className="w-4 h-4" />
-                    <span>Complete Quest</span>
+                    <span>{isCompleted ? 'Quest Completed' : 'Complete Quest'}</span>
                   </>
                 )}
               </button>
@@ -1823,6 +1870,22 @@ const FourPanelQuestInterface = ({
             )}
           </div>
 
+          {/* Suggested Questions */}
+          {!isCompleted && suggestedQuestions.length > 0 && (
+            <div className="mb-3 flex flex-wrap gap-2">
+              {suggestedQuestions.map((q: string, i: number) => (
+                <button
+                  key={i}
+                  type="button"
+                  className="px-3 py-1 bg-purple-900/70 text-purple-200 rounded-full text-xs hover:bg-purple-700 hover:text-white transition-all border border-purple-700 disabled:opacity-50"
+                  onClick={() => handleSuggestedSageQuestion(q)}
+                  disabled={sageLoading}
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+          )}
           <div className="flex space-x-2 flex-shrink-0">
             <input
               type="text"
@@ -1831,11 +1894,12 @@ const FourPanelQuestInterface = ({
               onKeyPress={(e) => e.key === 'Enter' && handleSageChat()}
               placeholder="Seek the Oracle's wisdom..."
               className="flex-1 p-3 bg-gray-700 rounded-lg text-white"
-              disabled={sageLoading}
+              disabled={sageLoading || isCompleted}
+              ref={sageInputRef}
             />
             <button
               onClick={handleSageChat}
-              disabled={sageLoading || !sageInput.trim() || guildData.gold < 20}
+              disabled={sageLoading || !sageInput.trim() || guildData.gold < 20 || isCompleted}
               className="px-4 py-3 bg-purple-800 rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               title={guildData.gold < 20 ? 'Insufficient gold tribute' : ''}
             >
@@ -2460,7 +2524,9 @@ export default function App() {
           inputs: questData.inputs,
           sageConversation: questData.sageConversation,
           rating: questData.rating,
-          feedback: questData.feedback
+          feedback: questData.feedback,
+          xpReward: questData.xpReward,
+          goldReward: questData.goldReward
         }
       };
 
@@ -3339,7 +3405,9 @@ export default function App() {
                 <div className="space-y-2">
                   {stage.quests.map((quest) => {
                     const questKey = `${stage.id}_${quest.id}`;
-                    const isCompleted = guildData?.questProgress?.[questKey]?.completed;
+                    const questProgress = guildData?.questProgress?.[questKey];
+                    const isCompleted = questProgress?.completed;
+                    const xpEarned = questProgress?.xpReward;
 
                     return (
                       <div
@@ -3354,19 +3422,29 @@ export default function App() {
                         className={`p-3 rounded-lg cursor-pointer transition-all ${isLocked
                           ? 'bg-gray-700/50 cursor-not-allowed'
                           : isCompleted
-                            ? 'parchment border border-green-700 hover:transform hover:scale-105'
+                            ? 'parchment border-2 border-green-700 bg-green-900/20 relative hover:transform hover:scale-105'
                             : 'parchment hover:transform hover:scale-105'
                           }`}
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-3">
                             {isCompleted ? (
-                              <Trophy className="w-5 h-5 text-green-500" />
+                              <>
+                                <Trophy className="w-5 h-5 text-green-500" />
+                                <span className="ml-1 px-2 py-0.5 bg-green-700/80 text-xs text-green-100 rounded-full font-semibold">Completed</span>
+                              </>
                             ) : (
                               <Target className="w-5 h-5 text-gray-400" />
                             )}
                             <div>
-                              <p className="font-medium text-yellow-100">{quest.name}</p>
+                              <p className="font-medium text-yellow-100 flex items-center">
+                                {quest.name}
+                                {isCompleted && xpEarned && (
+                                  <span className="ml-2 px-2 py-0.5 bg-gradient-to-r from-green-600 to-emerald-600 text-xs text-white rounded-full font-semibold border border-green-400">
+                                    +{xpEarned} XP
+                                  </span>
+                                )}
+                              </p>
                               <div className="flex items-center space-x-3 text-sm">
                                 <span className="text-gray-300">{quest.xp} XP</span>
                                 <span className="text-gray-500">•</span>
@@ -3378,6 +3456,11 @@ export default function App() {
                           </div>
                           <ChevronRight className="w-5 h-5 text-gray-400" />
                         </div>
+                        {isCompleted && (
+                          <div className="absolute top-2 right-2 flex items-center space-x-1">
+                            <span className="text-green-400 text-xs font-bold">✓</span>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -3786,4 +3869,64 @@ export default function App() {
       </main>
     </div>
   );
+}
+
+// Helper to generate suggested questions for the AI Sage
+function getSuggestedSageQuestions({ quest, guildData, guildLevel }: { quest: any, guildData: any, guildLevel: any }) {
+  const base: string[] = [];
+  // Quest-specific
+  if (quest.id === 'vision') {
+    base.push(
+      'What makes a compelling vision for a new founder?',
+      'How can I inspire my team with our mission?',
+      'What are common mistakes in startup vision statements?',
+      'How do I align my guild around our vision?'
+    );
+  } else if (quest.id === 'problem') {
+    base.push(
+      'How do I validate if this problem is real?',
+      'What are the best ways to interview potential users?',
+      'How do I find my target audience\'s pain points?',
+      'What signals show a problem is worth solving?'
+    );
+  } else if (quest.id === 'solution') {
+    base.push(
+      'How do I make my solution stand out?',
+      'What features should I prioritize first?',
+      'How do I test my solution with real users?',
+      'What makes a solution magical for customers?'
+    );
+  } else if (quest.id === 'market') {
+    base.push(
+      'How do I estimate the size of my market?',
+      'What are the best ways to research competitors?',
+      'How do I spot trends in my industry?',
+      'What are signs of a good market opportunity?'
+    );
+  } else if (quest.id === 'legal') {
+    base.push(
+      'What legal structure is best for my startup?',
+      'How do I protect my intellectual property?',
+      'What agreements should my team have?',
+      'What are common legal mistakes for new founders?'
+    );
+  } else {
+    base.push(
+      `What advice do you have for this quest: ${quest.name}?`,
+      'What are common pitfalls for founders at this stage?',
+      'How can I make progress on this quest?'
+    );
+  }
+
+  // Guild level context
+  if (guildLevel.level >= 4) {
+    base.push('What advanced strategies should I consider at my guild level?');
+  }
+  if ((guildData?.xp || 0) > 1000) {
+    base.push('How do experienced founders approach this challenge?');
+  }
+  if (guildData?.coreAttribute) {
+    base.push(`How can I use my strength in ${guildData.coreAttribute} to excel in this quest?`);
+  }
+  return base;
 }
