@@ -21,7 +21,6 @@ import {
   where,
   orderBy,
   onSnapshot,
-  deleteDoc,
   increment,
   enableIndexedDbPersistence
 } from 'firebase/firestore';
@@ -388,35 +387,13 @@ const Sword3D = ({ rotation = [0, 0, 0] }: Sword3DProps) => {
   );
 };
 
-// 3D Shield Component
-const Shield3D = () => {
-  const meshRef = useRef<THREE.Mesh>(null);
-
-  useFrame((state: any) => {
-    if (meshRef.current) {
-      meshRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.5) * 0.3;
-    }
-  });
-
-  return (
-    <mesh ref={meshRef}>
-      <boxGeometry args={[1.5, 2, 0.2]} />
-      <meshStandardMaterial color="#8b4513" metalness={0.3} roughness={0.7} />
-      {/* Shield emblem */}
-      <mesh position={[0, 0, 0.11]}>
-        <ringGeometry args={[0.3, 0.5, 6]} />
-        <meshStandardMaterial color="#d4af37" metalness={0.7} roughness={0.3} />
-      </mesh>
-    </mesh>
-  );
-};
 
 // 3D Treasure Chest Component
 const TreasureChest3D = ({ isOpen = false }) => {
   const groupRef = useRef<THREE.Group>(null);
   const lidRef = useRef<THREE.Mesh>(null);
 
-  useFrame((state: any) => {
+  useFrame(() => {
     if (groupRef.current) {
       groupRef.current.rotation.y += 0.005;
     }
@@ -846,24 +823,31 @@ const CEO_AVATARS = [
 const ONBOARDING_QUESTIONS = [
   {
     id: 'avatar',
-    question: 'Choose Thy Noble Avatar',
+    question: 'Choose Your Hero Avatar',
     type: 'avatar',
     icon: User,
     category: 'identity'
   },
   {
     id: 'coreAttribute',
-    question: 'What is thy greatest strength, brave founder?',
+    question: 'What is your greatest strength as a founder?',
     type: 'select',
-    options: ['Artifice', 'Treasury', 'Heraldry', 'Mercantile', 'Law', 'Logistics'],
+    options: [
+      'Artifice (Tech)',
+      'Treasury (Finance)',
+      'Heraldry (Marketing)',
+      'Mercantile (Sales)',
+      'Law (Legal)',
+      'Logistics (Operations)'
+    ],
     icon: Star,
     category: 'attributes'
   },
   {
     id: 'guildName',
-    question: 'Name Thy Noble Guild',
+    question: 'Name Your Team',
     type: 'text',
-    placeholder: 'Enter thy guild\'s legendary name',
+    placeholder: 'Enter your team\'s name',
     icon: Crown,
     category: 'guild'
   }
@@ -871,21 +855,21 @@ const ONBOARDING_QUESTIONS = [
 
 // Achievement Badges
 const ACHIEVEMENTS = [
-  { id: 'first_quest', name: 'First Blood', icon: '🗡️', description: 'Complete thy first quest', xpRequired: 100 },
-  { id: 'onboarding_complete', name: 'Guild Charter', icon: '📜', description: 'Establish thy guild', xpRequired: 50 },
+  { id: 'first_quest', name: 'First Blood', icon: '🗡️', description: 'Complete your first quest', xpRequired: 100 },
+  { id: 'onboarding_complete', name: 'Team Charter', icon: '📜', description: 'Establish your team', xpRequired: 50 },
   { id: 'first_sage_chat', name: 'Sage Counsel', icon: '🔮', description: 'Consult the AI Oracle', xpRequired: 150 },
-  { id: 'mvp_launched', name: 'First Fortress', icon: '🏰', description: 'Launch thy first stronghold', xpRequired: 1000 },
-  { id: 'first_customers', name: 'First Subjects', icon: '👥', description: 'Win thy first 10 loyal subjects', xpRequired: 1500 },
-  { id: 'document_master', name: 'Scroll Master', icon: '📜', description: 'Create 5 mystical scrolls', xpRequired: 500 },
-  { id: 'conversation_pro', name: 'Oracle\'s Friend', icon: '💬', description: 'Seek 20 divine consultations', xpRequired: 800 },
-  { id: 'funded', name: 'Dragon\'s Hoard', icon: '🐉', description: 'Secure thy war chest', xpRequired: 3000 },
-  { id: 'scaling', name: 'Empire Builder', icon: '⚔️', description: 'Expand thy dominion', xpRequired: 5000 },
-  { id: 'week_streak', name: 'Vigilant Knight', icon: '🔥', description: 'Stand watch for 7 days', xpRequired: 200 },
+  { id: 'mvp_launched', name: 'First Fortress', icon: '🏰', description: 'Launch your first stronghold', xpRequired: 1000 },
+  { id: 'first_customers', name: 'First Supporters', icon: '👥', description: 'Win your first 10 loyal supporters', xpRequired: 1500 },
+  { id: 'document_master', name: 'Document Master', icon: '📜', description: 'Create 5 powerful documents', xpRequired: 500 },
+  { id: 'conversation_pro', name: 'Oracle\'s Friend', icon: '💬', description: 'Seek 20 consultations', xpRequired: 800 },
+  { id: 'funded', name: 'Dragon\'s Hoard', icon: '🐉', description: 'Secure your war chest', xpRequired: 3000 },
+  { id: 'scaling', name: 'Empire Builder', icon: '⚔️', description: 'Expand your domain', xpRequired: 5000 },
+  { id: 'week_streak', name: 'Vigilant Knight', icon: '🔥', description: 'Log in for 7 days', xpRequired: 200 },
   { id: 'gold_hoarder', name: 'Midas Touch', icon: '👑', description: 'Amass 10,000 gold', goldRequired: 10000 },
   { id: 'gear_collector', name: 'Master of Arms', icon: '🛡️', description: 'Acquire 5 legendary items', purchases: 5 },
-  { id: 'guild_master', name: 'Guild Lord', icon: '🏰', description: 'Fill all guild positions', special: 'fullGuild' },
-  { id: 'attribute_master', name: 'Grandmaster', icon: '⭐', description: 'Master any single art (5000 XP)', special: 'attributeMastery' },
-  { id: 'daily_champion', name: 'Dawn Warrior', icon: '☀️', description: 'Claim bounty for 30 dawns', dailyStreak: 30 },
+  { id: 'guild_master', name: 'Team Leader', icon: '🏰', description: 'Fill all team positions', special: 'fullGuild' },
+  { id: 'attribute_master', name: 'Grandmaster', icon: '⭐', description: 'Master any single skill (5000 XP)', special: 'attributeMastery' },
+  { id: 'daily_champion', name: 'Dawn Warrior', icon: '☀️', description: 'Claim rewards for 30 days', dailyStreak: 30 },
   { id: 'stage_complete_fundamentals', name: 'Squire', icon: '🎯', description: 'Complete Training Grounds', special: 'stage' },
   { id: 'stage_complete_kickoff', name: 'Knight Errant', icon: '🚀', description: 'Complete Kickoff Citadel', special: 'stage' },
   { id: 'stage_complete_gtm', name: 'Battle Lord', icon: '⚔️', description: 'Conquer Market Plains', special: 'stage' },
@@ -894,11 +878,11 @@ const ACHIEVEMENTS = [
 
 // Document Templates
 const DOCUMENT_TEMPLATES = [
-  { id: 'elevator_pitch', name: 'Battle Cry Scroll', icon: '📯', xp: 100 },
+  { id: 'elevator_pitch', name: 'Battle Cry', icon: '📯', xp: 100 },
   { id: 'lean_canvas', name: 'Kingdom Blueprint', icon: '🏗️', xp: 150 },
-  { id: 'user_survey', name: 'Scouting Tome', icon: '🔍', xp: 100 },
+  { id: 'user_survey', name: 'Scouting Report', icon: '🔍', xp: 100 },
   { id: 'investor_deck', name: 'Dragon\'s Map', icon: '🗺️', xp: 200 },
-  { id: 'marketing_plan', name: 'Conquest Codex', icon: '⚔️', xp: 150 },
+  { id: 'marketing_plan', name: 'Conquest Plan', icon: '⚔️', xp: 150 },
   { id: 'product_roadmap', name: 'Quest Chronicle', icon: '📖', xp: 150 }
 ];
 
@@ -1564,27 +1548,27 @@ const FourPanelQuestInterface = ({
         <div className="parchment p-6 flex flex-col overflow-hidden">
           <div className="flex items-center mb-4 flex-shrink-0">
             <Scroll className="w-5 h-5 text-yellow-500 mr-2" />
-            <h3 className="text-lg font-bold text-yellow-100">Quest Scroll</h3>
+            <h3 className="text-lg font-bold text-yellow-100">Quest Details</h3>
           </div>
 
           <div className="space-y-4 overflow-y-auto flex-1 pr-2">
             <div className="parchment p-4">
-              <h4 className="font-semibold mb-2 text-yellow-100">Thy Noble Quest</h4>
+              <h4 className="font-semibold mb-2 text-yellow-100">Your Quest</h4>
               <p className="text-gray-300">{quest.description}</p>
             </div>
 
             <div className="parchment p-4">
-              <h4 className="font-semibold mb-2 text-yellow-100">Victory Conditions</h4>
+              <h4 className="font-semibold mb-2 text-yellow-100">How to Complete</h4>
               <ul className="list-disc list-inside text-gray-300 space-y-1">
-                <li>Complete all sacred inscriptions</li>
-                <li>Seek wisdom from the Oracle (20 gold per counsel)</li>
-                <li>Study the ancient tomes</li>
-                <li>Chronicle thy journey</li>
+                <li>Complete all required entries</li>
+                <li>Ask the Oracle for advice (20 gold per question)</li>
+                <li>Review the resources</li>
+                <li>Record your progress</li>
               </ul>
             </div>
 
             <div className="parchment p-4">
-              <h4 className="font-semibold mb-2 text-yellow-100">Quest Rewards</h4>
+              <h4 className="font-semibold mb-2 text-yellow-100">Rewards</h4>
               <div className="space-y-2">
                 <div className="flex items-center space-x-4">
                   <div className="flex items-center space-x-2">
@@ -1592,8 +1576,8 @@ const FourPanelQuestInterface = ({
                     <span>Base: {quest.xp} XP</span>
                   </div>
                 </div>
-                <p className="text-xs text-gray-400">Final bounty scaled by the Grand Master's judgment (1-5 stars)</p>
-                <p className="text-xs text-yellow-400 mt-1">Complete all quests in this realm to earn 500 gold dragons!</p>
+                <p className="text-xs text-gray-400">Final reward is based on the Grand Master's judgment (1-5 stars)</p>
+                <p className="text-xs text-yellow-400 mt-1">Complete all quests in this stage to earn 500 gold coins!</p>
               </div>
             </div>
 
@@ -2965,14 +2949,14 @@ export default function App() {
         <div className="parchment p-8 rounded-lg shadow-2xl max-w-2xl w-full">
           {onboardingStep === 0 ? (
             <>
-              <h2 className="text-3xl font-bold text-yellow-100 mb-4">The Sacred Vision</h2>
+              <h2 className="text-3xl font-bold text-yellow-100 mb-4">Your Vision</h2>
               <p className="text-gray-300 mb-6">
-                Noble founder, inscribe thy vision upon this ancient scroll.
+                Founder, share your vision for your journey.
               </p>
               <textarea
                 value={vision}
                 onChange={(e) => setVision(e.target.value)}
-                placeholder="Describe thy noble quest in great detail..."
+                placeholder="Describe your mission in detail..."
                 className="w-full p-4 bg-gray-700 text-white rounded-lg mb-4 h-32 resize-none"
               />
               <button
@@ -2986,9 +2970,9 @@ export default function App() {
           ) : onboardingStep <= ONBOARDING_QUESTIONS.length ? (
             <>
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-2xl font-bold text-yellow-100">Forge Thy Destiny</h3>
+                <h3 className="text-2xl font-bold text-yellow-100">Forge Your Destiny</h3>
                 <span className="text-gray-300">
-                  Scroll {onboardingStep} of {ONBOARDING_QUESTIONS.length}
+                  Step {onboardingStep} of {ONBOARDING_QUESTIONS.length}
                 </span>
               </div>
 
@@ -3051,7 +3035,7 @@ export default function App() {
                     onClick={() => { setOnboardingStep(onboardingStep - 1); soundManager.play('swordDraw'); }}
                     className="flex-1 bg-gray-700 text-white px-6 py-3 rounded-lg hover:bg-gray-600 transition-all"
                   >
-                    Previous Scroll
+                    Previous
                   </button>
                 )}
                 <button
@@ -3066,13 +3050,13 @@ export default function App() {
                   disabled={!onboardingAnswers[currentQuestion?.id || '']}
                   className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-lg hover:from-purple-500 hover:to-pink-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed magic-border"
                 >
-                  {onboardingStep < ONBOARDING_QUESTIONS.length ? 'Next Scroll' : 'Establish Guild'}
+                  {onboardingStep < ONBOARDING_QUESTIONS.length ? 'Next' : 'Create Team'}
                 </button>
               </div>
             </>
           ) : (
             <div className="text-center">
-              <h3 className="text-2xl font-bold text-yellow-100 mb-4">Forging Thy Guild Charter...</h3>
+              <h3 className="text-2xl font-bold text-yellow-100 mb-4">Creating Your Team Profile...</h3>
               <div className="w-32 h-32 mx-auto mb-4">
                 <Canvas camera={{ position: [0, 0, 5], fov: 50 }}>
                   {/* Use the Drei helpers for lights, as ambientLight and pointLight are not valid JSX elements */}
@@ -3086,7 +3070,7 @@ export default function App() {
                   </Suspense>
                 </Canvas>
               </div>
-              <p className="text-gray-300">The ancient spirits prepare thy destiny...</p>
+              <p className="text-gray-300">Setting up your adventure...</p>
             </div>
           )}
         </div>

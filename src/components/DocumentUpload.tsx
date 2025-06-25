@@ -126,7 +126,7 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
 
                         <div className="space-y-1 sm:space-y-2">
                             <p className="text-base sm:text-lg md:text-xl font-medium text-white">
-                                {uploading ? 'Uploading...' : 'Drop your document here'}
+                                {uploading ? 'Uploading...' : 'Drop your file here'}
                             </p>
                             <p
                                 id="file-upload-description"

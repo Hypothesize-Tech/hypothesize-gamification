@@ -230,7 +230,7 @@ export const DocumentRAG: React.FC<DocumentRAGProps> = ({ userId, ceoAvatar, ope
                                     <span className="truncate">Document Oracle</span>
                                 </h2>
                                 <p className="text-gray-300 mt-1 text-sm">
-                                    Upload scrolls and let the Oracle divine their secrets for your guild
+                                    Upload documents and let the Oracle divine their secrets for your guild
                                 </p>
                             </div>
                             {ceoAvatar && (

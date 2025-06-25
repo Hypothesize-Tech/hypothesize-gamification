@@ -13,7 +13,7 @@ const Modal: React.FC<ModalProps> = ({
     onClose,
     children,
     className = '',
-    size = 'md'
+    size = 'lg'
 }) => {
     // Handle escape key
     useEffect(() => {
