@@ -853,7 +853,11 @@ export default function App() {
 
               <div className="mb-6">
                 <div className="flex items-center mb-4">
-                  <QuestionIcon className="w-6 h-6 text-purple-400 mr-3" />
+                  {typeof QuestionIcon === 'string' ? (
+                    <span className="w-6 h-6 text-purple-400 mr-3" style={{ fontSize: '1.5rem' }}>{QuestionIcon}</span>
+                  ) : (
+                    <QuestionIcon className="w-6 h-6 text-purple-400 mr-3" />
+                  )}
                   <p className="text-lg text-yellow-100">{currentQuestion?.question}</p>
                 </div>
 
@@ -868,7 +872,7 @@ export default function App() {
                           : 'hover:transform hover:scale-105'
                           }`}
                       >
-                        <div className="text-3xl mb-2">{avatar.icon}</div>
+                        <div className="text-3xl mb-2">{typeof avatar.icon === 'string' ? <span>{avatar.icon}</span> : null}</div>
                         <p className="font-medium text-yellow-100">{avatar.name}</p>
                         <p className="text-xs opacity-75 text-gray-300">{avatar.outfit}</p>
                       </button>
@@ -1035,7 +1039,7 @@ export default function App() {
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center space-x-4">
             {guildData?.avatar && (
-              <span className="text-3xl">{guildData.avatar.icon}</span>
+              <span className="text-3xl">{typeof guildData.avatar.icon === 'string' ? guildData.avatar.icon : null}</span>
             )}
             <Castle className="w-5 h-5 text-blue-400" />
             <span className="text-yellow-100 font-bold">{guildData?.guildName}</span>
@@ -1050,7 +1054,7 @@ export default function App() {
               <span>Guild Management</span>
             </button>
             <div className="flex items-center space-x-2">
-              <span className="text-2xl">{guildLevel.icon}</span>
+              <span className="text-2xl">{typeof guildLevel.icon === 'string' ? guildLevel.icon : null}</span>
               <span className="text-sm font-medium text-yellow-100">{guildLevel.name}</span>
             </div>
             <div className="flex items-center space-x-2">
@@ -1075,7 +1079,7 @@ export default function App() {
                 const achievement = ACHIEVEMENTS.find(a => a.id === achievementId);
                 return achievement ? (
                   <span key={achievementId} className="text-2xl" title={achievement.name}>
-                    {achievement.icon}
+                    {typeof achievement.icon === 'string' ? achievement.icon : null}
                   </span>
                 ) : null;
               })}
@@ -1110,7 +1114,7 @@ export default function App() {
                   title={`Create ${template.name} (+${template.xp} XP)`}
                   onMouseEnter={() => { if (userInteracted) soundManager.play('swordDraw'); }}
                 >
-                  {template.icon} {template.name}
+                  {typeof template.icon === 'string' ? <span>{template.icon}</span> : null} {template.name}
                 </button>
               ))}
             </div>
@@ -1137,7 +1141,9 @@ export default function App() {
               >
                 <div className="flex items-center mb-4">
                   <div className={`p-3 rounded-lg ${stage.color} bg-opacity-20 mr-4`}>
-                    <StageIcon className={`w-8 h-8 ${stage.color.replace('bg-', 'text-')}`} />
+                    {typeof StageIcon === 'string' ? (
+                      <span className={`w-8 h-8 ${stage.color.replace('bg-', 'text-')}`} style={{ fontSize: '2rem' }}>{StageIcon}</span>
+                    ) : null}
                   </div>
                   <div>
                     <h3 className="text-xl font-bold text-yellow-100">{stage.name}</h3>
@@ -1330,7 +1336,9 @@ export default function App() {
                   return (
                     <div key={key} className="parchment rounded-lg p-3">
                       <div className="flex items-center space-x-2 mb-1">
-                        <AttributeIcon />
+                        {typeof AttributeIcon === 'string' ? (
+                          <span style={{ fontSize: '1.5rem' }}>{AttributeIcon}</span>
+                        ) : null}
                         <span className="text-sm font-medium text-yellow-100">{attr.name}</span>
                       </div>
                       <p className="text-lg font-bold text-yellow-100">{attrXP} XP</p>
@@ -1354,7 +1362,7 @@ export default function App() {
                       className={`parchment rounded-lg p-3 text-center ${earned ? 'magic-border' : 'opacity-50'
                         }`}
                     >
-                      <div className="text-3xl mb-1">{achievement.icon}</div>
+                      <div className="text-3xl mb-1">{typeof achievement.icon === 'string' ? achievement.icon : null}</div>
                       <p className="text-xs font-medium text-yellow-100">{achievement.name}</p>
                       <p className="text-xs text-gray-400 mt-1">{achievement.description}</p>
                     </div>
@@ -1481,7 +1489,7 @@ export default function App() {
 
         {/* CEO Profile Modal */}
         <Modal open={showCEOProfile && ceoAvatar} onClose={() => { setShowCEOProfile(false); if (userInteracted) soundManager.play('swordDraw'); }}>
-          <div className="p-6 max-w-md w-full">
+          <div className="p-6 w-full">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-2xl font-bold text-yellow-100">Your CEO Guide</h3>
               <button

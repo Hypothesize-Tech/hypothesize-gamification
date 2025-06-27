@@ -3,7 +3,7 @@ import { QUEST_INPUT_TEMPLATES } from "../utils/constant";
 import { calculateGoldReward, calculateLevel, calculateXPWithBonuses, consultAISage, fetchDynamicResources, getSuggestedSageQuestions, rateQuestSubmission, triggerConfetti } from "../utils/helper";
 import { Canvas } from "@react-three/fiber";
 import DiamondSword3D from "./DiamondSword3D";
-import { BookOpen, Coins, Edit3, ExternalLink, Loader2, MessageCircle, RefreshCw, Save, Scroll, Send, Sparkles, Swords, Trophy, X } from "lucide-react";
+import { BookOpen, Coins, Edit3, ExternalLink, Loader2, MessageCircle, RefreshCw, Save, Scroll, Send, Sparkles, Swords, Trophy, X, ChevronDown, ChevronUp } from "lucide-react";
 import ReactMarkdown from 'react-markdown';
 
 export const FourPanelQuestInterface = ({
@@ -41,6 +41,7 @@ export const FourPanelQuestInterface = ({
     const [dynamicResources, setDynamicResources] = useState<any[]>([]);
     const [resourcesLoading, setResourcesLoading] = useState(true);
     const [rating, setRating] = useState<any>(isCompleted ? { rating: questProgress?.rating, feedback: questProgress?.feedback } : null);
+    const [showSuggestedQuestions, setShowSuggestedQuestions] = useState(true);
 
     useEffect(() => {
         if (isCompleted) {
@@ -494,21 +495,37 @@ export const FourPanelQuestInterface = ({
                     {/* Suggested Questions */}
                     {!isCompleted && !sageLoading && suggestedQuestions.length > 0 && (
                         <div className="mb-3 flex flex-col gap-2">
-                            {chunkArray(suggestedQuestions, 2).map((row, rowIndex) => (
-                                <div key={rowIndex} className="flex gap-2">
-                                    {row.map((q: string, i: number) => (
-                                        <button
-                                            key={i}
-                                            type="button"
-                                            className="flex-1 px-3 py-1 bg-purple-900/70 text-purple-200 rounded-full text-xs hover:bg-purple-700 hover:text-white transition-all border border-purple-700 disabled:opacity-50"
-                                            onClick={() => handleSuggestedSageQuestion(q)}
-                                            disabled={sageLoading}
-                                        >
-                                            {q}
-                                        </button>
+                            <button
+                                type="button"
+                                className="flex items-center gap-2 self-end mb-1 px-2 py-1 bg-purple-900/70 text-purple-200 rounded-full text-xs hover:bg-purple-700 hover:text-white transition-all border border-purple-700"
+                                onClick={() => setShowSuggestedQuestions((prev) => !prev)}
+                                aria-label={showSuggestedQuestions ? 'Hide suggested questions' : 'Show suggested questions'}
+                            >
+                                {showSuggestedQuestions ? (
+                                    <><span>Hide Suggestions</span><ChevronUp className="ml-1 w-4 h-4" /></>
+                                ) : (
+                                    <><span>Show Suggestions</span><ChevronDown className="ml-1 w-4 h-4" /></>
+                                )}
+                            </button>
+                            {showSuggestedQuestions && (
+                                <>
+                                    {chunkArray(suggestedQuestions, 2).map((row, rowIndex) => (
+                                        <div key={rowIndex} className="flex gap-2">
+                                            {row.map((q: string, i: number) => (
+                                                <button
+                                                    key={i}
+                                                    type="button"
+                                                    className="flex-1 px-3 py-1 bg-purple-900/70 text-purple-200 rounded-full text-xs hover:bg-purple-700 hover:text-white transition-all border border-purple-700 disabled:opacity-50"
+                                                    onClick={() => handleSuggestedSageQuestion(q)}
+                                                    disabled={sageLoading}
+                                                >
+                                                    {q}
+                                                </button>
+                                            ))}
+                                        </div>
                                     ))}
-                                </div>
-                            ))}
+                                </>
+                            )}
                         </div>
                     )}
                     <div className="flex space-x-2 flex-shrink-0">
