@@ -1152,7 +1152,7 @@ export default function App() {
               </Canvas>
             </Canvas3DErrorBoundary>
           </div>
-          <h1 className="text-3xl font-bold text-yellow-100 mb-2">AI Startup Quest</h1>
+          <h1 className="text-3xl font-bold text-yellow-100 mb-2">The Startup Quest</h1>
           <p className="text-gray-300 mb-6">Start your journey to building your company</p>
           <button
             onClick={handleSignIn}
@@ -1211,7 +1211,7 @@ export default function App() {
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <Crown className="w-8 h-8 text-yellow-500 treasure-glow" />
-            <h1 className="text-2xl font-bold text-yellow-100">AI Startup Quest</h1>
+            <h1 className="text-2xl font-bold text-yellow-100">The Startup Quest</h1>
             {!isOnline && (
               <div className="flex items-center space-x-1 px-2 py-1 bg-orange-900/50 rounded-lg text-orange-400 text-sm">
                 <AlertTriangle className="w-4 h-4" />

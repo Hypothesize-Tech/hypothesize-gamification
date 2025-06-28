@@ -20,7 +20,7 @@ const FounderOnboarding: React.FC<{
         if (user && user.gender && !onboardingData.gender) {
             setOnboardingData((prev: any) => ({ ...prev, gender: user.gender }));
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user]);
 
     const updateData = (key: string, value: any) => {
@@ -85,7 +85,7 @@ const FounderOnboarding: React.FC<{
                         </div>
 
                         <div className="text-gray-300 mb-8 space-y-4 leading-relaxed">
-                            <p>I am <span className="text-purple-400 font-semibold">Daedalus</span>, your guide on the path from idea to impact. The journey you are about to embark on is challenging, filled with uncertainty and difficult decisions. Many have walked it, but no two paths are the same.</p>
+                            <p>I am <span className="text-purple-400 font-semibold">Tenzing</span>, your guide on the path from idea to impact. The journey you are about to embark on is challenging, filled with uncertainty and difficult decisions. Many have walked it, but no two paths are the same.</p>
                             <p>My purpose is to help you navigate it. But first, let's get to know the person behind the vision.</p>
                         </div>
 
@@ -314,7 +314,7 @@ const FounderOnboarding: React.FC<{
                             <div className="bg-gray-700 rounded-lg p-6 mb-8">
                                 <div className="flex items-center mb-3">
                                     <div className="text-3xl mr-3">🧙‍♂️</div>
-                                    <p className="text-purple-400 font-semibold">Daedalus speaks:</p>
+                                    <p className="text-purple-400 font-semibold">Tenzing speaks:</p>
                                 </div>
                                 <p className="text-gray-300 leading-relaxed">
                                     {FOUNDER_ROLES.find(r => r.id === onboardingData.role)?.sageResponse}
@@ -504,7 +504,7 @@ const FounderOnboarding: React.FC<{
                             <div className="bg-gray-700 rounded-lg p-6">
                                 <div className="flex items-center mb-3">
                                     <div className="text-3xl mr-3">🧙‍♂️</div>
-                                    <p className="text-purple-400 font-semibold">Daedalus speaks:</p>
+                                    <p className="text-purple-400 font-semibold">Tenzing speaks:</p>
                                 </div>
                                 <div className="text-gray-300 space-y-3">
                                     <p>"Your journey begins now. Your first task is <span className="text-green-400 font-semibold">'Supply and Demand'</span>. Understanding the market is the foundation upon which all great companies are built. Click here to begin."</p>
@@ -812,7 +812,7 @@ const MemberOnboarding: React.FC<{
                             <div className="bg-gray-700 rounded-lg p-6 mb-8">
                                 <div className="flex items-center mb-3">
                                     <div className="text-3xl mr-3">🧙‍♂️</div>
-                                    <p className="text-purple-400 font-semibold">Daedalus speaks:</p>
+                                    <p className="text-purple-400 font-semibold">Tenzing speaks:</p>
                                 </div>
                                 <p className="text-gray-300 leading-relaxed mb-4">
                                     {FOUNDER_ROLES.find(r => r.id === onboardingData.role)?.sageResponse}
@@ -915,7 +915,7 @@ const MemberOnboarding: React.FC<{
                             <div className="bg-gray-700 rounded-lg p-6">
                                 <div className="flex items-center mb-3">
                                     <div className="text-3xl mr-3">🧙‍♂️</div>
-                                    <p className="text-purple-400 font-semibold">Daedalus speaks:</p>
+                                    <p className="text-purple-400 font-semibold">Tenzing speaks:</p>
                                 </div>
                                 <div className="text-gray-300 space-y-3">
                                     <p>"Welcome to the '<span className="text-blue-400 font-semibold">{inviteData.guildName}</span>' Guild, <span className="text-white font-semibold">{FOUNDER_ROLES.find(r => r.id === onboardingData.role)?.name || (user && user.role && FOUNDER_ROLES.find(r => r.id === user.role)?.name)}</span>."</p>

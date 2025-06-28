@@ -296,7 +296,7 @@ export function GoldPurchase({ user, guildData, onClose, soundManager, onPurchas
             key: import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_key",
             amount: Math.round(plan.price * (1 - vipDiscount) * 100), // Amount in paise
             currency: "INR" as const,
-            name: "AI Startup Quest",
+            name: "The Startup Quest",
             description: `${plan.coins + (plan.bonus || 0)} Gold Coins`,
             image: "/logo.png", // Add your logo path
             // FIXME: A real order_id should be generated from your server.

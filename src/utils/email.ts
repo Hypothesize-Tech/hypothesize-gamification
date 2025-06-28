@@ -1,6 +1,6 @@
 import type { GuildDataWithEnergy } from "../components/EnergySystem";
 
-export const APP_NAME = "AI Startup Quest";
+export const APP_NAME = "The Startup Quest";
 export const APP_URL = window.location.origin;
 
 interface GuildInviteEmailProps {
