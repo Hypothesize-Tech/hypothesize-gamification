@@ -1,6 +1,9 @@
+// GoldPurchase.tsx
+
 import { useState, useEffect, useRef, Suspense } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
+import { useRazorpay } from "react-razorpay";
 import {
     Coins,
     Crown,
@@ -14,6 +17,7 @@ import {
     X,
     Shield,
     Trophy,
+    CreditCard,
 } from 'lucide-react';
 import * as THREE from 'three';
 import { updateDoc, doc, increment, arrayUnion, serverTimestamp } from 'firebase/firestore';
@@ -104,7 +108,16 @@ const CURRENCIES = {
     DEFAULT: { code: 'USD', symbol: '$', rate: 1 }
 };
 
-// Pricing plans
+// India-specific pricing plans
+const INDIA_PLANS = [
+    { id: 'starter_in', coins: 100, price: 100, bonus: 0, icon: '⚡', color: 'from-yellow-600 to-yellow-500' },
+    { id: 'warrior_in', coins: 250, price: 200, bonus: 25, icon: '⚔️', color: 'from-orange-600 to-orange-500' },
+    { id: 'knight_in', coins: 600, price: 400, bonus: 50, icon: '🛡️', color: 'from-purple-600 to-purple-500' },
+    { id: 'legend_in', coins: 1500, price: 800, bonus: 125, icon: '👑', color: 'from-blue-600 to-indigo-600' },
+    { id: 'emperor_in', coins: 3000, price: 1500, bonus: 300, icon: '🏰', color: 'from-red-600 to-pink-600' }
+];
+
+// Global pricing plans (non-India)
 const BASE_PLANS = [
     { id: 'starter', coins: 200, price: 5, bonus: 0, icon: '⚡', color: 'from-yellow-600 to-yellow-500' },
     { id: 'warrior', coins: 500, price: 10, bonus: 0, icon: '⚔️', color: 'from-orange-600 to-orange-500' },
@@ -121,6 +134,8 @@ interface GoldPurchaseProps {
 }
 
 export function GoldPurchase({ user, guildData, onClose, soundManager, onPurchaseSuccess }: GoldPurchaseProps) {
+    // Fix: useRazorpay returns the Razorpay constructor, not an array
+    const { Razorpay, isLoading: isRazorpayLoading, error: razorpayError } = useRazorpay();
     const [selectedPlan, setSelectedPlan] = useState<any>(null);
     const [currency, setCurrency] = useState(CURRENCIES.DEFAULT);
     const [countdownTime, setCountdownTime] = useState(3600); // 1 hour in seconds
@@ -131,7 +146,15 @@ export function GoldPurchase({ user, guildData, onClose, soundManager, onPurchas
     const canvasRef = useRef<HTMLDivElement>(null);
     const [purchaseError, setPurchaseError] = useState<string | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
-    const [paymentMethod, setPaymentMethod] = useState<'paypal' | 'stripe'>('paypal');
+    const [paymentMethod, setPaymentMethod] = useState<'paypal' | 'razorpay'>('paypal');
+    const [isIndia, setIsIndia] = useState(false);
+
+    useEffect(() => {
+        if (razorpayError) {
+            console.error("Razorpay error:", razorpayError);
+            setPurchaseError("Payment gateway failed to load. Please try again later.");
+        }
+    }, [razorpayError]);
 
     const totalSpent = guildData?.purchaseHistory?.reduce((sum: number, p: any) => sum + p.amount, 0) || 0;
     const isVIP = totalSpent >= 50;
@@ -139,7 +162,20 @@ export function GoldPurchase({ user, guildData, onClose, soundManager, onPurchas
 
     // Special offers
     const weekendOffer = new Date().getDay() === 0 || new Date().getDay() === 6;
-    const limitedOffer = {
+
+    // Limited offer for India
+    const indiaLimitedOffer = {
+        id: 'limited_in',
+        coins: 2000,
+        price: 999,
+        bonus: 500,
+        icon: '🔥',
+        color: 'from-red-600 to-pink-600',
+        originalPrice: 1999
+    };
+
+    // Limited offer for other countries
+    const globalLimitedOffer = {
         id: 'limited',
         coins: 5000,
         price: 25,
@@ -148,6 +184,8 @@ export function GoldPurchase({ user, guildData, onClose, soundManager, onPurchas
         color: 'from-red-600 to-pink-600',
         originalPrice: 50
     };
+
+    const limitedOffer = isIndia ? indiaLimitedOffer : globalLimitedOffer;
 
     // Get user location and set currency
     useEffect(() => {
@@ -160,8 +198,15 @@ export function GoldPurchase({ user, guildData, onClose, soundManager, onPurchas
                         );
                         const data = await response.json();
                         const countryCode = data.countryCode;
-                        setCurrency(CURRENCIES[countryCode as keyof typeof CURRENCIES] || CURRENCIES.DEFAULT);
+                        const selectedCurrency = CURRENCIES[countryCode as keyof typeof CURRENCIES] || CURRENCIES.DEFAULT;
+                        setCurrency(selectedCurrency);
+                        setIsIndia(countryCode === 'IN');
                         setLocationPermission('granted');
+
+                        // Set default payment method based on location
+                        if (countryCode === 'IN') {
+                            setPaymentMethod('razorpay');
+                        }
                     } catch (error) {
                         console.error('Error getting location:', error);
                         setCurrency(CURRENCIES.DEFAULT);
@@ -193,17 +238,17 @@ export function GoldPurchase({ user, guildData, onClose, soundManager, onPurchas
         return `${mins}:${secs.toString().padStart(2, '0')}`;
     };
 
-    const formatPrice = (price: number) => {
-        const localPrice = price * currency.rate;
+    const formatPrice = (price: number, applyConversion = true) => {
+        const localPrice = applyConversion && !isIndia ? price * currency.rate : price;
         const discountedPrice = localPrice * (1 - vipDiscount);
         return {
-            original: `${currency.symbol}${localPrice.toFixed(2)}`,
-            discounted: `${currency.symbol}${discountedPrice.toFixed(2)}`,
+            original: `${currency.symbol}${localPrice.toFixed(isIndia ? 0 : 2)}`,
+            discounted: `${currency.symbol}${discountedPrice.toFixed(isIndia ? 0 : 2)}`,
             hasDiscount: vipDiscount > 0
         };
     };
 
-    const handlePurchase = async (plan: any, orderId: string) => {
+    const handlePurchase = async (plan: any, orderId: string, paymentMethod: string) => {
         try {
             const purchaseData = {
                 orderId,
@@ -212,7 +257,8 @@ export function GoldPurchase({ user, guildData, onClose, soundManager, onPurchas
                 amount: plan.price * (1 - vipDiscount),
                 currency: currency.code,
                 timestamp: new Date().toISOString(),
-                type: plan.id === 'limited' ? 'limited_offer' : 'regular'
+                type: plan.id.includes('limited') ? 'limited_offer' : 'regular',
+                paymentMethod
             };
 
             await updateDoc(doc(db, 'guilds', user.uid), {
@@ -240,11 +286,63 @@ export function GoldPurchase({ user, guildData, onClose, soundManager, onPurchas
         }
     };
 
+    const handleRazorpayPayment = (plan: any) => {
+        if (!Razorpay) {
+            setPurchaseError("Payment gateway is not ready. Please try again in a moment.");
+            console.error("Razorpay object is not available.");
+            return;
+        }
+        const options = {
+            key: import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_key",
+            amount: Math.round(plan.price * (1 - vipDiscount) * 100), // Amount in paise
+            currency: "INR" as const,
+            name: "AI Startup Quest",
+            description: `${plan.coins + (plan.bonus || 0)} Gold Coins`,
+            image: "/logo.png", // Add your logo path
+            // FIXME: A real order_id should be generated from your server.
+            // This is a placeholder and will cause the payment to fail.
+            order_id: '',
+            handler: async function (response: any) {
+                setIsProcessing(true);
+                setPurchaseError(null);
+                try {
+                    await handlePurchase(plan, response.razorpay_payment_id, 'razorpay');
+                    trackPurchaseSuccess(plan, response.razorpay_payment_id);
+                } catch (error) {
+                    console.error('Payment processing error:', error);
+                    soundManager.play('error');
+                    setPurchaseError('Payment processing failed. Please contact support if the issue persists.');
+                } finally {
+                    setIsProcessing(false);
+                }
+            },
+            prefill: {
+                name: user.displayName || '',
+                email: user.email || '',
+            },
+            theme: {
+                color: "#9333EA", // Purple theme to match your app
+                backdrop_color: "#000000CC"
+            },
+            modal: {
+                ondismiss: function () {
+                    trackPurchaseCancel(plan);
+                }
+            }
+        };
+
+        const razorpayInstance = new Razorpay(options);
+        razorpayInstance.open();
+    };
+
     const paypalOptions = {
         clientId: import.meta.env.VITE_PAYPAL_CLIENT_ID || "test",
         currency: currency.code,
         intent: "capture"
     };
+
+    // Get the appropriate plans based on location
+    const basePlans = isIndia ? INDIA_PLANS : BASE_PLANS;
 
     // Cleanup WebGL contexts when component unmounts
     useEffect(() => {
@@ -263,7 +361,6 @@ export function GoldPurchase({ user, guildData, onClose, soundManager, onPurchas
         };
     }, []);
 
-
     const trackPurchaseSuccess = (plan: any, orderId: string) => {
         // Replace with real analytics call
         console.log('Purchase success:', {
@@ -280,11 +377,12 @@ export function GoldPurchase({ user, guildData, onClose, soundManager, onPurchas
             currency: currency.code
         });
     };
-    // --- Retry logic ---
-    const retryPurchase = async (selectedPlan: any, orderId: string, retries = 3) => {
+
+    // Retry logic
+    const retryPurchase = async (selectedPlan: any, orderId: string, paymentMethod: string, retries = 3) => {
         for (let i = 0; i < retries; i++) {
             try {
-                await handlePurchase(selectedPlan, orderId);
+                await handlePurchase(selectedPlan, orderId, paymentMethod);
                 break;
             } catch (error) {
                 if (i === retries - 1) throw error;
@@ -365,18 +463,21 @@ export function GoldPurchase({ user, guildData, onClose, soundManager, onPurchas
                                     Flash Sale
                                 </h3>
                                 <p className="text-gray-300 mb-4">
-                                    Massive 50% discount! Get 5000 gold coins for the price of 2500!
+                                    {isIndia
+                                        ? `Massive 50% discount! Get ${limitedOffer.coins} gold coins for just ₹${limitedOffer.price}!`
+                                        : `Massive 50% discount! Get ${limitedOffer.coins} gold coins for the price of ${limitedOffer.coins / 2}!`
+                                    }
                                 </p>
                                 <div className="flex items-center space-x-4">
                                     <div className="text-3xl font-bold text-yellow-100">
-                                        {formatPrice(limitedOffer.price).hasDiscount ? (
+                                        {formatPrice(limitedOffer.price, !isIndia).hasDiscount ? (
                                             <>
                                                 <span className="line-through text-gray-500 text-xl mr-2">
-                                                    {formatPrice(limitedOffer.originalPrice).original}
+                                                    {formatPrice(limitedOffer.originalPrice, !isIndia).original}
                                                 </span>
-                                                {formatPrice(limitedOffer.price).discounted}
+                                                {formatPrice(limitedOffer.price, !isIndia).discounted}
                                             </>
-                                        ) : formatPrice(limitedOffer.price).original}
+                                        ) : formatPrice(limitedOffer.price, !isIndia).original}
                                     </div>
                                     <div className="flex items-center space-x-2 text-red-400">
                                         <Timer className="w-5 h-5" />
@@ -428,11 +529,11 @@ export function GoldPurchase({ user, guildData, onClose, soundManager, onPurchas
                             <Coins className="w-6 h-6 mr-2 text-yellow-400" />
                             Treasury Packages
                         </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                            {BASE_PLANS.map((plan) => {
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                            {basePlans.map((plan) => {
                                 const bonusCoins = weekendOffer ? Math.floor(plan.coins * 0.25) : 0;
                                 const totalCoins = plan.coins + (plan.bonus || 0) + bonusCoins;
-                                const price = formatPrice(plan.price);
+                                const price = formatPrice(plan.price, !isIndia);
 
                                 return (
                                     <div
@@ -446,15 +547,15 @@ export function GoldPurchase({ user, guildData, onClose, soundManager, onPurchas
                                         onMouseLeave={() => setHoveredPlan(null)}
                                         onClick={() => setSelectedPlan(plan)}
                                     >
-                                        {plan.bonus > 0 && (
+                                        {(plan.bonus || 0) > 0 && (
                                             <div className="absolute -top-2 -right-2 bg-green-600 text-white px-2 py-1 rounded-full text-xs font-bold">
-                                                +{plan.bonus}% Bonus
+                                                +{plan.bonus} Bonus
                                             </div>
                                         )}
 
                                         <div className={`text-5xl mb-3 text-center`}>{plan.icon}</div>
                                         <h4 className="text-lg font-bold text-yellow-100 mb-2 text-center capitalize">
-                                            {plan.id} Pack
+                                            {plan.id.replace('_in', '')} Pack
                                         </h4>
 
                                         <div className="space-y-2">
@@ -550,7 +651,7 @@ export function GoldPurchase({ user, guildData, onClose, soundManager, onPurchas
                         </div>
                     </div>
 
-                    {/* PayPal Integration */}
+                    {/* Payment Modal */}
                     {selectedPlan && (
                         <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
                             <div className="parchment rounded-lg p-6 max-w-md w-full">
@@ -561,38 +662,64 @@ export function GoldPurchase({ user, guildData, onClose, soundManager, onPurchas
                                         {selectedPlan.coins + (selectedPlan.bonus || 0)} Gold Coins
                                     </p>
                                     <p className="text-2xl font-bold text-yellow-100 mt-2">
-                                        {formatPrice(selectedPlan.price).discounted}
+                                        {formatPrice(selectedPlan.price, !isIndia).discounted}
                                     </p>
                                 </div>
+
                                 {/* Payment Method Switcher */}
                                 <div className="flex space-x-2 mb-4">
+                                    {isIndia && (
+                                        <button
+                                            onClick={() => setPaymentMethod('razorpay')}
+                                            className={`flex-1 px-4 py-2 rounded flex items-center justify-center space-x-2 ${paymentMethod === 'razorpay' ? 'bg-purple-600' : 'bg-gray-600'
+                                                } text-white transition-all`}
+                                            disabled={isProcessing || isRazorpayLoading}
+                                        >
+                                            <CreditCard className="w-4 h-4" />
+                                            <span>Razorpay</span>
+                                        </button>
+                                    )}
                                     <button
                                         onClick={() => setPaymentMethod('paypal')}
-                                        className={`px-4 py-2 rounded ${paymentMethod === 'paypal' ? 'bg-blue-600' : 'bg-gray-600'} text-white`}
+                                        className={`flex-1 px-4 py-2 rounded flex items-center justify-center space-x-2 ${paymentMethod === 'paypal' ? 'bg-blue-600' : 'bg-gray-600'
+                                            } text-white transition-all`}
                                         disabled={isProcessing}
                                     >
-                                        PayPal
-                                    </button>
-                                    <button
-                                        onClick={() => setPaymentMethod('stripe')}
-                                        className={`px-4 py-2 rounded ${paymentMethod === 'stripe' ? 'bg-purple-600' : 'bg-gray-600'} text-white`}
-                                        disabled
-                                    >
-                                        Credit Card
+                                        <span>PayPal</span>
                                     </button>
                                 </div>
+
                                 {/* Error Message */}
                                 {purchaseError && (
-                                    <div className="bg-red-900/50 border border-red-600 rounded-lg p-3 mt-4">
+                                    <div className="bg-red-900/50 border border-red-600 rounded-lg p-3 mb-4">
                                         <p className="text-red-300 text-sm">{purchaseError}</p>
                                     </div>
                                 )}
+
                                 {/* Loading State */}
                                 {isProcessing && (
                                     <div className="flex items-center justify-center my-4">
                                         <span className="text-yellow-200 animate-pulse">Processing payment...</span>
                                     </div>
                                 )}
+
+                                {/* Payment Options */}
+                                {paymentMethod === 'razorpay' && isIndia && (
+                                    <div className="space-y-3">
+                                        <button
+                                            onClick={() => handleRazorpayPayment(selectedPlan)}
+                                            disabled={isProcessing || isRazorpayLoading}
+                                            className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3 rounded-lg hover:from-purple-500 hover:to-pink-500 transition-all disabled:opacity-50 flex items-center justify-center space-x-2"
+                                        >
+                                            <CreditCard className="w-5 h-5" />
+                                            <span>Pay with Razorpay</span>
+                                        </button>
+                                        <p className="text-xs text-gray-400 text-center">
+                                            Accepts UPI, Cards, Net Banking, Wallets & more
+                                        </p>
+                                    </div>
+                                )}
+
                                 {/* PayPal Buttons */}
                                 {paymentMethod === 'paypal' && (
                                     <PayPalScriptProvider options={paypalOptions}>
@@ -636,7 +763,7 @@ export function GoldPurchase({ user, guildData, onClose, soundManager, onPurchas
                                                     if (actions.order) {
                                                         const order = await actions.order.capture();
                                                         if (order?.id) {
-                                                            await retryPurchase(selectedPlan, order.id);
+                                                            await retryPurchase(selectedPlan, order.id, 'paypal');
                                                             trackPurchaseSuccess(selectedPlan, order.id);
                                                         } else {
                                                             throw new Error('Order capture failed');
@@ -667,10 +794,7 @@ export function GoldPurchase({ user, guildData, onClose, soundManager, onPurchas
                                         />
                                     </PayPalScriptProvider>
                                 )}
-                                {/* Stripe (disabled placeholder) */}
-                                {paymentMethod === 'stripe' && (
-                                    <div className="my-4 text-center text-gray-400">Credit Card payments coming soon!</div>
-                                )}
+
                                 <button
                                     onClick={() => setSelectedPlan(null)}
                                     className="w-full mt-4 text-gray-400 hover:text-white"
