@@ -3,8 +3,11 @@ import { QUEST_INPUT_TEMPLATES } from "../utils/constant";
 import { calculateGoldReward, calculateLevel, calculateXPWithBonuses, consultAISage, fetchDynamicResources, getSuggestedSageQuestions, rateQuestSubmission, triggerConfetti } from "../utils/helper";
 import { Canvas } from "@react-three/fiber";
 import DiamondSword3D from "./DiamondSword3D";
-import { BookOpen, Coins, Edit3, ExternalLink, Loader2, MessageCircle, RefreshCw, Save, Scroll, Send, Sparkles, Swords, Trophy, X, ChevronDown, ChevronUp } from "lucide-react";
+import { BookOpen, Coins, Edit3, ExternalLink, Loader2, MessageCircle, RefreshCw, Save, Scroll, Send, Sparkles, Swords, Trophy, X, ChevronDown, ChevronUp, Zap } from "lucide-react";
 import ReactMarkdown from 'react-markdown';
+import { BedrockRuntimeClient } from '@aws-sdk/client-bedrock-runtime';
+import { EnergyWarning } from './EnergySystem';
+import { ENERGY_COSTS } from '../config/energy';
 
 export const FourPanelQuestInterface = ({
     quest,
@@ -16,7 +19,9 @@ export const FourPanelQuestInterface = ({
     updateGold,
     soundManager,
     awsModelId,
-    bedrockClient
+    bedrockClient,
+    consumeEnergy,
+    setGuildData,
 }: {
     quest: any;
     guildData: any;
@@ -27,7 +32,12 @@ export const FourPanelQuestInterface = ({
     updateGold: (amount: number) => Promise<void>;
     soundManager: any;
     awsModelId: string;
-    bedrockClient: any;
+    bedrockClient: BedrockRuntimeClient;
+    consumeEnergy: (
+        action: "QUEST_COMPLETION" | "DOCUMENT_GENERATION" | "AI_SAGE_CONSULTATION",
+        onEnergyConsumed?: () => void
+    ) => Promise<boolean>;
+    setGuildData: React.Dispatch<React.SetStateAction<any | null>>;
 }) => {
     const questKey = `${quest.stageId}_${quest.id}`;
     const questProgress = guildData?.questProgress?.[questKey];
@@ -55,24 +65,21 @@ export const FourPanelQuestInterface = ({
     const inputTemplate = QUEST_INPUT_TEMPLATES[quest.id as keyof typeof QUEST_INPUT_TEMPLATES];
 
     const handleSageChat = async () => {
-        if (isCompleted) return; // Prevent chat if completed
-        if (!sageInput.trim()) return;
+        if (isCompleted || !sageInput.trim() || sageLoading) return;
 
-        if (guildData.gold < 20) {
-            soundManager.play('error');
-            alert('Not enough gold! Ye need 20 gold coins to consult the Oracle.');
+        const hasEnergy = await consumeEnergy('AI_SAGE_CONSULTATION');
+        if (!hasEnergy) {
             return;
         }
+
+        setSageLoading(true);
+        soundManager.play('magicCast');
 
         const userMessage = sageInput;
         setSageInput('');
         setSageMessages(prev => [...prev, { type: 'user', content: userMessage }]);
-        setSageLoading(true);
 
         try {
-            await updateGold(-20);
-            soundManager.play('magicCast');
-
             const response = await consultAISage(
                 `Quest: ${quest.name} - ${quest.description}. Seeker's progress: ${JSON.stringify(userInputs)}`,
                 userMessage,
@@ -86,9 +93,8 @@ export const FourPanelQuestInterface = ({
         } catch (error) {
             setSageMessages(prev => [...prev, {
                 type: 'sage',
-                content: 'The Oracle\'s power wanes. Thy gold has been returned.'
+                content: 'The Oracle\'s power wanes. Please try again later.'
             }]);
-            await updateGold(20);
         } finally {
             setSageLoading(false);
         }
@@ -110,6 +116,12 @@ export const FourPanelQuestInterface = ({
 
         setRating(questRating);
 
+        const hasEnergy = await consumeEnergy('QUEST_COMPLETION');
+        if (!hasEnergy) {
+            setIsSaving(false);
+            return;
+        }
+
         const questData = {
             inputs: userInputs,
             sageConversation: sageMessages,
@@ -121,6 +133,25 @@ export const FourPanelQuestInterface = ({
         };
 
         await onComplete({ ...questData });
+        await updateGold(questData.goldReward);
+        setGuildData((prev: any) => {
+            if (!prev) return null;
+            const updatedQuestProgress = {
+                ...prev.questProgress,
+                [questKey]: {
+                    ...prev.questProgress?.[questKey],
+                    ...questData,
+                    completed: true,
+                },
+            };
+
+            return {
+                ...prev,
+                gold: (prev.gold || 0) + questData.goldReward,
+                xp: (prev.xp || 0) + questData.xpReward,
+                questProgress: updatedQuestProgress,
+            };
+        });
         soundManager.play('questComplete');
         triggerConfetti();
         setIsSaving(false);
@@ -130,13 +161,17 @@ export const FourPanelQuestInterface = ({
     const suggestedQuestions = getSuggestedSageQuestions({ quest, guildData, guildLevel: levelInfo });
     const sageInputRef = useRef<HTMLInputElement>(null);
 
-    // New: handle suggested question click
     const handleSuggestedSageQuestion = async (question: string) => {
         if (isCompleted || sageLoading) return;
+
+        const hasEnergy = await consumeEnergy('AI_SAGE_CONSULTATION');
+        if (!hasEnergy) {
+            return;
+        }
+
         setSageLoading(true);
         setSageMessages(prev => [...prev, { type: 'user', content: question }]);
         try {
-            await updateGold(-20);
             soundManager.play('magicCast');
             const response = await consultAISage(
                 `Quest: ${quest.name} - ${quest.description}. Seeker's progress: ${JSON.stringify(userInputs)}`,
@@ -150,15 +185,13 @@ export const FourPanelQuestInterface = ({
         } catch (error) {
             setSageMessages(prev => [...prev, {
                 type: 'sage',
-                content: 'The Oracle\'s power wanes. Thy gold has been returned.'
+                content: 'The Oracle\'s power wanes. Please try again later.'
             }]);
-            await updateGold(20);
         } finally {
             setSageLoading(false);
         }
     };
 
-    // Utility to chunk array into rows of 2
     function chunkArray<T>(arr: T[], size: number): T[][] {
         const result: T[][] = [];
         for (let i = 0; i < arr.length; i += size) {
@@ -190,7 +223,6 @@ export const FourPanelQuestInterface = ({
                             <p className="text-sm text-gray-300">{quest.description} • {quest.xp} XP</p>
                             {isCompleted && (
                                 <div className="mt-1 flex items-center space-x-2">
-                                    <span className="px-2 py-0.5 bg-green-700/80 text-xs text-green-100 rounded-full font-semibold">Completed</span>
                                     <span className="px-2 py-0.5 bg-gradient-to-r from-green-600 to-emerald-600 text-xs text-white rounded-full font-semibold border border-green-400">+{questProgress?.xpReward} XP</span>
                                     <span className="px-2 py-0.5 bg-gradient-to-r from-yellow-600 to-orange-600 text-xs text-white rounded-full font-semibold border border-yellow-400">+{questProgress?.goldReward} Gold</span>
                                 </div>
@@ -207,7 +239,7 @@ export const FourPanelQuestInterface = ({
             </div>
 
             {/* 4-Panel Grid */}
-            <div className="flex-1 grid grid-cols-2 grid-rows-2 gap-4 p-6 overflow-hidden">
+            <div className="grid grid-cols-2 grid-rows-2 gap-4 p-4 flex-1 overflow-hidden">
                 {/* Top Left - Quest Details */}
                 <div className="parchment p-6 flex flex-col overflow-hidden">
                     <div className="flex items-center mb-4 flex-shrink-0">
@@ -225,7 +257,7 @@ export const FourPanelQuestInterface = ({
                             <h4 className="font-semibold mb-2 text-yellow-100">How to Complete</h4>
                             <ul className="list-disc list-inside text-gray-300 space-y-1">
                                 <li>Complete all required entries</li>
-                                <li>Ask the Oracle for advice (20 gold per question)</li>
+                                <li>Ask the Assistant for advice ({ENERGY_COSTS.AI_SAGE_CONSULTATION} energy per question)</li>
                                 <li>Review the resources</li>
                                 <li>Record your progress</li>
                             </ul>
@@ -237,7 +269,11 @@ export const FourPanelQuestInterface = ({
                                 <div className="flex items-center space-x-4">
                                     <div className="flex items-center space-x-2">
                                         <Sparkles className="w-5 h-5 text-yellow-500" />
-                                        <span>Base: {quest.xp} XP</span>
+                                        <span>{quest.xp} XP</span>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <Coins className="w-5 h-5 text-yellow-500" />
+                                        <span>{quest.xp / 2} Gold (base)</span>
                                     </div>
                                 </div>
                                 <p className="text-xs text-gray-400">Final reward is based on the Grand Master's judgment (1-5 stars)</p>
@@ -332,6 +368,19 @@ export const FourPanelQuestInterface = ({
                             </div>
                         )}
 
+                        {!isCompleted && guildData && !guildData.isPremium && guildData.currentEnergy < ENERGY_COSTS.QUEST_COMPLETION && (
+                            <div className="mt-4">
+                                <EnergyWarning
+                                    action="Completing this quest"
+                                    energyCost={ENERGY_COSTS.QUEST_COMPLETION}
+                                    currentEnergy={guildData.currentEnergy}
+                                    onPurchaseClick={() => {
+                                        alert("Please close the quest and purchase energy from the main screen.");
+                                    }}
+                                />
+                            </div>
+                        )}
+
                         <div className="flex space-x-3 mt-4">
                             <button
                                 onClick={() => {
@@ -357,7 +406,7 @@ export const FourPanelQuestInterface = ({
                                 ) : (
                                     <>
                                         <Trophy className="w-4 h-4" />
-                                        <span>{isCompleted ? 'Quest Completed' : 'Complete Quest'}</span>
+                                        <span>Complete Quest</span>
                                     </>
                                 )}
                             </button>
@@ -380,7 +429,7 @@ export const FourPanelQuestInterface = ({
                                     setDynamicResources(resources);
                                     setResourcesLoading(false);
                                 }}
-                                className="text-gray-400 hover:text-white transition-colors"
+                                className="p-2 -m-2 text-gray-400 hover:text-white"
                                 title="Refresh resources"
                             >
                                 <RefreshCw className="w-4 h-4" />
@@ -444,11 +493,11 @@ export const FourPanelQuestInterface = ({
                     <div className="flex items-center justify-between mb-4 flex-shrink-0">
                         <div className="flex items-center">
                             <Sparkles className="w-5 h-5 text-purple-500 mr-2" />
-                            <h3 className="text-lg font-bold text-yellow-100">Assistant Chat</h3>
+                            <h3 className="text-lg font-bold text-yellow-100">Consult the Assistant</h3>
                         </div>
                         <div className="flex items-center space-x-2 text-sm">
-                            <Coins className="w-4 h-4 text-yellow-500" />
-                            <span className="font-medium text-yellow-100">20 gold per response</span>
+                            <Zap className="w-4 h-4 text-blue-400" />
+                            <span className="font-medium text-yellow-100">{ENERGY_COSTS.AI_SAGE_CONSULTATION} energy per response</span>
                         </div>
                     </div>
 
@@ -457,7 +506,7 @@ export const FourPanelQuestInterface = ({
                             <div className="text-center py-8 text-gray-400">
                                 <MessageCircle className="w-12 h-12 mx-auto mb-2 opacity-50" />
                                 <p>Ask a question to the Assistant</p>
-                                <p className="text-sm mt-2">Each response requires 20 gold coins</p>
+                                <p className="text-sm mt-2">Each response requires {ENERGY_COSTS.AI_SAGE_CONSULTATION} energy</p>
                             </div>
                         ) : (
                             sageMessages.map((message, index) => (
@@ -528,6 +577,18 @@ export const FourPanelQuestInterface = ({
                             )}
                         </div>
                     )}
+
+                    {!isCompleted && guildData && !guildData.isPremium && guildData.currentEnergy < ENERGY_COSTS.AI_SAGE_CONSULTATION && (
+                        <EnergyWarning
+                            action="AI Sage consultation"
+                            energyCost={ENERGY_COSTS.AI_SAGE_CONSULTATION}
+                            currentEnergy={guildData.currentEnergy}
+                            onPurchaseClick={() => {
+                                alert("Please close the quest and purchase energy from the main screen.");
+                            }}
+                        />
+                    )}
+
                     <div className="flex space-x-2 flex-shrink-0">
                         <input
                             type="text"
@@ -541,7 +602,7 @@ export const FourPanelQuestInterface = ({
                         />
                         <button
                             onClick={handleSageChat}
-                            disabled={sageLoading || !sageInput.trim() || guildData.gold < 20 || isCompleted}
+                            disabled={sageLoading || !sageInput.trim() || isCompleted}
                             className="px-4 py-3 bg-purple-800 rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                             title={guildData.gold < 20 ? 'Insufficient gold coins' : ''}
                         >
@@ -552,4 +613,4 @@ export const FourPanelQuestInterface = ({
             </div>
         </div>
     );
-};
+}

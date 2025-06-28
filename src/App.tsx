@@ -1,14 +1,10 @@
-import { useState, useEffect, Suspense } from 'react';
-import { initializeApp } from 'firebase/app';
+import React, { useState, useEffect, Suspense } from 'react';
 import {
-  getAuth,
   signInWithPopup,
-  GoogleAuthProvider,
   onAuthStateChanged,
   signOut,
 } from 'firebase/auth';
 import {
-  getFirestore,
   doc,
   setDoc,
   getDoc,
@@ -22,7 +18,7 @@ import {
   orderBy,
   onSnapshot,
   increment,
-  enableIndexedDbPersistence
+  deleteDoc,
 } from 'firebase/firestore';
 import { BedrockRuntimeClient } from '@aws-sdk/client-bedrock-runtime';
 import {
@@ -34,7 +30,6 @@ import {
   Target,
   User,
   History,
-  Brain,
   Copy,
   BarChart3,
   Lightbulb,
@@ -51,6 +46,7 @@ import {
   Swords,
   Castle,
   Trophy,
+  AlertTriangle,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import Modal from './components/Modal';
@@ -61,30 +57,77 @@ import DiamondSword3D from './components/DiamondSword3D';
 import { medievalStyles } from './utils/medievalStyles';
 import { goldPurchaseStyles } from './utils/goldPurchaseStyles';
 import {
-  AVATAR_TEMPLATES,
-  CORE_ATTRIBUTES,
-  CEO_AVATARS,
-  ONBOARDING_QUESTIONS,
   ACHIEVEMENTS,
+  CEO_AVATARS,
   DOCUMENT_TEMPLATES,
   GUILD_LEVELS,
+  CORE_ATTRIBUTES
 } from './utils/constant';
 import {
-  calculateCEOMatch,
-  calculateLevel,
-  createMagicalParticles,
   generateAIDocument,
   QUEST_STAGES,
-  triggerConfetti
+  triggerConfetti,
+  calculateLevel
 } from './utils/helper';
 import { ArmoryInterface } from './components/ArmoryInterface';
 import { FourPanelQuestInterface } from './components/FourPanelQuestInterface';
 import { GuildManagement } from './components/GuildManagement';
 import { DailyBonus } from './components/DailyBonus';
-import { firebaseConfig } from './config/config';
+import { auth, db, googleProvider } from './config/config';
 import { EpicMedievalLoader } from './components/EpicMedievalLoader';
 import { GoldPurchase } from './components/GoldPurchase';
+import type { GuildDataWithEnergy } from './components/EnergySystem';
+import {
+  EnergyBar,
+  EnergyPurchaseModal,
+  useEnergyManagement,
+} from './components/EnergySystem';
+import { ENERGY_CONFIG, ENERGY_COSTS } from './config/energy';
+import { v4 as uuidv4 } from 'uuid';
+import { createInviteLink, generateGuildInviteEmail, sendEmail } from './utils/email';
 
+// IMPORT THE ONBOARDING FLOWS
+import { FounderOnboarding, MemberOnboarding } from './components/OnboardingFlows';
+
+class Canvas3DErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('3D Canvas error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="w-full h-full flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-yellow-400 mb-2">3D view unavailable</p>
+            <button
+              onClick={() => this.setState({ hasError: false })}
+              className="text-sm text-blue-400 hover:text-blue-300"
+            >
+              Try again
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+// SoundManager class (same as before)
 class SoundManager {
   private sounds: { [key: string]: HTMLAudioElement } = {};
   private enabled: boolean = true;
@@ -96,7 +139,7 @@ class SoundManager {
       coinCollect: new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSp9y9Dn'),
       purchase: new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSp9y9Dn'),
       levelUp: new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSp9y9Dn'),
-      questComplete: new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSp9y9Dn'),
+      questComplete: new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmewhBSp9y9Dn'),
       magicCast: new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSp9y9Dn'),
       error: new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSp9y9Dn')
     };
@@ -136,31 +179,13 @@ if (typeof window !== 'undefined') {
   window.addEventListener('touchstart', setUserInteracted, { once: true });
 }
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const googleProvider = new GoogleAuthProvider();
-
-enableIndexedDbPersistence(db).catch((err) => {
-  if (err.code === 'failed-precondition') {
-    console.log('Persistence failed: Multiple tabs open');
-  } else if (err.code === 'unimplemented') {
-    console.log('Persistence not supported by browser');
-  }
-});
-
-const awsRegion = import.meta.env.VITE_AWS_REGION;
-const awsAccessKeyId = import.meta.env.VITE_AWS_ACCESS_KEY_ID;
-const awsSecretAccessKey = import.meta.env.VITE_AWS_SECRET_ACCESS_KEY;
-const awsModelId = import.meta.env.VITE_NOVA_INFERENCE_PROFILE_ARN || "anthropic.claude-3-sonnet-20240229-v1:0";
-
 const bedrockClient = new BedrockRuntimeClient({
-  region: awsRegion || 'us-west-2',
-  ...(awsAccessKeyId && awsSecretAccessKey
+  region: import.meta.env.VITE_AWS_REGION || 'us-west-2',
+  ...(import.meta.env.VITE_AWS_ACCESS_KEY_ID && import.meta.env.VITE_AWS_SECRET_ACCESS_KEY
     ? {
       credentials: {
-        accessKeyId: awsAccessKeyId,
-        secretAccessKey: awsSecretAccessKey
+        accessKeyId: import.meta.env.VITE_AWS_ACCESS_KEY_ID,
+        secretAccessKey: import.meta.env.VITE_AWS_SECRET_ACCESS_KEY
       }
     }
     : {})
@@ -171,10 +196,14 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [guildData, setGuildData] = useState<any | null>(null);
   const [selectedQuest, setSelectedQuest] = useState<any | null>(null);
+
+  // ONBOARDING STATE
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [onboardingStep, setOnboardingStep] = useState(0);
-  const [onboardingAnswers, setOnboardingAnswers] = useState<any>({});
-  const [vision, setVision] = useState('');
+  const [onboardingType, setOnboardingType] = useState<'founder' | 'member'>('founder');
+  const [inviteData, setInviteData] = useState<any | null>(null);
+  const [fetchTrigger, setFetchTrigger] = useState(0);
+
+  // OTHER STATES (same as before)
   const [conversations, setConversations] = useState<any[]>([]);
   const [savedDocuments, setSavedDocuments] = useState<any[]>([]);
   const [showHistory, setShowHistory] = useState(false);
@@ -192,6 +221,41 @@ export default function App() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [showGoldPurchase, setShowGoldPurchase] = useState(false);
 
+  const energyManagement = useEnergyManagement(
+    guildData as GuildDataWithEnergy,
+    user?.uid || '',
+    setGuildData
+  );
+
+  // CHECK FOR INVITE TOKEN ON APP LOAD
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const inviteToken = urlParams.get('invite');
+    const guildId = urlParams.get('guildId');
+    const founderName = urlParams.get('founderName');
+    const guildName = urlParams.get('guildName');
+    const ventureIdea = urlParams.get('ventureIdea');
+    const founderRole = urlParams.get('founderRole');
+    const currentStage = urlParams.get('currentStage');
+    const currentTask = urlParams.get('currentTask');
+
+    if (inviteToken && guildId) {
+      setOnboardingType('member');
+      setInviteData({
+        inviteToken,
+        guildId,
+        founderName: decodeURIComponent(founderName || ''),
+        guildName: decodeURIComponent(guildName || ''),
+        ventureIdea: decodeURIComponent(ventureIdea || ''),
+        founderRole: decodeURIComponent(founderRole || ''),
+        currentStage: decodeURIComponent(currentStage || 'Fundamentals'),
+        currentTask: decodeURIComponent(currentTask || 'Getting Started')
+      });
+    } else {
+      setOnboardingType('founder');
+    }
+  }, []);
+
   useEffect(() => {
     // Create and append medieval styles
     const styleEl = document.createElement('style');
@@ -206,7 +270,10 @@ export default function App() {
     }
 
     // Create magical particles
-    createMagicalParticles();
+    if (typeof window !== 'undefined' && (window as any).createMagicalParticles) {
+      (window as any).createMagicalParticles();
+    }
+
 
     // Sound initialization
     const playAmbient = () => {
@@ -217,7 +284,6 @@ export default function App() {
 
     // Cleanup function
     return () => {
-      // Remove all style elements we added
       const styleElements = document.head.querySelectorAll('style');
       styleElements.forEach(el => {
         if (el.textContent?.includes('MedievalSharp') || el.textContent?.includes('gold-shine')) {
@@ -242,19 +308,90 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setUser(user);
-      if (user) {
-        const hasProfile = await loadGuildData(user.uid);
-        if (!hasProfile && navigator.onLine) {
+    const unsubscribe = onAuthStateChanged(auth, setUser);
+    return unsubscribe;
+  }, []);
+
+  useEffect(() => {
+    if (!user) {
+      setGuildData(null);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+
+    const userProfileRef = doc(db, 'guilds', user.uid);
+
+    const unsubscribe = onSnapshot(userProfileRef, (userDoc) => {
+      if (!userDoc.exists()) {
+        if (navigator.onLine) {
           setShowOnboarding(true);
         }
+        setLoading(false);
+        return;
       }
+
+      setShowOnboarding(false);
+      const userProfileData = userDoc.data() as GuildDataWithEnergy;
+
+      if (userProfileData.isFounder) {
+        setGuildData(userProfileData);
+        if (userProfileData.ceoAvatarId) {
+          const avatar = CEO_AVATARS.find(
+            (ceo) => ceo.id === userProfileData.ceoAvatarId
+          );
+          setCeoAvatar(avatar);
+        }
+        setLoading(false);
+      } else {
+        // --- MEMBER LOGIC ---
+        if (userProfileData.joinRequestStatus === 'pending') {
+          setGuildData(userProfileData); // Store their partial profile
+          setLoading(false);
+          return;
+        }
+        const mainGuildRef = doc(db, 'guilds', userProfileData.guildId);
+        const unsubMainGuild = onSnapshot(mainGuildRef, (mainGuildDoc) => {
+          if (mainGuildDoc.exists()) {
+            const mainGuildData = mainGuildDoc.data() as GuildDataWithEnergy;
+            const mergedData = {
+              ...userProfileData,
+              members: mainGuildData.members,
+              guildLevel: mainGuildData.guildLevel,
+              guildName: mainGuildData.guildName,
+              vision: mainGuildData.vision,
+              ceoAvatarId: mainGuildData.ceoAvatarId,
+            };
+            setGuildData(mergedData);
+            if (mainGuildData.ceoAvatarId) {
+              const avatar = CEO_AVATARS.find(
+                (ceo) => ceo.id === mainGuildData.ceoAvatarId
+              );
+              setCeoAvatar(avatar);
+            }
+          } else {
+            setGuildData(userProfileData);
+            setGuildDataError(
+              "The guild you are a member of could not be found."
+            );
+          }
+          setLoading(false);
+        }, (error) => {
+          console.error("Error listening to main guild data:", error);
+          setGuildDataError("Failed to load your guild's data.");
+          setLoading(false);
+        });
+        return () => unsubMainGuild();
+      }
+    }, (error) => {
+      console.error("Error listening to user profile data:", error);
+      setGuildDataError("Failed to load your profile data.");
       setLoading(false);
     });
 
-    return unsubscribe;
-  }, []);
+    return () => unsubscribe();
+  }, [user, fetchTrigger]);
 
   useEffect(() => {
     if (!user) return;
@@ -296,43 +433,82 @@ export default function App() {
     return unsubscribe;
   }, [user]);
 
-  const loadGuildData = async (userId: string): Promise<boolean> => {
-    try {
-      setGuildDataError(null);
-      const guildRef = doc(db, 'guilds', userId);
-      const guildSnap = await getDoc(guildRef);
-
-      if (!guildSnap.exists()) {
-        return false;
-      } else {
-        const data = guildSnap.data();
-        setGuildData(data);
-
-        if (data.ceoAvatarId) {
-          const avatar = CEO_AVATARS.find(ceo => ceo.id === data.ceoAvatarId);
-          setCeoAvatar(avatar);
-        }
-        return true;
-      }
-    } catch (error: any) {
-      console.error('Error loading guild data:', error);
-
-      if (error?.code === 'unavailable' || error?.message?.includes('offline')) {
-        setGuildDataError('You are offline. Unable to load your profile. Check your connection and try again.');
-        return false;
-      }
-
-      setGuildDataError('An error has occurred. Please try again.');
-      return false;
+  useEffect(() => {
+    if (user && guildData) {
+      energyManagement.checkEnergyReset();
     }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, guildData]);
+
+  // Listen for and process guild join requests from the subcollection
+  useEffect(() => {
+    if (user && guildData?.isFounder) {
+      const requestsRef = collection(db, 'guilds', user.uid, 'joinRequests');
+      const unsubscribe = onSnapshot(requestsRef, (snapshot) => {
+        if (snapshot.empty) {
+          return;
+        }
+
+        snapshot.docs.forEach(async (requestDoc) => {
+          const requestData = requestDoc.data();
+          const memberId = requestDoc.id;
+
+          // Use a transaction or careful ordering to ensure atomicity
+          try {
+            const memberProfileRef = doc(db, 'guilds', memberId);
+            const founderGuildRef = doc(db, 'guilds', user.uid);
+
+            // 1. Add member to the founder's guild document
+            await updateDoc(founderGuildRef, {
+              members: arrayUnion({
+                uid: memberId,
+                name: requestData.memberName,
+                email: requestData.memberEmail,
+                role: requestData.memberRole,
+                joinedAt: new Date().toISOString()
+              }),
+              gold: increment(50) // Guild gets bonus
+            });
+
+            // 2. Update the member's document to mark as approved
+            await updateDoc(memberProfileRef, {
+              joinRequestStatus: 'approved'
+            });
+
+            // 3. Delete the processed join request
+            await deleteDoc(requestDoc.ref);
+
+            console.log(`Approved and added member: ${memberId}`);
+
+          } catch (error) {
+            console.error(`Failed to approve member ${memberId}:`, error);
+          }
+        });
+      });
+
+      return () => unsubscribe();
+    }
+  }, [user, guildData?.isFounder]);
 
   const handleSignIn = async () => {
     try {
+      // Add these settings to avoid CORS issues
+      googleProvider.setCustomParameters({
+        prompt: 'select_account'
+      });
+
       await signInWithPopup(auth, googleProvider);
       if (userInteracted) soundManager.play('levelUp');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Sign in error:', error);
+
+      // Handle specific auth errors
+      if (error.code === 'auth/popup-closed-by-user') {
+        console.log('User closed the popup');
+      } else if (error.code === 'auth/popup-blocked') {
+        alert('Please allow popups for this site to sign in with Google');
+      }
+
       if (userInteracted) soundManager.play('error');
     }
   };
@@ -349,15 +525,9 @@ export default function App() {
     }
   };
 
-  // Handle Onboarding Answer
-  const handleOnboardingAnswer = (questionId: string, answer: any) => {
-    setOnboardingAnswers({ ...onboardingAnswers, [questionId]: answer });
-    if (userInteracted) soundManager.play('swordDraw');
-  };
-
-  // Complete Onboarding
-  const completeOnboarding = async () => {
-    if (!user || !vision) return;
+  // FOUNDER ONBOARDING COMPLETION
+  const handleFounderOnboardingComplete = async (data: any) => {
+    if (!user) return;
 
     if (!navigator.onLine) {
       alert('You are offline. Connect to the internet to create your guild.');
@@ -366,53 +536,124 @@ export default function App() {
 
     setLoading(true);
 
-    // Calculate CEO match
-    const ceoMatch = calculateCEOMatch({ onboardingData: onboardingAnswers });
-    const matchedCEO = CEO_AVATARS.find(ceo => ceo.id === ceoMatch);
-    setCeoAvatar(matchedCEO);
-
-    // Create initial guild data
-    const initialGuildData = {
-      guildId: user.uid,
-      guildName: onboardingAnswers.guildName || `${user.displayName}'s Guild`,
-      vision: vision,
-      xp: 50,
-      gold: 500,
-      level: 1,
-      guildLevel: 1,
-      achievements: ['onboarding_complete'],
-      questProgress: {},
-      onboardingData: onboardingAnswers,
-      coreAttribute: onboardingAnswers.coreAttribute?.toLowerCase() || 'general',
-      avatar: onboardingAnswers.avatar || AVATAR_TEMPLATES[0],
-      ceoAvatarId: ceoMatch,
-      lastCheckIn: serverTimestamp(),
-      checkInStreak: 1,
-      dailyStreak: 0,
-      lastDailyBonus: null,
-      members: [{
-        uid: user.uid,
-        name: user.displayName,
-        email: user.email,
-        role: 'leader',
-        joinedAt: new Date().toISOString()
-      }],
-      inventory: [],
-      equippedGear: [],
-      treasures: [],
-      activeEffects: [],
-      createdAt: serverTimestamp()
-    };
+    // Destructure to remove the non-serializable user object from the data
+    const { user: _firebaseUser, ...onboardingData } = data;
 
     try {
+      // Get the role from onboarding data
+      const selectedRole = onboardingData.role;
+
+      // Create initial guild data based on onboarding
+      const initialGuildData: GuildDataWithEnergy = {
+        guildId: user.uid,
+        guildName: onboardingData.guildName || `${onboardingData.name}'s Guild`,
+        vision: onboardingData.vision,
+        xp: 150, // Bonus XP for completing onboarding
+        gold: 50, // Founder's Grant
+        level: 1,
+        guildLevel: 1,
+        achievements: ['onboarding_complete', 'guild_founded', 'role_chosen'],
+        questProgress: {},
+        onboardingData: onboardingData,
+
+        // Role and Attributes
+        role: selectedRole,
+        attributes: {
+          Tech: selectedRole === 'engineer' ? 2 : 1,
+          Marketing: selectedRole === 'herald' ? 2 : 1,
+          Sales: selectedRole === 'vanguard' ? 2 : 1,
+          Legal: selectedRole === 'loremaster' ? 2 : 1,
+          Operations: selectedRole === 'quartermaster' ? 2 : 1,
+          Finance: selectedRole === 'treasurer' ? 2 : 1,
+        },
+
+        // Fix for missing properties
+        coreAttribute: selectedRole,
+        avatar: null,
+        ceoAvatarId: '',
+        inventory: [],
+        equippedGear: [],
+        treasures: [],
+        activeEffects: [],
+
+        // Energy System
+        currentEnergy: ENERGY_CONFIG.MAX_DAILY_ENERGY,
+        maxEnergy: ENERGY_CONFIG.MAX_DAILY_ENERGY,
+        lastEnergyReset: serverTimestamp(),
+        isPremium: false,
+        premiumExpiryDate: null,
+        energyPurchaseHistory: [],
+
+        // Guild Management
+        isFounder: true,
+        founderId: user.uid,
+        members: [{
+          uid: user.uid,
+          name: onboardingData.name || user.displayName,
+          email: user.email,
+          role: 'founder',
+          founderRole: selectedRole,
+          joinedAt: new Date().toISOString()
+        }],
+
+        // Invites sent
+        invitesSent: [],
+
+        // Timestamps
+        lastCheckIn: serverTimestamp(),
+        checkInStreak: 1,
+        dailyStreak: 0,
+        lastDailyBonus: null,
+        createdAt: serverTimestamp()
+      };
+
+      // Save to Firestore
       await setDoc(doc(db, 'guilds', user.uid), initialGuildData);
       setGuildData(initialGuildData);
       setShowOnboarding(false);
+
       if (userInteracted) soundManager.play('levelUp');
       triggerConfetti();
+
+      // Send invites to invited members
+      if (onboardingData.invites && onboardingData.invites.length > 0) {
+        const guildRef = doc(db, 'guilds', user.uid);
+        const newInvites: { email: string; token: string; status: string; sentAt: string; }[] = [];
+
+        for (const email of onboardingData.invites) {
+          if (email) {
+            try {
+              const inviteToken = uuidv4();
+              const inviteLink = createInviteLink({ ...initialGuildData, invitesSent: [] }, inviteToken);
+              const { subject, body } = generateGuildInviteEmail({
+                guildName: initialGuildData.guildName,
+                founderName: onboardingData.name || 'the Founder',
+                ventureIdea: initialGuildData.vision,
+                inviteLink,
+              });
+
+              newInvites.push({ email, token: inviteToken, status: 'pending', sentAt: new Date().toISOString() });
+              sendEmail(email, subject, body);
+            } catch (error) {
+              console.error(`Failed to send invite to ${email}:`, error);
+            }
+          }
+        }
+
+        if (newInvites.length > 0) {
+          await updateDoc(guildRef, {
+            invitesSent: arrayUnion(...newInvites)
+          });
+          setGuildData((prev: GuildDataWithEnergy | null) => prev ? { ...prev, invitesSent: [...(prev.invitesSent || []), ...newInvites] } : null);
+        }
+
+        alert("Invitations have been sent to your team members!");
+      }
+
     } catch (error: any) {
       console.error('Error creating guild:', error);
       if (userInteracted) soundManager.play('error');
+
       if (error?.code === 'unavailable' || error?.message?.includes('offline')) {
         alert('Unable to create your guild. Check your internet connection.');
       } else {
@@ -423,7 +664,121 @@ export default function App() {
     setLoading(false);
   };
 
-  // Save Conversation
+  // MEMBER ONBOARDING COMPLETION
+  const handleMemberOnboardingComplete = async (data: any) => {
+    if (!user || !inviteData) return;
+
+    if (!navigator.onLine) {
+      alert('You are offline. Connect to the internet to join the guild.');
+      return;
+    }
+
+    setLoading(true);
+
+    // Destructure to remove the non-serializable user object from the data
+    const { user: _firebaseUser, ...onboardingData } = data;
+
+    try {
+      // Get the role from onboarding data
+      const selectedRole = onboardingData.role;
+
+      // Create member profile
+      const memberData: GuildDataWithEnergy = {
+        guildId: inviteData.guildId, // Join the existing guild
+        guildName: inviteData.guildName,
+        vision: inviteData.ventureIdea,
+        isFounder: false,
+        founderId: inviteData.guildId, // Reference to founder's ID
+
+        // Member-specific data
+        xp: 100, // Starting XP for members
+        gold: 0, // Members start with 0 personal gold
+        level: 1,
+        guildLevel: 1, // Will be synced with main guild
+        achievements: ['onboarding_complete', 'role_chosen'],
+        questProgress: {},
+        onboardingData: {
+          ...onboardingData,
+          email: user.email,
+          name: onboardingData.name || user.displayName,
+        },
+        joinRequestStatus: 'pending',
+
+        // Role and Attributes
+        role: selectedRole,
+        attributes: {
+          Tech: selectedRole === 'engineer' ? 2 : 1,
+          Marketing: selectedRole === 'herald' ? 2 : 1,
+          Sales: selectedRole === 'vanguard' ? 2 : 1,
+          Legal: selectedRole === 'loremaster' ? 2 : 1,
+          Operations: selectedRole === 'quartermaster' ? 2 : 1,
+          Finance: selectedRole === 'treasurer' ? 2 : 1,
+        },
+
+        // Fix for missing properties
+        coreAttribute: selectedRole,
+        avatar: null,
+        ceoAvatarId: '',
+        inventory: [],
+        equippedGear: [],
+        treasures: [],
+        activeEffects: [],
+
+        // Energy System
+        currentEnergy: ENERGY_CONFIG.MAX_DAILY_ENERGY,
+        maxEnergy: ENERGY_CONFIG.MAX_DAILY_ENERGY,
+        lastEnergyReset: serverTimestamp(),
+        isPremium: false,
+        premiumExpiryDate: null,
+        energyPurchaseHistory: [],
+
+        // Member info
+        members: [], // Will be populated from main guild
+
+        // Timestamps
+        lastCheckIn: serverTimestamp(),
+        checkInStreak: 1,
+        dailyStreak: 0,
+        lastDailyBonus: null,
+        createdAt: serverTimestamp()
+      };
+
+      // Save member profile
+      await setDoc(doc(db, 'guilds', user.uid), memberData);
+
+      // Create a join request in the founder's subcollection
+      const joinRequestRef = doc(db, 'guilds', inviteData.guildId, 'joinRequests', user.uid);
+      await setDoc(joinRequestRef, {
+        memberName: onboardingData.name || user.displayName,
+        memberEmail: user.email,
+        memberRole: selectedRole,
+        requestedAt: serverTimestamp()
+      });
+
+      // Remove the direct update to the founder's guild
+      setGuildData(memberData);
+      setShowOnboarding(false);
+
+      if (userInteracted) soundManager.play('levelUp');
+      triggerConfetti();
+
+      alert("Your request to join the guild has been sent to the founder for approval!");
+
+    } catch (error: any) {
+      console.error('Error joining guild:', error);
+      if (userInteracted) soundManager.play('error');
+      alert('Error joining guild. Please try again.');
+    }
+
+    setLoading(false);
+  };
+
+  // MEMBER ONBOARDING DECLINE
+  const handleMemberOnboardingDecline = () => {
+    // Redirect away or show alternative action
+    window.location.href = '/';
+  };
+
   const saveConversation = async (quest: any, question: string, response: string) => {
     if (!user) return;
 
@@ -437,7 +792,6 @@ export default function App() {
         createdAt: serverTimestamp()
       });
 
-      // Check for conversation achievement
       if (conversations.length + 1 >= 20 && !guildData?.achievements?.includes('conversation_pro')) {
         await updateDoc(doc(db, 'guilds', user.uid), {
           achievements: arrayUnion('conversation_pro'),
@@ -450,7 +804,6 @@ export default function App() {
     }
   };
 
-  // Save Document
   const saveDocument = async (template: any, content: string) => {
     if (!user || !guildData) return;
 
@@ -464,17 +817,14 @@ export default function App() {
         createdAt: serverTimestamp()
       });
 
-      // Update XP in database
       await updateDoc(doc(db, 'guilds', user.uid), {
         xp: increment(template.xp)
       });
 
-      // Update local state
       const newXP = (guildData.xp || 0) + template.xp;
       setGuildData({ ...guildData, xp: newXP });
       if (userInteracted) soundManager.play('questComplete');
 
-      // Check for document achievement
       if (savedDocuments.length + 1 >= 5 && !guildData.achievements?.includes('document_master')) {
         await updateDoc(doc(db, 'guilds', user.uid), {
           achievements: arrayUnion('document_master'),
@@ -487,7 +837,6 @@ export default function App() {
     }
   };
 
-  // Update Gold
   const updateGold = async (amount: number) => {
     if (!user || !guildData) return;
 
@@ -500,7 +849,6 @@ export default function App() {
 
       setGuildData({ ...guildData, gold: newGold });
 
-      // Check gold hoarder achievement
       if (newGold >= 10000 && !guildData.achievements?.includes('gold_hoarder')) {
         await updateDoc(doc(db, 'guilds', user.uid), {
           achievements: arrayUnion('gold_hoarder'),
@@ -513,7 +861,6 @@ export default function App() {
     }
   };
 
-  // Claim Daily Bonus
   const claimDailyBonus = async () => {
     if (!user || !guildData) return;
 
@@ -554,7 +901,6 @@ export default function App() {
         origin: { y: 0.3 }
       });
 
-      // Check daily champion achievement
       if (newStreak >= 30 && !guildData.achievements?.includes('daily_champion')) {
         await updateDoc(doc(db, 'guilds', user.uid), {
           achievements: arrayUnion('daily_champion'),
@@ -567,7 +913,6 @@ export default function App() {
     }
   };
 
-  // Complete Quest
   const completeQuest = async (questData: any) => {
     if (!user || !guildData || !selectedQuest) return;
 
@@ -576,12 +921,16 @@ export default function App() {
       return;
     }
 
+    const hasEnergy = await energyManagement.consumeEnergy('QUEST_COMPLETION');
+    if (!hasEnergy) {
+      return;
+    }
+
     try {
       const questKey = `${selectedQuest.stageId}_${selectedQuest.id}`;
       const newXP = (guildData.xp || 0) + questData.xpReward;
       const newGold = guildData.gold || 0;
 
-      // Save quest data
       const updatedProgress = {
         ...guildData.questProgress,
         [questKey]: {
@@ -596,7 +945,6 @@ export default function App() {
         }
       };
 
-      // Check for new achievements
       const newAchievements = ACHIEVEMENTS.filter(achievement => {
         if (achievement.xpRequired && newXP >= achievement.xpRequired) {
           return !guildData.achievements?.includes(achievement.id);
@@ -607,7 +955,6 @@ export default function App() {
         return false;
       }).map(a => a.id);
 
-      // Check stage completion
       const stage = QUEST_STAGES[selectedQuest.stageId.toUpperCase() as keyof typeof QUEST_STAGES];
       const stageQuests = stage.quests;
       const completedStageQuests = stageQuests.filter(q =>
@@ -633,7 +980,6 @@ export default function App() {
         else if (selectedQuest.stageId === 'growth') newGuildLevel = 5;
       }
 
-      // Update database
       await updateDoc(doc(db, 'guilds', user.uid), {
         xp: newXP,
         gold: newGold + stageBonus,
@@ -642,7 +988,6 @@ export default function App() {
         ...(newAchievements.length > 0 ? { achievements: arrayUnion(...newAchievements) } : {})
       });
 
-      // Update local state
       setGuildData({
         ...guildData,
         xp: newXP,
@@ -652,14 +997,12 @@ export default function App() {
         achievements: [...(guildData.achievements || []), ...newAchievements]
       });
 
-      // Show success notification
       let message = `Quest completed! +${questData.xpReward} XP (${questData.rating}/5)`;
       if (stageBonus > 0) {
         message += `\n\nStage completed! +${stageBonus} gold coins!`;
       }
       alert(message);
 
-      // Close modal
       setSelectedQuest(null);
 
     } catch (error: any) {
@@ -669,7 +1012,6 @@ export default function App() {
     }
   };
 
-  // Purchase from Armory
   const handleArmoryPurchase = async (item: any, category: string) => {
     if (!user || !guildData) return;
 
@@ -722,16 +1064,21 @@ export default function App() {
     }
   };
 
-  // Generate Document
   const handleGenerateDocument = async (template: any) => {
     setGeneratingDoc(true);
     if (userInteracted) soundManager.play('magicCast');
-    const content = await generateAIDocument(template, { ...guildData, ceoAvatar }, awsModelId, bedrockClient);
+
+    const hasEnergy = await energyManagement.consumeEnergy('DOCUMENT_GENERATION');
+    if (!hasEnergy) {
+      setGeneratingDoc(false);
+      return;
+    }
+
+    const content = await generateAIDocument(template, { ...guildData, ceoAvatar }, import.meta.env.VITE_NOVA_INFERENCE_PROFILE_ARN || "anthropic.claude-3-sonnet-20240229-v1:0", bedrockClient);
     await saveDocument(template, content);
     setGeneratingDoc(false);
   };
 
-  // Calculate Progress Stats
   const calculateStats = () => {
     if (!guildData) return { totalQuests: 0, completedQuests: 0, completionRate: 0 };
 
@@ -744,11 +1091,14 @@ export default function App() {
     return { totalQuests, completedQuests, completionRate };
   };
 
-  // Toggle Sound
   const toggleSound = () => {
     const newState = soundManager.toggle();
     setSoundEnabled(newState);
   };
+
+  const levelInfo = calculateLevel(guildData?.xp || 0);
+  const stats = calculateStats();
+  const guildLevel = GUILD_LEVELS[guildData?.guildLevel as keyof typeof GUILD_LEVELS] || GUILD_LEVELS[1];
 
   if (loading) {
     return <EpicMedievalLoader />;
@@ -762,11 +1112,9 @@ export default function App() {
           <h1 className="text-2xl font-bold text-yellow-100">Guild Not Found</h1>
           <p className="text-gray-300 mb-6">{guildDataError}</p>
           <button
-            onClick={async () => {
-              setLoading(true);
+            onClick={() => {
               setGuildDataError(null);
-              if (user) await loadGuildData(user.uid);
-              setLoading(false);
+              setFetchTrigger((t) => t + 1);
             }}
             className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-lg hover:from-purple-500 hover:to-pink-500 transition-all magic-border"
           >
@@ -781,22 +1129,28 @@ export default function App() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="parchment p-8 rounded-lg shadow-2xl text-center max-w-md hero-3d">
-
           <div className="w-full h-80 mx-auto mb-6 flex items-center justify-center">
-            <Canvas
-              camera={{ position: [0, 0, 7], fov: 50 }}
-              style={{ width: '100%', height: '100%' }}
-            >
-              {/* Use the Drei helpers for lights, as ambientLight and pointLight are not valid JSX elements */}
-              {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
-              {/* @ts-ignore */}
-              <primitive object={new THREE.AmbientLight(0xffffff, 0.5)} />
-              {/* @ts-ignore */}
-              <primitive object={new THREE.PointLight(0xffffff, 1)} position={[10, 10, 10]} />
-              <Suspense fallback={null}>
-                <DiamondSword3D rotation={[0.3, 0, 0.3]} scale={[2, 2, 2]} standingRotation={{ x: 0, y: 0, z: Math.PI / 2 }} />
-              </Suspense>
-            </Canvas>
+            <Canvas3DErrorBoundary>
+              <Canvas
+                camera={{ position: [0, 0, 7], fov: 50 }}
+                style={{ width: '100%', height: '100%' }}
+                gl={{
+                  antialias: true,
+                  preserveDrawingBuffer: true,
+                  powerPreference: "high-performance"
+                }}
+              >
+                {/* Use the Drei helpers for lights, as ambientLight and pointLight are not valid JSX elements */}
+                {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
+                {/* @ts-ignore */}
+                <primitive object={new THREE.AmbientLight(0xffffff, 0.5)} />
+                {/* @ts-ignore */}
+                <primitive object={new THREE.PointLight(0xffffff, 1)} position={[10, 10, 10]} />
+                <Suspense fallback={null}>
+                  <DiamondSword3D rotation={[0.3, 0, 0.3]} scale={[2, 2, 2]} standingRotation={{ x: 0, y: 0, z: Math.PI / 2 }} />
+                </Suspense>
+              </Canvas>
+            </Canvas3DErrorBoundary>
           </div>
           <h1 className="text-3xl font-bold text-yellow-100 mb-2">AI Startup Quest</h1>
           <p className="text-gray-300 mb-6">Start your journey to building your company</p>
@@ -815,150 +1169,44 @@ export default function App() {
     );
   }
 
+  // SHOW ONBOARDING FLOWS
   if (showOnboarding) {
-    const currentQuestion = onboardingStep === 0 ? null : ONBOARDING_QUESTIONS[onboardingStep - 1];
-    const QuestionIcon = currentQuestion?.icon || Brain;
+    if (onboardingType === 'founder') {
+      return (
+        <FounderOnboarding
+          onComplete={handleFounderOnboardingComplete}
+          user={user}
+        />
+      );
+    } else {
+      return (
+        <MemberOnboarding
+          onComplete={handleMemberOnboardingComplete}
+          onDecline={handleMemberOnboardingDecline}
+          inviteData={inviteData}
+          user={user}
+        />
+      );
+    }
+  }
 
+  if (guildData && guildData.joinRequestStatus === 'pending') {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="parchment p-8 rounded-lg shadow-2xl max-w-2xl w-full">
-          {onboardingStep === 0 ? (
-            <>
-              <h2 className="text-3xl font-bold text-yellow-100 mb-4">Your Vision</h2>
-              <p className="text-gray-300 mb-6">
-                Please share your vision for your company.
-              </p>
-              <textarea
-                value={vision}
-                onChange={(e) => setVision(e.target.value)}
-                placeholder="Describe your mission in detail..."
-                className="w-full p-4 bg-gray-700 text-white rounded-lg mb-4 h-32 resize-none"
-              />
-              <button
-                onClick={() => { setOnboardingStep(1); if (userInteracted) soundManager.play('swordDraw'); }}
-                disabled={!vision}
-                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-lg hover:from-purple-500 hover:to-pink-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed magic-border"
-              >
-                Continue
-              </button>
-            </>
-          ) : onboardingStep <= ONBOARDING_QUESTIONS.length ? (
-            <>
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-2xl font-bold text-yellow-100">Profile Setup</h3>
-                <span className="text-gray-300">
-                  Step {onboardingStep} of {ONBOARDING_QUESTIONS.length}
-                </span>
-              </div>
-
-              <div className="mb-6">
-                <div className="flex items-center mb-4">
-                  {typeof QuestionIcon === 'string' ? (
-                    <span className="w-6 h-6 text-purple-400 mr-3" style={{ fontSize: '1.5rem' }}>{QuestionIcon}</span>
-                  ) : (
-                    <QuestionIcon className="w-6 h-6 text-purple-400 mr-3" />
-                  )}
-                  <p className="text-lg text-yellow-100">{currentQuestion?.question}</p>
-                </div>
-
-                {currentQuestion?.type === 'avatar' && (
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {AVATAR_TEMPLATES.map((avatar) => (
-                      <button
-                        key={avatar.id}
-                        onClick={() => handleOnboardingAnswer(currentQuestion.id, avatar)}
-                        className={`parchment p-4 rounded-lg transition-all ${onboardingAnswers[currentQuestion.id]?.id === avatar.id
-                          ? 'magic-border transform scale-105'
-                          : 'hover:transform hover:scale-105'
-                          }`}
-                      >
-                        <div className="text-3xl mb-2">{typeof avatar.icon === 'string' ? <span>{avatar.icon}</span> : null}</div>
-                        <p className="font-medium text-yellow-100">{avatar.name}</p>
-                        <p className="text-xs opacity-75 text-gray-300">{avatar.outfit}</p>
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {currentQuestion?.type === 'select' && (
-                  <div className="grid grid-cols-2 gap-3">
-                    {currentQuestion.options?.map((option: string) => (
-                      <button
-                        key={option}
-                        onClick={() => handleOnboardingAnswer(currentQuestion.id, option)}
-                        className={`p-3 rounded-lg transition-all ${onboardingAnswers[currentQuestion.id] === option
-                          ? 'bg-purple-800 text-white magic-border'
-                          : 'parchment text-gray-300 hover:transform hover:scale-105'
-                          }`}
-                      >
-                        {option}
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {currentQuestion?.type === 'text' && (
-                  <input
-                    type="text"
-                    value={onboardingAnswers[currentQuestion.id] || ''}
-                    onChange={(e) => handleOnboardingAnswer(currentQuestion.id, e.target.value)}
-                    placeholder={currentQuestion.placeholder}
-                    className="w-full p-3 bg-gray-700 text-white rounded-lg"
-                  />
-                )}
-              </div>
-
-              <div className="flex space-x-4">
-                {onboardingStep > 1 && (
-                  <button
-                    onClick={() => { setOnboardingStep(onboardingStep - 1); if (userInteracted) soundManager.play('swordDraw'); }}
-                    className="flex-1 bg-gray-700 text-white px-6 py-3 rounded-lg hover:bg-gray-600 transition-all"
-                  >
-                    Previous
-                  </button>
-                )}
-                <button
-                  onClick={() => {
-                    if (onboardingStep < ONBOARDING_QUESTIONS.length) {
-                      setOnboardingStep(onboardingStep + 1);
-                      if (userInteracted) soundManager.play('swordDraw');
-                    } else {
-                      completeOnboarding();
-                    }
-                  }}
-                  disabled={!onboardingAnswers[currentQuestion?.id || '']}
-                  className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-lg hover:from-purple-500 hover:to-pink-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed magic-border"
-                >
-                  {onboardingStep < ONBOARDING_QUESTIONS.length ? 'Next' : 'Create Team'}
-                </button>
-              </div>
-            </>
-          ) : (
-            <div className="text-center">
-              <h3 className="text-2xl font-bold text-yellow-100 mb-4">Creating Your Team Profile...</h3>
-              <div className="w-32 h-32 mx-auto mb-4">
-                <Canvas camera={{ position: [0, 0, 5], fov: 50 }}>
-                  <primitive object={new THREE.AmbientLight(0xffffff, 0.5)} />
-                  <primitive object={new THREE.PointLight(0xffffff, 1)} position={[10, 10, 10]} />
-                  <Suspense fallback={null}>
-                    <DiamondSword3D standingRotation={{ x: 0, y: 0, z: Math.PI / 2 }} />
-                  </Suspense>
-                </Canvas>
-              </div>
-              <p className="text-gray-300">Setting up your profile...</p>
-            </div>
-          )}
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="parchment p-8 rounded-lg shadow-2xl text-center max-w-md">
+          <h1 className="text-2xl font-bold text-yellow-100">Awaiting Approval</h1>
+          <p className="text-gray-300 my-4">Your request to join "{guildData.guildName}" has been sent.</p>
+          <p className="text-gray-300 mb-6">You will be able to access the guild once the founder approves your request.</p>
+          <EpicMedievalLoader />
         </div>
       </div>
     );
   }
 
-  const levelInfo = calculateLevel(guildData?.xp || 0);
-  const stats = calculateStats();
-  const guildLevel = GUILD_LEVELS[guildData?.guildLevel as keyof typeof GUILD_LEVELS] || GUILD_LEVELS[1];
-
+  // MAIN APPLICATION UI (same as before)
   return (
     <div className="min-h-screen text-white">
+      {/* Header */}
       <header className="parchment shadow-lg border-b-4 border-yellow-700">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-4">
@@ -966,12 +1214,20 @@ export default function App() {
             <h1 className="text-2xl font-bold text-yellow-100">AI Startup Quest</h1>
             {!isOnline && (
               <div className="flex items-center space-x-1 px-2 py-1 bg-orange-900/50 rounded-lg text-orange-400 text-sm">
-                <AlertCircle className="w-4 h-4" />
+                <AlertTriangle className="w-4 h-4" />
                 <span>Offline</span>
               </div>
             )}
           </div>
           <div className="flex items-center space-x-6">
+            {guildData && (
+              <EnergyBar
+                currentEnergy={guildData.currentEnergy}
+                maxEnergy={guildData.maxEnergy}
+                isPremium={guildData.isPremium}
+                onPurchaseClick={() => energyManagement.setShowEnergyPurchase(true)}
+              />
+            )}
             {ceoAvatar && (
               <button
                 onClick={() => { setShowCEOProfile(true); if (userInteracted) soundManager.play('swordDraw'); }}
@@ -1035,12 +1291,10 @@ export default function App() {
         </div>
       </header>
 
+      {/* Guild Info Bar */}
       <div className="parchment border-b border-yellow-700">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            {guildData?.avatar && (
-              <span className="text-3xl">{typeof guildData.avatar.icon === 'string' ? guildData.avatar.icon : null}</span>
-            )}
             <Castle className="w-5 h-5 text-blue-400" />
             <span className="text-yellow-100 font-bold">{guildData?.guildName}</span>
             <span className="text-sm text-gray-300">Quest: {guildData?.vision}</span>
@@ -1091,12 +1345,14 @@ export default function App() {
         </div>
       </div>
 
+      {/* Daily Bonus Bar */}
       <div className="bg-gradient-to-r from-purple-900/30 to-indigo-900/30 border-b border-yellow-700">
         <div className="max-w-7xl mx-auto px-4 py-3">
           <DailyBonus guildData={guildData} onClaim={claimDailyBonus} soundManager={soundManager} />
         </div>
       </div>
 
+      {/* Document Generation Bar */}
       <div className="bg-gradient-to-r from-amber-900/30 to-orange-900/30 border-b border-yellow-700">
         <div className="max-w-7xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between flex-wrap gap-3">
@@ -1111,7 +1367,7 @@ export default function App() {
                   onClick={() => handleGenerateDocument(template)}
                   disabled={generatingDoc}
                   className="px-3 py-1 parchment rounded-lg text-sm hover:transform hover:scale-105 transition-all disabled:opacity-50"
-                  title={`Create ${template.name} (+${template.xp} XP)`}
+                  title={`Create ${template.name} (+${template.xp} XP, ${ENERGY_COSTS.DOCUMENT_GENERATION} energy)`}
                   onMouseEnter={() => { if (userInteracted) soundManager.play('swordDraw'); }}
                 >
                   {typeof template.icon === 'string' ? <span>{template.icon}</span> : null} {template.name}
@@ -1127,6 +1383,7 @@ export default function App() {
         </div>
       </div>
 
+      {/* Main Quest Map */}
       <main className="max-w-7xl mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {Object.values(QUEST_STAGES).map((stage) => {
@@ -1222,47 +1479,38 @@ export default function App() {
           })}
         </div>
 
-        {/* 4-Panel Quest Interface */}
-        {
-          selectedQuest && (
-            <FourPanelQuestInterface
-              quest={selectedQuest}
-              guildData={guildData}
-              ceoAvatar={ceoAvatar}
-              onComplete={completeQuest}
-              onClose={() => { setSelectedQuest(null); if (userInteracted) soundManager.play('swordDraw'); }}
-              saveConversation={saveConversation}
-              updateGold={updateGold}
-              soundManager={soundManager}
-              awsModelId={awsModelId}
-              bedrockClient={bedrockClient}
-            />
-          )
-        }
-
-        {/* Guild Management */}
-        {
-          showGuildManagement && (
-            <GuildManagement
-              guildData={guildData}
-              onClose={() => { setShowGuildManagement(false); if (userInteracted) soundManager.play('swordDraw'); }}
-            />
-          )
-        }
-
-        {/* Armory Interface */}
-        {
-          showArmory && (
-            <ArmoryInterface
-              guildData={guildData}
-              onPurchase={handleArmoryPurchase}
-              onClose={() => { setShowArmory(false); if (userInteracted) soundManager.play('swordDraw'); }}
-              soundManager={soundManager}
-            />
-          )
-        }
-
-        {/* Progress Dashboard Modal */}
+        {/* All the Modals (same as before) */}
+        {/* 4-Panel Quest Interface, Guild Management, Armory, etc. */}
+        {selectedQuest && (
+          <FourPanelQuestInterface
+            quest={selectedQuest}
+            guildData={guildData}
+            ceoAvatar={ceoAvatar}
+            onComplete={completeQuest}
+            onClose={() => setSelectedQuest(null)}
+            saveConversation={saveConversation}
+            updateGold={updateGold}
+            soundManager={soundManager}
+            awsModelId={import.meta.env.VITE_NOVA_INFERENCE_PROFILE_ARN || "anthropic.claude-3-sonnet-20240229-v1:0"}
+            bedrockClient={bedrockClient}
+            consumeEnergy={energyManagement.consumeEnergy}
+            setGuildData={setGuildData}
+          />
+        )}
+        {showGuildManagement && (
+          <GuildManagement
+            guildData={guildData}
+            onClose={() => { setShowGuildManagement(false); if (userInteracted) soundManager.play('swordDraw'); }}
+          />
+        )}
+        {showArmory && (
+          <ArmoryInterface
+            guildData={guildData}
+            onPurchase={handleArmoryPurchase}
+            onClose={() => { setShowArmory(false); if (userInteracted) soundManager.play('swordDraw'); }}
+            soundManager={soundManager}
+          />
+        )}
         <Modal open={showDashboard} size='lg' onClose={() => { setShowDashboard(false); if (userInteracted) soundManager.play('swordDraw'); }}>
           <div className="p-6 max-w-4xl w-full">
             <div className="flex items-center justify-between mb-4">
@@ -1274,7 +1522,6 @@ export default function App() {
                 ×
               </button>
             </div>
-
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
               <div className="parchment rounded-lg p-4">
                 <p className="text-sm text-gray-300 mb-1">Total XP</p>
@@ -1293,7 +1540,6 @@ export default function App() {
                 <p className="text-2xl font-bold text-blue-400">{guildLevel.name}</p>
               </div>
             </div>
-
             <div className="mb-6">
               <h4 className="text-lg font-bold mb-3 text-yellow-100">Your Progress</h4>
               <div className="space-y-3">
@@ -1318,21 +1564,19 @@ export default function App() {
                 </div>
               </div>
             </div>
-
             <div className="mb-6">
               <h4 className="text-lg font-bold mb-3 text-yellow-100">Skills</h4>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 {Object.entries(CORE_ATTRIBUTES).map(([key, attr]) => {
                   const AttributeIcon = attr.icon;
                   const attrXP = Object.entries(guildData?.questProgress || {})
-                    .filter(([_, data]: any) => data.completed)
+                    .filter(([, data]: any) => data.completed)
                     .reduce((sum, [questKey]: any) => {
                       const quest = Object.values(QUEST_STAGES)
                         .flatMap(stage => stage.quests)
                         .find(q => questKey.includes(q.id));
-                      return quest?.attribute === key ? sum + quest.xp : sum;
+                      return quest?.attribute === key ? sum + (quest.xp ?? 0) : sum;
                     }, 0);
-
                   return (
                     <div key={key} className="parchment rounded-lg p-3">
                       <div className="flex items-center space-x-2 mb-1">
@@ -1350,7 +1594,6 @@ export default function App() {
                 })}
               </div>
             </div>
-
             <div>
               <h4 className="text-lg font-bold mb-3 text-yellow-100">Achievements</h4>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -1372,8 +1615,6 @@ export default function App() {
             </div>
           </div>
         </Modal>
-
-        {/* Resources Modal */}
         <Modal open={showResources} onClose={() => { setShowResources(false); if (userInteracted) soundManager.play('swordDraw'); }}>
           <div className="p-6 max-w-4xl w-full">
             <div className="flex items-center justify-between mb-4">
@@ -1385,7 +1626,6 @@ export default function App() {
                 ×
               </button>
             </div>
-
             <div className="parchment p-4 mb-6 magic-border">
               <div className="flex items-start space-x-3">
                 <Lightbulb className="w-5 h-5 text-yellow-500 mt-0.5" />
@@ -1398,7 +1638,6 @@ export default function App() {
                 </div>
               </div>
             </div>
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <h4 className="font-bold mb-3 flex items-center text-yellow-100">
@@ -1420,7 +1659,6 @@ export default function App() {
                   </a>
                 </div>
               </div>
-
               <div>
                 <h4 className="font-bold mb-3 flex items-center text-yellow-100">
                   <Zap className="w-5 h-5 mr-2 text-yellow-500" />
@@ -1441,7 +1679,6 @@ export default function App() {
                   </a>
                 </div>
               </div>
-
               <div>
                 <h4 className="font-bold mb-3 flex items-center text-yellow-100">
                   <Users className="w-5 h-5 mr-2 text-green-500" />
@@ -1462,7 +1699,6 @@ export default function App() {
                   </a>
                 </div>
               </div>
-
               <div>
                 <h4 className="font-bold mb-3 flex items-center text-yellow-100">
                   <Video className="w-5 h-5 mr-2 text-purple-500" />
@@ -1486,8 +1722,6 @@ export default function App() {
             </div>
           </div>
         </Modal>
-
-        {/* CEO Profile Modal */}
         <Modal open={showCEOProfile && ceoAvatar} onClose={() => { setShowCEOProfile(false); if (userInteracted) soundManager.play('swordDraw'); }}>
           <div className="p-6 w-full">
             <div className="flex items-center justify-between mb-4">
@@ -1499,13 +1733,11 @@ export default function App() {
                 ×
               </button>
             </div>
-
             <div className={`text-center mb-6 p-6 rounded-lg bg-gradient-to-r ${ceoAvatar?.color} bg-opacity-20 parchment`}>
               <div className="text-6xl mb-2">{ceoAvatar?.avatar}</div>
               <h4 className="text-xl font-bold text-yellow-100">{ceoAvatar?.name}</h4>
               <p className="text-sm text-gray-300">{ceoAvatar?.title}</p>
             </div>
-
             <div className="space-y-3">
               <div>
                 <p className="text-sm text-gray-400 mb-1">Industries</p>
@@ -1517,7 +1749,6 @@ export default function App() {
                   ))}
                 </div>
               </div>
-
               <div>
                 <p className="text-sm text-gray-400 mb-1">Traits</p>
                 <div className="flex flex-wrap gap-2">
@@ -1528,7 +1759,6 @@ export default function App() {
                   ))}
                 </div>
               </div>
-
               <div className="pt-3 border-t border-gray-700">
                 <p className="text-sm text-gray-400 mb-1">Advice</p>
                 <p className="italic text-yellow-100">"{ceoAvatar?.advice}"</p>
@@ -1536,8 +1766,6 @@ export default function App() {
             </div>
           </div>
         </Modal>
-
-        {/* Conversation History Modal */}
         <Modal open={showHistory} onClose={() => { setShowHistory(false); if (userInteracted) soundManager.play('swordDraw'); }}>
           <div className="p-6 max-w-4xl w-full">
             <div className="flex items-center justify-between mb-4">
@@ -1549,7 +1777,6 @@ export default function App() {
                 ×
               </button>
             </div>
-
             {conversations.length === 0 ? (
               <p className="text-gray-400 text-center py-8">No conversations recorded yet</p>
             ) : (
@@ -1580,8 +1807,6 @@ export default function App() {
             )}
           </div>
         </Modal>
-
-        {/* Documents Modal */}
         <Modal size="full" open={showDocuments} onClose={() => { setShowDocuments(false); if (userInteracted) soundManager.play('swordDraw'); }}>
           <div className="flex flex-col h-full w-full">
             <div className="flex items-center justify-between p-6 border-b border-yellow-700 bg-gradient-to-r from-purple-900 to-indigo-900">
@@ -1598,8 +1823,6 @@ export default function App() {
             </div>
           </div>
         </Modal>
-
-        {/* Document View Modal */}
         <Modal open={!!selectedDocument} onClose={() => { setSelectedDocument(null); if (userInteracted) soundManager.play('swordDraw'); }}>
           <div className="p-6 max-w-4xl w-full">
             <div className="flex items-center justify-between mb-4">
@@ -1622,7 +1845,6 @@ export default function App() {
                 </button>
               </div>
             </div>
-
             <div className="parchment rounded-lg p-6">
               <ReactMarkdown >
                 {selectedDocument?.content}
@@ -1630,28 +1852,35 @@ export default function App() {
             </div>
           </div>
         </Modal>
+        {showGoldPurchase && (
+          <GoldPurchase
+            user={user}
+            guildData={guildData}
+            onClose={() => { setShowGoldPurchase(false); if (userInteracted) soundManager.play('swordDraw'); }}
+            soundManager={soundManager}
+            onPurchaseSuccess={(newGold, purchaseData) => {
+              setGuildData((prev: any) => ({
+                ...prev,
+                gold: newGold,
+                purchaseHistory: [...(prev.purchaseHistory || []), purchaseData],
+                totalSpent: (prev.totalSpent || 0) + purchaseData.amount,
+                lastPurchase: purchaseData.timestamp
+              }));
+            }}
+          />
+        )}
 
-        {/* Gold Purchase Modal */}
-        {
-          showGoldPurchase && (
-            <GoldPurchase
-              user={user}
-              guildData={guildData}
-              onClose={() => { setShowGoldPurchase(false); if (userInteracted) soundManager.play('swordDraw'); }}
-              soundManager={soundManager}
-              onPurchaseSuccess={(newGold, purchaseData) => {
-                setGuildData((prev: any) => ({
-                  ...prev,
-                  gold: newGold,
-                  purchaseHistory: [...(prev.purchaseHistory || []), purchaseData],
-                  totalSpent: (prev.totalSpent || 0) + purchaseData.amount,
-                  lastPurchase: purchaseData.timestamp
-                }));
-              }}
-            />
-          )
-        }
-      </main >
-    </div >
+        {/* Energy Purchase Modal */}
+        {guildData && (
+          <EnergyPurchaseModal
+            isOpen={energyManagement.showEnergyPurchase}
+            onClose={() => energyManagement.setShowEnergyPurchase(false)}
+            currentGold={guildData.gold}
+            onPurchase={energyManagement.purchaseEnergy}
+            purchasing={energyManagement.purchasingEnergy}
+          />
+        )}
+      </main>
+    </div>
   );
 }

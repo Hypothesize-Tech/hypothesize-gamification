@@ -16,12 +16,8 @@ import {
     Trophy,
 } from 'lucide-react';
 import * as THREE from 'three';
-import { updateDoc, doc, increment, arrayUnion, serverTimestamp, getFirestore, collection, addDoc } from 'firebase/firestore';
-import { firebaseConfig } from '../config/config';
-import { initializeApp } from 'firebase/app';
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+import { updateDoc, doc, increment, arrayUnion, serverTimestamp } from 'firebase/firestore';
+import { db } from '../config/config';
 
 // 3D Gold Coin Component
 function GoldCoin3D({ position = [0, 0, 0], scale = [1, 1, 1] }) {

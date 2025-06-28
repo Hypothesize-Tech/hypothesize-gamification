@@ -1,5 +1,10 @@
-import { Castle, X } from "lucide-react";
+import { Castle, X, Send } from "lucide-react";
 import { GUILD_ROLES } from "../utils/constant";
+import { useState } from "react";
+import { createInviteLink, generateGuildInviteEmail, sendEmail } from "../utils/email";
+import { doc, updateDoc, arrayUnion } from "firebase/firestore";
+import { db } from "../config/config";
+import { v4 as uuidv4 } from 'uuid';
 
 export const GuildManagement = ({
     guildData,
@@ -8,7 +13,42 @@ export const GuildManagement = ({
     guildData: any;
     onClose: () => void;
 }) => {
+    const [inviteEmail, setInviteEmail] = useState('');
+    const [isInviting, setIsInviting] = useState(false);
     const filledRoles = new Set(guildData.members?.map((m: any) => m.role) || []);
+
+    const handleInvite = async () => {
+        if (!inviteEmail || !guildData.isFounder) {
+            alert("Please enter a valid email address.");
+            return;
+        }
+
+        setIsInviting(true);
+        try {
+            const inviteToken = uuidv4();
+            const inviteLink = createInviteLink(guildData, inviteToken);
+            const { subject, body } = generateGuildInviteEmail({
+                guildName: guildData.guildName,
+                founderName: guildData.onboardingData?.name || 'the Founder',
+                ventureIdea: guildData.vision,
+                inviteLink,
+            });
+
+            // Add invite to Firestore
+            const guildRef = doc(db, 'guilds', guildData.guildId);
+            await updateDoc(guildRef, {
+                invitesSent: arrayUnion({ email: inviteEmail, token: inviteToken, status: 'pending', sentAt: new Date().toISOString() })
+            });
+
+            sendEmail(inviteEmail, subject, body);
+            alert(`Invitation sent to ${inviteEmail}!`);
+            setInviteEmail('');
+        } catch (error) {
+            console.error("Error sending invite:", error);
+            alert("Failed to send invitation. Please try again.");
+        }
+        setIsInviting(false);
+    };
 
     return (
         <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
@@ -80,6 +120,28 @@ export const GuildManagement = ({
                             ))}
                         </div>
                     </div>
+
+                    {guildData.isFounder && (
+                        <div className="mb-8">
+                            <h3 className="text-lg font-bold mb-4 text-yellow-100">Invite New Members</h3>
+                            <div className="flex space-x-2">
+                                <input
+                                    type="email"
+                                    value={inviteEmail}
+                                    onChange={(e) => setInviteEmail(e.target.value)}
+                                    placeholder="Enter email to invite"
+                                    className="flex-1 p-3 bg-gray-700 rounded-lg text-white"
+                                />
+                                <button
+                                    onClick={handleInvite}
+                                    disabled={isInviting}
+                                    className="px-4 py-3 bg-purple-800 rounded-lg hover:bg-purple-700 disabled:opacity-50"
+                                >
+                                    {isInviting ? 'Sending...' : <Send className="w-5 h-5" />}
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

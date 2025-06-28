@@ -1,9 +1,34 @@
-import React, { useRef } from 'react';
-import { useFrame, useLoader } from '@react-three/fiber';
+import React, { useRef, useEffect } from 'react';
+import { useFrame, useLoader, useThree } from '@react-three/fiber';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import * as THREE from 'three';
 
 const MODEL_PATH = '/Stylized Emerald Sword.glb';
+
+function useWebGLErrorHandling() {
+    const { gl } = useThree();
+
+    useEffect(() => {
+        const canvas = gl.domElement;
+
+        const handleContextLost = (event: Event) => {
+            event.preventDefault();
+            console.log('WebGL context lost, attempting to restore...');
+        };
+
+        const handleContextRestored = () => {
+            console.log('WebGL context restored');
+        };
+
+        canvas.addEventListener('webglcontextlost', handleContextLost, false);
+        canvas.addEventListener('webglcontextrestored', handleContextRestored, false);
+
+        return () => {
+            canvas.removeEventListener('webglcontextlost', handleContextLost);
+            canvas.removeEventListener('webglcontextrestored', handleContextRestored);
+        };
+    }, [gl]);
+}
 
 type DiamondSword3DProps = {
     rotation?: [number, number, number] | THREE.Euler;
@@ -25,6 +50,7 @@ const DiamondSword3D: React.FC<DiamondSword3DProps> = ({
     floatAmplitude = 0.1,
     standingRotation = { x: 0, y: 0, z: Math.PI / 2 }, // Default: rotate 90° on Z
 }) => {
+    useWebGLErrorHandling();
     const group = useRef<THREE.Group>(null);
     const swordRef = useRef<THREE.Group>(null);
 
