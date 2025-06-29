@@ -3,7 +3,7 @@ import { QUEST_INPUT_TEMPLATES } from "../utils/constant";
 import { calculateGoldReward, calculateLevel, calculateXPWithBonuses, consultAISage, fetchDynamicResources, getPersonalizedQuestDetails, getSuggestedSageQuestions, rateQuestSubmission, triggerConfetti } from "../utils/helper";
 import { Canvas } from "@react-three/fiber";
 import DiamondSword3D from "./DiamondSword3D";
-import { BookOpen, Coins, Edit3, ExternalLink, Loader2, RefreshCw, Save, Scroll, Send, Sparkles, Swords, Trophy, X, ChevronDown, ChevronUp, Zap, Wand2, MessageSquare, Users } from "lucide-react";
+import { BookOpen, Coins, Edit3, ExternalLink, Loader2, RefreshCw, Save, Scroll, Send, Sparkles, Swords, Trophy, X, ChevronDown, ChevronUp, Zap, Wand2, MessageSquare, Users, Share2 } from "lucide-react";
 import ReactMarkdown from 'react-markdown';
 import { BedrockRuntimeClient } from '@aws-sdk/client-bedrock-runtime';
 import { EnergyWarning } from './EnergySystem';
@@ -12,6 +12,7 @@ import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import "./FourPanelQuestInterface.css";
 import { addDoc, collection, onSnapshot, orderBy, query, serverTimestamp } from "firebase/firestore";
 import { db } from "../config/config";
+import ShareAchievementModal from "./ShareAchievementModal";
 
 
 export const FourPanelQuestInterface = ({
@@ -71,6 +72,7 @@ export const FourPanelQuestInterface = ({
     const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
     const [personalizedDetails, setPersonalizedDetails] = useState<any>(questProgress?.personalizedData || null);
     const [isPersonalizing, setIsPersonalizing] = useState(false);
+    const [showShareModal, setShowShareModal] = useState(false);
 
     // War Room: Fetch Comments
     useEffect(() => {
@@ -317,7 +319,16 @@ export const FourPanelQuestInterface = ({
                     <div className="flex items-center space-x-4">
                         <Swords className="w-6 h-6 text-yellow-500" />
                         <div>
-                            <h2 className="text-2xl font-bold text-yellow-100">{quest.name}</h2>
+                            <div className="flex items-center gap-4">
+                                <h2 className="text-2xl font-bold text-yellow-100">{quest.name}</h2>
+                                <button
+                                    onClick={() => setShowShareModal(true)}
+                                    className="p-2 -m-2 text-gray-400 hover:text-white"
+                                    title="Share Achievements"
+                                >
+                                    <Share2 className="w-5 h-5" />
+                                </button>
+                            </div>
                             <p className="text-sm text-gray-300">{quest.description} • {quest.xp} XP</p>
                             {isCompleted && (
                                 <div className="mt-1 flex items-center space-x-2">
@@ -742,6 +753,20 @@ export const FourPanelQuestInterface = ({
                     </Panel>
                 </PanelGroup>
             </div>
+            {showShareModal && (
+                <ShareAchievementModal
+                    isOpen={showShareModal}
+                    onClose={() => setShowShareModal(false)}
+                    achievement={{
+                        name: quest.name,
+                        description: `I've completed the "${quest.name}" quest!`,
+                    }}
+                    shareUrls={{
+                        linkedIn: `https://www.linkedin.com/shareArticle?mini=true&url=${encodeURIComponent(window.location.href)}&title=${encodeURIComponent(`Achievement Unlocked: ${quest.name}`)}&summary=${encodeURIComponent(`I just completed the "${quest.name}" quest and earned valuable rewards!`)}&source=${encodeURIComponent(window.location.origin)}`,
+                        twitter: `https://twitter.com/intent/tweet?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(`I just unlocked the "${quest.name}" achievement in my founder journey! #gamification #startup`)}`
+                    }}
+                />
+            )}
         </div>
     );
 }

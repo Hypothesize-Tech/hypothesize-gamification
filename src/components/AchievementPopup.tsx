@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { Trophy, X } from 'lucide-react';
 
 const AchievementPopup = ({ achievements, onClose, soundManager }: { achievements: any[], onClose: () => void, soundManager: any }) => {
