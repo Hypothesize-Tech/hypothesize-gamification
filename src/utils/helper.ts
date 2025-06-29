@@ -3,7 +3,6 @@ import { ARMORY_ITEMS } from './constant';
 import { BedrockRuntimeClient, InvokeModelCommand } from '@aws-sdk/client-bedrock-runtime';
 import { Castle, Crown, Swords } from 'lucide-react';
 import { Shield } from 'lucide-react';
-import visionQuestAchievement from '../assets/wallpaper_9.png';
 
 export const calculateLevel = (xp: number) => {
     const baseXP = 100;
@@ -325,26 +324,14 @@ export async function getSuggestedSageQuestions({ quest, guildData, guildLevel, 
     }
 }
 
-export const triggerConfetti = () => {
-    confetti({
-        particleCount: 150,
+export const triggerConfetti = (options = {}) => {
+    const defaults = {
+        particleCount: 100,
         spread: 70,
         origin: { y: 0.6 },
-        colors: ['#bb0000', '#ffffff', '#ffd700']
-    });
-};
-
-export const generateAchievementImageUrl = (achievementName: string) => {
-    // For major achievements, return a specific branded image.
-    if (achievementName.toLowerCase().includes('vision quest')) {
-        return visionQuestAchievement;
-    }
-
-    // For other quests, generate a dynamic placeholder.
-    const text = `Achievement Unlocked: ${achievementName}`;
-    // Using a placeholder service. In a real application, this could be a service
-    // that generates a branded image. e.g., using a serverless function with a library like Sharp or Puppeteer.
-    return `https://via.placeholder.com/1200x630/1a202c/FFFFFF?text=${encodeURIComponent(text)}`;
+        colors: ['#ffd700', '#ff6b35', '#fef3c7', '#c084fc', '#9333ea']
+    };
+    confetti({ ...defaults, ...options });
 };
 
 export const QUEST_STAGES = {

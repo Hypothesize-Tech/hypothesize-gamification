@@ -87,6 +87,7 @@ import { createInviteLink, generateGuildInviteEmail, sendEmail } from './utils/e
 
 // IMPORT THE ONBOARDING FLOWS
 import { FounderOnboarding, MemberOnboarding } from './components/OnboardingFlows';
+import { UserProfile } from './components/UserProfile';
 
 class Canvas3DErrorBoundary extends React.Component<
   { children: React.ReactNode },
@@ -218,6 +219,7 @@ export default function App() {
   const [showGoldPurchase, setShowGoldPurchase] = useState(false);
   const [modalContent, setModalContent] = useState<{ title: string; message: string } | null>(null);
   const [assignmentModal, setAssignmentModal] = useState<{ quest: any; questKey: string } | null>(null);
+  const [showUserProfile, setShowUserProfile] = useState(false);
 
   const energyManagement = useEnergyManagement(
     guildData as GuildDataWithEnergy,
@@ -1373,10 +1375,16 @@ export default function App() {
                 <Scroll className="w-5 h-5" />
               </button>
               <button
-                onClick={handleSignOut}
-                className="text-gray-400 hover:text-white"
+                onClick={() => setShowUserProfile(true)}
+                className="bg-blue-600/50 hover:bg-blue-500/50 text-white font-bold py-2 px-4 rounded-lg flex items-center space-x-2 transition-all duration-300"
               >
-                <LogOut className="w-5 h-5" />
+                <User className="w-6 h-6" />
+              </button>
+              <button
+                onClick={handleSignOut}
+                className="bg-red-600/50 hover:bg-red-500/50 text-white font-bold py-2 px-4 rounded-lg flex items-center space-x-2 transition-all duration-300"
+              >
+                <LogOut className="w-6 h-6" />
               </button>
             </div>
           </div>
@@ -2044,6 +2052,15 @@ export default function App() {
               `}
             </style>
           </Modal>
+        )}
+
+        {showUserProfile && (
+          <UserProfile
+            guildData={guildData}
+            user={user}
+            ceoAvatar={ceoAvatar}
+            onClose={() => setShowUserProfile(false)}
+          />
         )}
       </main>
     </div>

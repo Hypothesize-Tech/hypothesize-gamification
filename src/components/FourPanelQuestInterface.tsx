@@ -1,9 +1,9 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import { QUEST_INPUT_TEMPLATES } from "../utils/constant";
-import { calculateGoldReward, calculateLevel, calculateXPWithBonuses, consultAISage, fetchDynamicResources, getPersonalizedQuestDetails, getSuggestedSageQuestions, rateQuestSubmission, triggerConfetti, generateAchievementImageUrl } from "../utils/helper";
+import { calculateGoldReward, calculateLevel, calculateXPWithBonuses, consultAISage, fetchDynamicResources, getPersonalizedQuestDetails, getSuggestedSageQuestions, rateQuestSubmission, triggerConfetti } from "../utils/helper";
 import { Canvas } from "@react-three/fiber";
 import DiamondSword3D from "./DiamondSword3D";
-import { BookOpen, Coins, Edit3, ExternalLink, Loader2, RefreshCw, Save, Scroll, Send, Sparkles, Swords, Trophy, X, ChevronDown, ChevronUp, Zap, Wand2, MessageSquare, Users, Share2 } from "lucide-react";
+import { BookOpen, Coins, Edit3, ExternalLink, Loader2, RefreshCw, Save, Scroll, Send, Sparkles, Swords, Trophy, X, ChevronDown, ChevronUp, Zap, Wand2, MessageSquare, Users } from "lucide-react";
 import ReactMarkdown from 'react-markdown';
 import { BedrockRuntimeClient } from '@aws-sdk/client-bedrock-runtime';
 import { EnergyWarning } from './EnergySystem';
@@ -12,7 +12,6 @@ import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import "./FourPanelQuestInterface.css";
 import { addDoc, collection, onSnapshot, orderBy, query, serverTimestamp } from "firebase/firestore";
 import { db } from "../config/config";
-import ShareAchievementModal from "./ShareAchievementModal";
 
 
 export const FourPanelQuestInterface = ({
@@ -72,8 +71,6 @@ export const FourPanelQuestInterface = ({
     const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
     const [personalizedDetails, setPersonalizedDetails] = useState<any>(questProgress?.personalizedData || null);
     const [isPersonalizing, setIsPersonalizing] = useState(false);
-    const [showShareModal, setShowShareModal] = useState(false);
-    const [achievementToShare, setAchievementToShare] = useState<any>(null);
 
     // War Room: Fetch Comments
     useEffect(() => {
@@ -258,30 +255,6 @@ export const FourPanelQuestInterface = ({
         soundManager.play('questComplete');
         triggerConfetti();
         setIsSaving(false);
-
-        // --- New Social Sharing Logic ---
-        // For now, let's assume any completed quest can be shared.
-        // We can add more specific logic later (e.g., for major stages).
-        const achievement = {
-            name: quest.name,
-            description: `I've completed the "${quest.name}" quest! Check out my progress on Hypothesize Gamification. #gamification #startup #buildinpublic`,
-            // This would be a dynamically generated image URL
-            imageUrl: generateAchievementImageUrl(quest.name),
-        };
-        setAchievementToShare(achievement);
-        setShowShareModal(true);
-        // --- End of New Logic ---
-    };
-
-    const handleOpenShareModal = () => {
-        if (!isCompleted) return;
-        const achievement = {
-            name: quest.name,
-            description: `I've completed the "${quest.name}" quest! Check out my progress on Hypothesize Gamification. #gamification #startup #buildinpublic`,
-            imageUrl: generateAchievementImageUrl(quest.name),
-        };
-        setAchievementToShare(achievement);
-        setShowShareModal(true);
     };
 
     const sageInputRef = useRef<HTMLInputElement>(null);
@@ -371,20 +344,9 @@ export const FourPanelQuestInterface = ({
                             <Panel defaultSize={50}>
                                 {/* Top Left - Quest Details */}
                                 <div className="parchment p-6 flex flex-col overflow-hidden h-full">
-                                    <div className="flex items-center justify-between mb-4 flex-shrink-0">
-                                        <div className="flex items-center">
-                                            <Scroll className="w-5 h-5 text-yellow-500 mr-2" />
-                                            <h3 className="text-lg font-bold text-yellow-100">Quest Details</h3>
-                                        </div>
-                                        {isCompleted && (
-                                            <button
-                                                onClick={handleOpenShareModal}
-                                                className="p-2 -m-2 text-yellow-300 hover:text-white transition-colors"
-                                                title="Share Achievement"
-                                            >
-                                                <Share2 className="w-5 h-5" />
-                                            </button>
-                                        )}
+                                    <div className="flex items-center mb-4 flex-shrink-0">
+                                        <Scroll className="w-5 h-5 text-yellow-500 mr-2" />
+                                        <h3 className="text-lg font-bold text-yellow-100">Quest Details</h3>
                                     </div>
 
                                     <div className="space-y-4 overflow-y-auto flex-1 pr-2">
@@ -780,17 +742,6 @@ export const FourPanelQuestInterface = ({
                     </Panel>
                 </PanelGroup>
             </div>
-            {showShareModal && achievementToShare && (
-                <ShareAchievementModal
-                    isOpen={showShareModal}
-                    onClose={() => setShowShareModal(false)}
-                    achievement={achievementToShare}
-                    shareUrls={{
-                        linkedIn: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent('https://hypothesize-gamification.com')}&title=${encodeURIComponent(achievementToShare.name)}&summary=${encodeURIComponent(achievementToShare.description)}`,
-                        twitter: `https://twitter.com/intent/tweet?text=${encodeURIComponent(achievementToShare.description)}&url=${encodeURIComponent('https://hypothesize-gamification.com')}`,
-                    }}
-                />
-            )}
         </div>
     );
 }
