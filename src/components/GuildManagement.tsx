@@ -1,5 +1,5 @@
 import { Castle, X, Send } from "lucide-react";
-import { GUILD_ROLES } from "../utils/constant";
+import { CORE_ROLES, PERMISSION_ROLES } from "../utils/constant";
 import { useState } from "react";
 import { createInviteLink, generateGuildInviteEmail, sendEmail } from "../utils/email";
 import { doc, updateDoc, arrayUnion } from "firebase/firestore";
@@ -9,13 +9,39 @@ import { v4 as uuidv4 } from 'uuid';
 export const GuildManagement = ({
     guildData,
     onClose,
+    setGuildData
 }: {
     guildData: any;
     onClose: () => void;
+    setGuildData: (data: any) => void;
 }) => {
     const [inviteEmail, setInviteEmail] = useState('');
     const [isInviting, setIsInviting] = useState(false);
     const filledRoles = new Set(guildData.members?.map((m: any) => m.role) || []);
+
+    const handleRoleChange = async (memberUid: string, newRole: string) => {
+        if (!guildData.isFounder) {
+            alert("Only the Guild Leader can change roles.");
+            return;
+        }
+
+        const updatedMembers = guildData.members.map((m: any) => {
+            if (m.uid === memberUid) {
+                return { ...m, permissionRole: newRole };
+            }
+            return m;
+        });
+
+        try {
+            const guildRef = doc(db, 'guilds', guildData.guildId);
+            await updateDoc(guildRef, { members: updatedMembers });
+            setGuildData({ ...guildData, members: updatedMembers });
+            alert("Member role updated successfully.");
+        } catch (error) {
+            console.error("Error updating role:", error);
+            alert("Failed to update member role.");
+        }
+    };
 
     const handleInvite = async () => {
         if (!inviteEmail || !guildData.isFounder) {
@@ -65,9 +91,9 @@ export const GuildManagement = ({
 
                 <div className="p-6 overflow-y-auto max-h-[calc(90vh-100px)]">
                     <div className="mb-8">
-                        <h3 className="text-lg font-bold mb-4 text-yellow-100">Roles</h3>
+                        <h3 className="text-lg font-bold mb-4 text-yellow-100">Core Roles</h3>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                            {Object.entries(GUILD_ROLES).map(([key, role]) => {
+                            {Object.entries(CORE_ROLES).map(([key, role]) => {
                                 const member = guildData.members?.find((m: any) => m.role === key);
 
                                 return (
@@ -96,28 +122,55 @@ export const GuildManagement = ({
                         </div>
                         {filledRoles.size >= 6 && (
                             <div className="mt-4 parchment p-3 magic-border">
-                                <p className="text-green-400 font-medium">All roles filled! +30% XP on all quests</p>
+                                <p className="text-green-400 font-medium">All core roles filled! +30% XP on all quests</p>
                             </div>
                         )}
                     </div>
 
                     <div className="mb-8">
                         <h3 className="text-lg font-bold mb-4 text-yellow-100">Current Members</h3>
-                        <div className="space-y-2">
-                            {guildData.members?.map((member: any) => (
-                                <div key={member.uid} className="parchment p-3 flex items-center justify-between">
-                                    <div>
-                                        <p className="font-medium text-yellow-100">{member.name}</p>
-                                        <p className="text-sm text-gray-300">{member.email}</p>
+                        <div className="space-y-3">
+                            {guildData.members?.map((member: any) => {
+                                const coreRole = CORE_ROLES[member.role as keyof typeof CORE_ROLES];
+                                const permissionRole = PERMISSION_ROLES[member.permissionRole as keyof typeof PERMISSION_ROLES];
+
+                                return (
+                                    <div key={member.uid} className="parchment p-3 flex items-center justify-between">
+                                        <div>
+                                            <p className="font-medium text-yellow-100">{member.name}</p>
+                                            <p className="text-sm text-gray-300">{member.email}</p>
+                                        </div>
+                                        <div className="flex items-center space-x-4">
+                                            {coreRole && (
+                                                <div className="flex items-center space-x-2" title={`Core Role: ${coreRole.name}`}>
+                                                    <span className="text-xl">{coreRole.icon}</span>
+                                                    <span className="text-sm text-gray-300">{coreRole.name}</span>
+                                                </div>
+                                            )}
+                                            {permissionRole && (
+                                                <div className="flex items-center space-x-2">
+                                                    {member.uid === guildData.founderId ? (
+                                                        <div className="flex items-center space-x-2" title={`Permission Role: ${permissionRole.name}`}>
+                                                            <span className="text-xl">{permissionRole.icon}</span>
+                                                            <span className="text-sm text-gray-300">{permissionRole.name}</span>
+                                                        </div>
+                                                    ) : (
+                                                        <select
+                                                            value={member.permissionRole}
+                                                            onChange={(e) => handleRoleChange(member.uid, e.target.value)}
+                                                            className="bg-gray-700/50 text-white p-1 rounded-md text-sm cursor-pointer"
+                                                            title={`Permission Role: ${permissionRole.name}`}
+                                                        >
+                                                            <option value="knight">{PERMISSION_ROLES.knight.name}</option>
+                                                            <option value="scout">{PERMISSION_ROLES.scout.name}</option>
+                                                        </select>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
-                                    <div className="flex items-center space-x-2">
-                                        <span className="text-xl">{GUILD_ROLES[member.role as keyof typeof GUILD_ROLES]?.icon}</span>
-                                        <span className="text-sm text-gray-300">
-                                            {GUILD_ROLES[member.role as keyof typeof GUILD_ROLES]?.name || 'Guild Member'}
-                                        </span>
-                                    </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </div>
 

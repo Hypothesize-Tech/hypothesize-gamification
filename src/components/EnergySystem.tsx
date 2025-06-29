@@ -68,9 +68,10 @@ interface GuildMember {
     uid: string;
     name: string;
     email: string;
-    role: 'founder' | 'member' | 'leader';
+    role: string;
     founderRole?: string;
     joinedAt: string;
+    permissionRole?: 'leader' | 'knight' | 'scout';
 }
 
 // Updated Guild Data Interface
@@ -103,6 +104,7 @@ export interface GuildDataWithEnergy {
     isFounder?: boolean;
     founderId?: string;
     invitesSent?: string[];
+    permissionRole?: 'leader' | 'knight' | 'scout';
 
     // Energy System Fields
     currentEnergy: number;

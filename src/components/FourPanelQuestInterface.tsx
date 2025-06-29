@@ -1,15 +1,18 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import { QUEST_INPUT_TEMPLATES } from "../utils/constant";
-import { calculateGoldReward, calculateLevel, calculateXPWithBonuses, consultAISage, fetchDynamicResources, getPersonalizedQuestDetails, getSuggestedSageQuestions, rateQuestSubmission, triggerConfetti } from "../utils/helper";
+import { calculateGoldReward, calculateLevel, calculateXPWithBonuses, consultAISage, fetchDynamicResources, getPersonalizedQuestDetails, getSuggestedSageQuestions, rateQuestSubmission, triggerConfetti, generateAchievementImageUrl } from "../utils/helper";
 import { Canvas } from "@react-three/fiber";
 import DiamondSword3D from "./DiamondSword3D";
-import { BookOpen, Coins, Edit3, ExternalLink, Loader2, RefreshCw, Save, Scroll, Send, Sparkles, Swords, Trophy, X, ChevronDown, ChevronUp, Zap, Wand2 } from "lucide-react";
+import { BookOpen, Coins, Edit3, ExternalLink, Loader2, RefreshCw, Save, Scroll, Send, Sparkles, Swords, Trophy, X, ChevronDown, ChevronUp, Zap, Wand2, MessageSquare, Users, Share2 } from "lucide-react";
 import ReactMarkdown from 'react-markdown';
 import { BedrockRuntimeClient } from '@aws-sdk/client-bedrock-runtime';
 import { EnergyWarning } from './EnergySystem';
 import { ENERGY_COSTS } from '../config/energy';
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import "./FourPanelQuestInterface.css";
+import { addDoc, collection, onSnapshot, orderBy, query, serverTimestamp } from "firebase/firestore";
+import { db } from "../config/config";
+import ShareAchievementModal from "./ShareAchievementModal";
 
 
 export const FourPanelQuestInterface = ({
@@ -21,12 +24,13 @@ export const FourPanelQuestInterface = ({
     saveConversation,
     updateGold,
     soundManager,
-    awsModelId,
     bedrockClient,
     consumeEnergy,
     setGuildData,
     vision,
     savePersonalizedQuestDetails,
+    currentUserRole,
+    user
 }: {
     quest: any;
     guildData: any;
@@ -36,7 +40,6 @@ export const FourPanelQuestInterface = ({
     saveConversation: (quest: any, question: string, response: string) => Promise<void>;
     updateGold: (amount: number) => Promise<void>;
     soundManager: any;
-    awsModelId: string;
     bedrockClient: BedrockRuntimeClient;
     consumeEnergy: (
         action: "QUEST_COMPLETION" | "DOCUMENT_GENERATION" | "AI_SAGE_CONSULTATION",
@@ -45,10 +48,17 @@ export const FourPanelQuestInterface = ({
     setGuildData: React.Dispatch<React.SetStateAction<any | null>>;
     vision: string;
     savePersonalizedQuestDetails: (questKey: string, personalizedData: any) => Promise<void>;
+    currentUserRole: 'leader' | 'knight' | 'scout';
+    user: any;
 }) => {
     const questKey = `${quest.stageId}_${quest.id}`;
     const questProgress = guildData?.questProgress?.[questKey];
     const isCompleted = !!questProgress?.completed;
+
+    const [activeTab, setActiveTab] = useState<'sage' | 'war_room'>('sage');
+    const [comments, setComments] = useState<any[]>([]);
+    const [commentInput, setCommentInput] = useState('');
+    const [commentsLoading, setCommentsLoading] = useState(true);
 
     const [sageMessages, setSageMessages] = useState<Array<{ type: 'user' | 'sage', content: string }>>(isCompleted ? (questProgress?.sageConversation || []) : []);
     const [sageInput, setSageInput] = useState('');
@@ -62,6 +72,36 @@ export const FourPanelQuestInterface = ({
     const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
     const [personalizedDetails, setPersonalizedDetails] = useState<any>(questProgress?.personalizedData || null);
     const [isPersonalizing, setIsPersonalizing] = useState(false);
+    const [showShareModal, setShowShareModal] = useState(false);
+    const [achievementToShare, setAchievementToShare] = useState<any>(null);
+
+    // War Room: Fetch Comments
+    useEffect(() => {
+        if (!guildData?.guildId || !questKey) {
+            setCommentsLoading(false);
+            return;
+        }
+        console.log(`Setting up listener for questKey: ${questKey} in guild: ${guildData.guildId}`);
+
+        const commentsRef = collection(db, 'guilds', guildData.guildId, 'quests', questKey, 'comments');
+        const q = query(commentsRef, orderBy('createdAt', 'asc'));
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const fetchedComments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            setComments(fetchedComments);
+            setCommentsLoading(false);
+            console.log("Comments fetched: ", fetchedComments);
+        }, (error) => {
+            console.error("Error fetching comments: ", error);
+            alert("Error: Could not load War Room messages. Check console for details.");
+            setCommentsLoading(false);
+        });
+
+        return () => {
+            console.log(`Cleaning up listener for questKey: ${questKey}`);
+            unsubscribe();
+        };
+    }, [guildData?.guildId, questKey]);
 
     useEffect(() => {
         const fetchInitialData = async () => {
@@ -83,12 +123,12 @@ export const FourPanelQuestInterface = ({
 
                 // Set initial suggested questions
                 const levelInfo = calculateLevel(guildData?.xp || 0);
-                const questions = await getSuggestedSageQuestions({ quest, guildData, guildLevel: levelInfo, bedrockClient, awsModelId });
+                const questions = await getSuggestedSageQuestions({ quest, guildData, guildLevel: levelInfo, bedrockClient });
                 setSuggestedQuestions(questions);
 
                 // Fetch dynamic resources (now uses personalized data if available)
                 setResourcesLoading(true);
-                const resources = personalizedDetails?.resourceCache || await fetchDynamicResources(quest.name, quest.description, awsModelId, bedrockClient);
+                const resources = personalizedDetails?.resourceCache || await fetchDynamicResources(quest.name, quest.description, bedrockClient);
                 setDynamicResources(resources);
                 setResourcesLoading(false);
             }
@@ -99,6 +139,26 @@ export const FourPanelQuestInterface = ({
     }, [questKey]);
 
     const inputTemplate = QUEST_INPUT_TEMPLATES[quest.id as keyof typeof QUEST_INPUT_TEMPLATES];
+
+    const handleAddComment = async () => {
+        if (!commentInput.trim()) return;
+
+        const newComment = {
+            text: commentInput,
+            authorName: user.displayName,
+            authorUid: user.uid,
+            createdAt: serverTimestamp(),
+        };
+
+        try {
+            const commentsRef = collection(db, 'guilds', guildData.guildId, 'quests', questKey, 'comments');
+            await addDoc(commentsRef, newComment);
+            setCommentInput('');
+        } catch (error) {
+            console.error("Error adding comment:", error);
+            alert("Failed to post comment.");
+        }
+    };
 
     const handleSageChat = async () => {
         if (isCompleted || !sageInput.trim() || sageLoading) return;
@@ -130,7 +190,7 @@ export const FourPanelQuestInterface = ({
             // Generate new suggested questions based on the new context
             const levelInfo = calculateLevel(guildData?.xp || 0);
             const newConversation = [...sageMessages, { type: 'user', content: userMessage }, { type: 'sage', content: response }];
-            const questions = await getSuggestedSageQuestions({ quest, guildData, guildLevel: levelInfo, conversation: newConversation, bedrockClient, awsModelId });
+            const questions = await getSuggestedSageQuestions({ quest, guildData, guildLevel: levelInfo, conversation: newConversation, bedrockClient });
             setSuggestedQuestions(questions);
 
         } catch (error) {
@@ -155,7 +215,7 @@ export const FourPanelQuestInterface = ({
         const questRating = await rateQuestSubmission({
             questName: quest.name,
             inputs: userInputs
-        }, guildData, awsModelId, bedrockClient);
+        }, guildData, bedrockClient);
 
         setRating(questRating);
 
@@ -198,9 +258,32 @@ export const FourPanelQuestInterface = ({
         soundManager.play('questComplete');
         triggerConfetti();
         setIsSaving(false);
+
+        // --- New Social Sharing Logic ---
+        // For now, let's assume any completed quest can be shared.
+        // We can add more specific logic later (e.g., for major stages).
+        const achievement = {
+            name: quest.name,
+            description: `I've completed the "${quest.name}" quest! Check out my progress on Hypothesize Gamification. #gamification #startup #buildinpublic`,
+            // This would be a dynamically generated image URL
+            imageUrl: generateAchievementImageUrl(quest.name),
+        };
+        setAchievementToShare(achievement);
+        setShowShareModal(true);
+        // --- End of New Logic ---
     };
 
-    const levelInfo = calculateLevel(guildData?.xp || 0);
+    const handleOpenShareModal = () => {
+        if (!isCompleted) return;
+        const achievement = {
+            name: quest.name,
+            description: `I've completed the "${quest.name}" quest! Check out my progress on Hypothesize Gamification. #gamification #startup #buildinpublic`,
+            imageUrl: generateAchievementImageUrl(quest.name),
+        };
+        setAchievementToShare(achievement);
+        setShowShareModal(true);
+    };
+
     const sageInputRef = useRef<HTMLInputElement>(null);
 
     const handleSuggestedSageQuestion = async (question: string) => {
@@ -228,7 +311,7 @@ export const FourPanelQuestInterface = ({
             // Generate new suggested questions
             const newLevelInfo = calculateLevel(guildData?.xp || 0);
             const newConversation = [...sageMessages, { type: 'user', content: question }, { type: 'sage', content: response }];
-            const questions = await getSuggestedSageQuestions({ quest, guildData, guildLevel: newLevelInfo, conversation: newConversation, bedrockClient, awsModelId });
+            const questions = await getSuggestedSageQuestions({ quest, guildData, guildLevel: newLevelInfo, conversation: newConversation, bedrockClient });
             setSuggestedQuestions(questions);
 
         } catch (error) {
@@ -241,13 +324,6 @@ export const FourPanelQuestInterface = ({
         }
     };
 
-    function chunkArray<T>(arr: T[], size: number): T[][] {
-        const result: T[][] = [];
-        for (let i = 0; i < arr.length; i += size) {
-            result.push(arr.slice(i, i + size));
-        }
-        return result;
-    }
 
     return (
         <div className="fixed inset-0 bg-black/90 z-50 flex flex-col">
@@ -295,9 +371,20 @@ export const FourPanelQuestInterface = ({
                             <Panel defaultSize={50}>
                                 {/* Top Left - Quest Details */}
                                 <div className="parchment p-6 flex flex-col overflow-hidden h-full">
-                                    <div className="flex items-center mb-4 flex-shrink-0">
-                                        <Scroll className="w-5 h-5 text-yellow-500 mr-2" />
-                                        <h3 className="text-lg font-bold text-yellow-100">Quest Details</h3>
+                                    <div className="flex items-center justify-between mb-4 flex-shrink-0">
+                                        <div className="flex items-center">
+                                            <Scroll className="w-5 h-5 text-yellow-500 mr-2" />
+                                            <h3 className="text-lg font-bold text-yellow-100">Quest Details</h3>
+                                        </div>
+                                        {isCompleted && (
+                                            <button
+                                                onClick={handleOpenShareModal}
+                                                className="p-2 -m-2 text-yellow-300 hover:text-white transition-colors"
+                                                title="Share Achievement"
+                                            >
+                                                <Share2 className="w-5 h-5" />
+                                            </button>
+                                        )}
                                     </div>
 
                                     <div className="space-y-4 overflow-y-auto flex-1 pr-2">
@@ -501,7 +588,7 @@ export const FourPanelQuestInterface = ({
                                             <button
                                                 onClick={async () => {
                                                     setResourcesLoading(true);
-                                                    const resources = await fetchDynamicResources(quest.name, quest.description, awsModelId, bedrockClient);
+                                                    const resources = await fetchDynamicResources(quest.name, quest.description, bedrockClient);
                                                     setDynamicResources(resources);
                                                     setResourcesLoading(false);
                                                 }}
@@ -566,111 +653,144 @@ export const FourPanelQuestInterface = ({
                             </Panel>
                             <PanelResizeHandle className="resize-handle-vertical" />
                             <Panel defaultSize={50}>
-                                {/* Bottom Right - AI Sage Chat */}
-                                <div className="parchment p-6 flex flex-col overflow-hidden h-full">
-                                    <div className="flex items-center justify-between mb-4 flex-shrink-0">
-                                        <div className="flex items-center">
-                                            <Sparkles className="w-5 h-5 text-purple-500 mr-2" />
-                                            <h3 className="text-lg font-bold text-yellow-100">Consult the Sage</h3>
+                                {/* Bottom Right - AI Sage Chat & War Room */}
+                                <div className="parchment flex flex-col overflow-hidden h-full">
+                                    <div className="p-3 border-b border-yellow-700 flex items-center justify-between flex-shrink-0">
+                                        <div className="flex items-center space-x-2">
+                                            <button
+                                                className={`px-3 py-1 text-sm rounded-md flex items-center space-x-2 transition-colors ${activeTab === 'sage' ? 'bg-purple-800 text-white' : 'bg-transparent text-gray-400 hover:bg-gray-700/50'}`}
+                                                onClick={() => setActiveTab('sage')}
+                                            >
+                                                <Sparkles className="w-4 h-4" />
+                                                <span>AI Sage</span>
+                                            </button>
+                                            <button
+                                                className={`px-3 py-1 text-sm rounded-md flex items-center space-x-2 transition-colors ${activeTab === 'war_room' ? 'bg-purple-800 text-white' : 'bg-transparent text-gray-400 hover:bg-gray-700/50'}`}
+                                                onClick={() => setActiveTab('war_room')}
+                                            >
+                                                <Users className="w-4 h-4" />
+                                                <span>War Room</span>
+                                            </button>
                                         </div>
-                                        <div className="flex items-center space-x-2 text-sm">
-                                            <Zap className="w-4 h-4 text-blue-400" />
-                                            <span className="font-medium text-yellow-100">{ENERGY_COSTS.AI_SAGE_CONSULTATION} energy per response</span>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex-1 overflow-y-auto space-y-4 pr-2">
-                                        {sageMessages.length === 0 && (
-                                            <div className="text-center py-8">
-                                                <Sparkles className="w-12 h-12 text-yellow-500/50 mx-auto mb-3" />
-                                                <p className="text-gray-400 px-4">
-                                                    Ask the Sage for advice on this quest.
-                                                </p>
-                                            </div>
-                                        )}
-                                        {sageMessages.map((msg, index) => (
-                                            <div key={index} className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                                <div className={`max-w-[85%] rounded-lg p-3 ${msg.type === 'user' ? 'bg-blue-900/50' : 'bg-gray-800/60'}`}>
-                                                    <div className="prose prose-sm max-w-none text-gray-200">
-                                                        <ReactMarkdown>{msg.content}</ReactMarkdown>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                        {sageLoading && (
-                                            <div className="flex justify-start">
-                                                <div className="bg-gray-800/60 rounded-lg p-3 max-w-[85%]">
-                                                    <div className="flex items-center space-x-2">
-                                                        <Loader2 className="w-4 h-4 animate-spin text-yellow-500" />
-                                                        <p className="text-gray-200 italic">The Sage is contemplating...</p>
-                                                    </div>
-                                                </div>
+                                        {activeTab === 'sage' && (
+                                            <div className="flex items-center space-x-2 text-sm">
+                                                <Zap className="w-4 h-4 text-blue-400" />
+                                                <span className="font-medium text-yellow-100">{ENERGY_COSTS.AI_SAGE_CONSULTATION} energy</span>
                                             </div>
                                         )}
                                     </div>
 
-                                    {/* Suggested Questions */}
-                                    <div className="flex-shrink-0 mt-2">
-                                        <button
-                                            onClick={() => setShowSuggestedQuestions(!showSuggestedQuestions)}
-                                            className="w-full text-left p-2 rounded hover:bg-gray-800/50 flex justify-between items-center"
-                                        >
-                                            <span className="text-sm font-semibold text-yellow-300">Suggested Questions</span>
-                                            {showSuggestedQuestions ? <ChevronUp className="w-4 h-4 text-yellow-300" /> : <ChevronDown className="w-4 h-4 text-yellow-300" />}
-                                        </button>
-                                        {showSuggestedQuestions && (
-                                            <div className="grid grid-cols-2 gap-2 mt-2">
-                                                {suggestedQuestions.map((q, i) => (
-                                                    <button
-                                                        key={i}
-                                                        onClick={() => handleSuggestedSageQuestion(q)}
-                                                        disabled={isCompleted || sageLoading}
-                                                        className="text-left text-xs p-2 bg-gray-800/70 rounded hover:bg-gray-700/90 text-gray-300 disabled:opacity-50 transition-colors"
-                                                    >
-                                                        {q}
-                                                    </button>
+                                    {activeTab === 'sage' ? (
+                                        <div className="p-6 flex flex-col overflow-hidden h-full">
+                                            {/* AI Sage Content */}
+                                            <div className="flex-1 overflow-y-auto space-y-4 pr-2">
+                                                {sageMessages.length === 0 && (
+                                                    <div className="text-center py-8">
+                                                        <Sparkles className="w-12 h-12 text-yellow-500/50 mx-auto mb-3" />
+                                                        <p className="text-gray-400 px-4">Ask the Sage for advice on this quest.</p>
+                                                    </div>
+                                                )}
+                                                {sageMessages.map((msg, index) => (
+                                                    <div key={index} className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                                        <div className={`max-w-[85%] rounded-lg p-3 ${msg.type === 'user' ? 'bg-blue-900/50' : 'bg-gray-800/60'}`}>
+                                                            <div className="prose prose-sm max-w-none text-gray-200">
+                                                                <ReactMarkdown>{msg.content}</ReactMarkdown>
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                 ))}
+                                                {sageLoading && (
+                                                    <div className="flex justify-start">
+                                                        <div className="bg-gray-800/60 rounded-lg p-3 max-w-[85%]">
+                                                            <div className="flex items-center space-x-2">
+                                                                <Loader2 className="w-4 h-4 animate-spin text-yellow-500" />
+                                                                <p className="text-gray-200 italic">The Sage is contemplating...</p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
-                                        )}
-                                    </div>
-
-                                    {!isCompleted && guildData && !guildData.isPremium && guildData.currentEnergy < ENERGY_COSTS.AI_SAGE_CONSULTATION && (
-                                        <EnergyWarning
-                                            action="AI Sage consultation"
-                                            energyCost={ENERGY_COSTS.AI_SAGE_CONSULTATION}
-                                            currentEnergy={guildData.currentEnergy}
-                                            onPurchaseClick={() => {
-                                                alert("Please close the quest and purchase energy from the main screen.");
-                                            }}
-                                        />
+                                            <div className="flex-shrink-0 mt-2">
+                                                <button
+                                                    onClick={() => setShowSuggestedQuestions(!showSuggestedQuestions)}
+                                                    className="w-full text-left p-2 rounded hover:bg-gray-800/50 flex justify-between items-center"
+                                                >
+                                                    <span className="text-sm font-semibold text-yellow-300">Suggested Questions</span>
+                                                    {showSuggestedQuestions ? <ChevronUp className="w-4 h-4 text-yellow-300" /> : <ChevronDown className="w-4 h-4 text-yellow-300" />}
+                                                </button>
+                                                {showSuggestedQuestions && (
+                                                    <div className="grid grid-cols-2 gap-2 mt-2">
+                                                        {suggestedQuestions.map((q, i) => (
+                                                            <button
+                                                                key={i}
+                                                                onClick={() => handleSuggestedSageQuestion(q)}
+                                                                disabled={isCompleted || sageLoading}
+                                                                className="text-left text-xs p-2 bg-gray-800/70 rounded hover:bg-gray-700/90 text-gray-300 disabled:opacity-50 transition-colors"
+                                                            >{q}</button>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            {!isCompleted && guildData && !guildData.isPremium && guildData.currentEnergy < ENERGY_COSTS.AI_SAGE_CONSULTATION && (
+                                                <EnergyWarning action="AI Sage consultation" energyCost={ENERGY_COSTS.AI_SAGE_CONSULTATION} currentEnergy={guildData.currentEnergy} onPurchaseClick={() => { alert("Please close the quest and purchase energy from the main screen."); }} />
+                                            )}
+                                            <div className="mt-4 flex gap-2 flex-shrink-0">
+                                                <input type="text" value={sageInput} onChange={(e) => setSageInput(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && handleSageChat()} placeholder="Ask the Sage a question..." className="flex-1 p-3 bg-gray-700 rounded-lg text-white" disabled={sageLoading || isCompleted} ref={sageInputRef} />
+                                                <button onClick={handleSageChat} disabled={sageLoading || !sageInput.trim() || isCompleted} className="px-4 py-3 bg-purple-800 rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all" title={guildData.gold < 20 ? 'Insufficient gold coins' : ''}>
+                                                    <Send className="w-5 h-5" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="p-6 flex flex-col overflow-hidden h-full">
+                                            {/* War Room Content */}
+                                            <div className="flex-1 overflow-y-auto space-y-4 pr-2">
+                                                {commentsLoading ? (
+                                                    <div className="flex justify-center items-center h-full"><Loader2 className="animate-spin text-yellow-400" /></div>
+                                                ) : comments.length === 0 ? (
+                                                    <div className="text-center text-gray-400 py-10"><MessageSquare className="w-12 h-12 mx-auto mb-2 opacity-50" /><p>The War Room is silent. Be the first to strategize.</p></div>
+                                                ) : (
+                                                    comments.map((comment) => (
+                                                        <div key={comment.id} className="flex items-start gap-3">
+                                                            <div className="text-sm w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-full bg-gray-600" title={comment.authorName}>
+                                                                {comment.authorName?.charAt(0) || '?'}
+                                                            </div>
+                                                            <div className="flex-1">
+                                                                <div className="flex items-center space-x-2">
+                                                                    <p className="font-bold text-yellow-100">{comment.authorName}</p>
+                                                                    <p className="text-xs text-gray-400">{comment.createdAt ? new Date(comment.createdAt?.toDate()).toLocaleTimeString() : ''}</p>
+                                                                </div>
+                                                                <p className="text-gray-300">{comment.text}</p>
+                                                            </div>
+                                                        </div>
+                                                    ))
+                                                )}
+                                            </div>
+                                            <div className="mt-4 flex gap-2 flex-shrink-0">
+                                                <input type="text" value={commentInput} onChange={(e) => setCommentInput(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && handleAddComment()} placeholder={currentUserRole === 'scout' ? "Scouts can only observe" : "Your message..."} className="flex-1 p-3 bg-gray-700 rounded-lg text-white" disabled={currentUserRole === 'scout' || isCompleted} />
+                                                <button onClick={handleAddComment} disabled={currentUserRole === 'scout' || isCompleted || !commentInput.trim()} className="px-4 py-3 bg-blue-800 rounded-lg hover:bg-blue-700 disabled:opacity-50">
+                                                    <Send className="w-5 h-5" />
+                                                </button>
+                                            </div>
+                                        </div>
                                     )}
-
-                                    <div className="mt-4 flex gap-2 flex-shrink-0">
-                                        <input
-                                            type="text"
-                                            value={sageInput}
-                                            onChange={(e) => setSageInput(e.target.value)}
-                                            onKeyPress={(e) => e.key === 'Enter' && handleSageChat()}
-                                            placeholder="Ask the Sage a question..."
-                                            className="flex-1 p-3 bg-gray-700 rounded-lg text-white"
-                                            disabled={sageLoading || isCompleted}
-                                            ref={sageInputRef}
-                                        />
-                                        <button
-                                            onClick={handleSageChat}
-                                            disabled={sageLoading || !sageInput.trim() || isCompleted}
-                                            className="px-4 py-3 bg-purple-800 rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                                            title={guildData.gold < 20 ? 'Insufficient gold coins' : ''}
-                                        >
-                                            <Send className="w-5 h-5" />
-                                        </button>
-                                    </div>
                                 </div>
                             </Panel>
                         </PanelGroup>
                     </Panel>
                 </PanelGroup>
             </div>
+            {showShareModal && achievementToShare && (
+                <ShareAchievementModal
+                    isOpen={showShareModal}
+                    onClose={() => setShowShareModal(false)}
+                    achievement={achievementToShare}
+                    shareUrls={{
+                        linkedIn: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent('https://hypothesize-gamification.com')}&title=${encodeURIComponent(achievementToShare.name)}&summary=${encodeURIComponent(achievementToShare.description)}`,
+                        twitter: `https://twitter.com/intent/tweet?text=${encodeURIComponent(achievementToShare.description)}&url=${encodeURIComponent('https://hypothesize-gamification.com')}`,
+                    }}
+                />
+            )}
         </div>
     );
 }

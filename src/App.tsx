@@ -183,6 +183,7 @@ const bedrockClient = new BedrockRuntimeClient({
   credentials: {
     accessKeyId: import.meta.env.VITE_AWS_ACCESS_KEY_ID,
     secretAccessKey: import.meta.env.VITE_AWS_SECRET_ACCESS_KEY,
+    sessionToken: import.meta.env.VITE_AWS_SESSION_TOKEN
   }
 });
 
@@ -215,6 +216,8 @@ export default function App() {
   const [showGuildManagement, setShowGuildManagement] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [showGoldPurchase, setShowGoldPurchase] = useState(false);
+  const [modalContent, setModalContent] = useState<{ title: string; message: string } | null>(null);
+  const [assignmentModal, setAssignmentModal] = useState<{ quest: any; questKey: string } | null>(null);
 
   const energyManagement = useEnergyManagement(
     guildData as GuildDataWithEnergy,
@@ -459,7 +462,8 @@ export default function App() {
                 uid: memberId,
                 name: requestData.memberName,
                 email: requestData.memberEmail,
-                role: requestData.memberRole,
+                role: requestData.memberRole, // Core Role
+                permissionRole: 'knight', // Default Permission Role
                 joinedAt: new Date().toISOString()
               }),
               gold: increment(50) // Guild gets bonus
@@ -501,7 +505,10 @@ export default function App() {
       if (error.code === 'auth/popup-closed-by-user') {
         console.log('User closed the popup');
       } else if (error.code === 'auth/popup-blocked') {
-        alert('Please allow popups for this site to sign in with Google');
+        setModalContent({
+          title: "Popup Blocked",
+          message: "Please allow popups for this site to sign in with Google."
+        });
       }
 
       if (userInteracted) soundManager.play('error');
@@ -525,7 +532,10 @@ export default function App() {
     if (!user) return;
 
     if (!navigator.onLine) {
-      alert('You are offline. Connect to the internet to create your guild.');
+      setModalContent({
+        title: "Offline",
+        message: "You are offline. Connect to the internet to create your guild."
+      });
       return;
     }
 
@@ -561,6 +571,7 @@ export default function App() {
           Operations: selectedRole === 'quartermaster' ? 2 : 1,
           Finance: selectedRole === 'treasurer' ? 2 : 1,
         },
+        permissionRole: 'knight', // Default permission role for members
 
         // Fix for missing properties
         coreAttribute: selectedRole,
@@ -586,8 +597,9 @@ export default function App() {
           uid: user.uid,
           name: onboardingData.name || user.displayName,
           email: user.email,
-          role: 'founder',
-          founderRole: selectedRole,
+          role: selectedRole, // Core Role
+          founderRole: selectedRole, //This seems redundant, but leaving for now
+          permissionRole: 'leader', // Permission Role
           joinedAt: new Date().toISOString()
         }],
 
@@ -642,7 +654,10 @@ export default function App() {
           setGuildData((prev: GuildDataWithEnergy | null) => prev ? { ...prev, invitesSent: [...(prev.invitesSent || []), ...newInvites] } : null);
         }
 
-        alert("Invitations have been sent to your team members!");
+        setModalContent({
+          title: "Invitations Sent",
+          message: "Invitations have been sent to your team members!"
+        });
       }
 
       // Automatically open the first quest for the user
@@ -659,9 +674,15 @@ export default function App() {
       if (userInteracted) soundManager.play('error');
 
       if (error?.code === 'unavailable' || error?.message?.includes('offline')) {
-        alert('Unable to create your guild. Check your internet connection.');
+        setModalContent({
+          title: "Connection Error",
+          message: "Unable to create your guild. Check your internet connection."
+        });
       } else {
-        alert('Guild creation failed. Please try again.');
+        setModalContent({
+          title: "Error",
+          message: "Guild creation failed. Please try again."
+        });
       }
     }
 
@@ -673,7 +694,10 @@ export default function App() {
     if (!user || !inviteData) return;
 
     if (!navigator.onLine) {
-      alert('You are offline. Connect to the internet to join the guild.');
+      setModalContent({
+        title: "Offline",
+        message: "You are offline. Connect to the internet to join the guild."
+      });
       return;
     }
 
@@ -697,8 +721,8 @@ export default function App() {
         // Member-specific data
         xp: 100, // Starting XP for members
         gold: 0, // Members start with 0 personal gold
-        level: 1,
-        guildLevel: 1, // Will be synced with main guild
+        level: 1, // Will be synced with main guild
+        guildLevel: 1,
         achievements: ['onboarding_complete', 'role_chosen'],
         questProgress: {},
         onboardingData: {
@@ -718,6 +742,7 @@ export default function App() {
           Operations: selectedRole === 'quartermaster' ? 2 : 1,
           Finance: selectedRole === 'treasurer' ? 2 : 1,
         },
+        permissionRole: 'knight', // Default permission role for members
 
         // Fix for missing properties
         coreAttribute: selectedRole,
@@ -766,12 +791,18 @@ export default function App() {
       if (userInteracted) soundManager.play('levelUp');
       triggerConfetti();
 
-      alert("Your request to join the guild has been sent to the founder for approval!");
+      setModalContent({
+        title: "Request Sent",
+        message: "Your request to join the guild has been sent to the founder for approval!"
+      });
 
     } catch (error: any) {
       console.error('Error joining guild:', error);
       if (userInteracted) soundManager.play('error');
-      alert('Error joining guild. Please try again.');
+      setModalContent({
+        title: "Error",
+        message: "Error joining guild. Please try again."
+      });
     }
 
     setLoading(false);
@@ -873,6 +904,7 @@ export default function App() {
     const lastClaimDate = lastClaim ? new Date(lastClaim) : null;
 
     if (lastClaimDate && now.toDateString() === lastClaimDate.toDateString()) {
+      setModalContent({ title: "Already Claimed", message: "You have already claimed your daily bonus today. Come back tomorrow!" });
       return;
     }
 
@@ -921,7 +953,7 @@ export default function App() {
     if (!user || !guildData || !selectedQuest) return;
 
     if (!navigator.onLine) {
-      alert('You are offline. Connect to complete your quest.');
+      setModalContent({ title: "Offline", message: "You are offline. Connect to complete your quest." });
       return;
     }
 
@@ -1001,18 +1033,24 @@ export default function App() {
         achievements: [...(guildData.achievements || []), ...newAchievements]
       });
 
-      let message = `Quest completed! +${questData.xpReward} XP (${questData.rating}/5)`;
+      let message = `Quest completed! You earned +${questData.xpReward} XP.`;
       if (stageBonus > 0) {
-        message += `\n\nStage completed! +${stageBonus} gold coins!`;
+        message += `\n\nStage completed! You earned a bonus of ${stageBonus} gold coins and unlocked the next stage!`;
       }
-      alert(message);
+
+      const justification = `You received a rating of ${questData.rating}/5. ${questData.feedback ? `\n\nFeedback from the Sage: "${questData.feedback}"` : ''}`;
+
+      setModalContent({
+        title: `Quest Completed: ${selectedQuest.name}`,
+        message: `${message}\n\n${justification}`
+      });
 
       setSelectedQuest(null);
 
     } catch (error: any) {
       console.error('Error completing quest:', error);
       if (userInteracted) soundManager.play('error');
-      alert('Quest completion failed. Please try again.');
+      setModalContent({ title: "Error", message: "Quest completion failed. Please try again." });
     }
   };
 
@@ -1044,7 +1082,7 @@ export default function App() {
     const newGold = (guildData.gold || 0) - item.price;
 
     if (newGold < 0) {
-      alert('Not enough gold coins for this purchase!');
+      setModalContent({ title: "Not Enough Gold", message: "You do not have enough gold coins for this purchase." });
       if (userInteracted) soundManager.play('error');
       return;
     }
@@ -1082,11 +1120,11 @@ export default function App() {
         ...(category === 'treasures' ? { treasures: [...(guildData.treasures || []), item.id] } : {})
       });
 
-      alert(`Purchased ${item.name} for ${item.price} gold coins.`);
+      setModalContent({ title: "Purchase Successful", message: `You have purchased ${item.name} for ${item.price} gold coins.` });
     } catch (error) {
       console.error('Error purchasing item:', error);
       if (userInteracted) soundManager.play('error');
-      alert('Purchase failed. Please try again.');
+      setModalContent({ title: "Error", message: "Purchase failed. Please try again." });
     }
   };
 
@@ -1100,7 +1138,7 @@ export default function App() {
       return;
     }
 
-    const content = await generateAIDocument(template, { ...guildData, ceoAvatar }, import.meta.env.VITE_NOVA_INFERENCE_PROFILE_ARN || "anthropic.claude-3-sonnet-20240229-v1:0", bedrockClient);
+    const content = await generateAIDocument(template, { ...guildData, ceoAvatar }, bedrockClient);
     await saveDocument(template, content);
     setGeneratingDoc(false);
   };
@@ -1125,6 +1163,35 @@ export default function App() {
   const levelInfo = calculateLevel(guildData?.xp || 0);
   const stats = calculateStats();
   const guildLevel = GUILD_LEVELS[guildData?.guildLevel as keyof typeof GUILD_LEVELS] || GUILD_LEVELS[1];
+  const currentUserRole = guildData?.members?.find((m: any) => m.uid === user.uid)?.permissionRole;
+
+  const handleAssignQuest = async (questKey: string, member: any) => {
+    if (!user || !guildData || !guildData.isFounder) return;
+
+    try {
+      await updateDoc(doc(db, 'guilds', user.uid), {
+        [`questProgress.${questKey}.assignedTo`]: {
+          uid: member.uid,
+          name: member.name,
+        }
+      });
+
+      setGuildData((prev: any) => ({
+        ...prev,
+        questProgress: {
+          ...prev.questProgress,
+          [questKey]: {
+            ...prev.questProgress?.[questKey],
+            assignedTo: { uid: member.uid, name: member.name }
+          }
+        }
+      }));
+      setAssignmentModal(null);
+    } catch (error) {
+      console.error('Error assigning quest:', error);
+      alert('Failed to assign quest.');
+    }
+  };
 
   if (loading) {
     return <EpicMedievalLoader />;
@@ -1450,6 +1517,7 @@ export default function App() {
                       const questProgress = guildData?.questProgress?.[questKey];
                       const isCompleted = questProgress?.completed;
                       const xpEarned = questProgress?.xpReward;
+                      const assignedTo = questProgress?.assignedTo;
 
                       return (
                         <div
@@ -1488,6 +1556,12 @@ export default function App() {
                                   <span className={CORE_ATTRIBUTES[quest.attribute as keyof typeof CORE_ATTRIBUTES]?.color || 'text-gray-400'}>
                                     {CORE_ATTRIBUTES[quest.attribute as keyof typeof CORE_ATTRIBUTES]?.name || 'General'}
                                   </span>
+                                  {assignedTo && (
+                                    <>
+                                      <span className="text-gray-500">•</span>
+                                      <span className="text-sm text-cyan-300">Assigned to: {assignedTo.name}</span>
+                                    </>
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -1513,6 +1587,26 @@ export default function App() {
           })}
         </div>
 
+        {assignmentModal && (
+          <Modal open={!!assignmentModal} onClose={() => setAssignmentModal(null)}>
+            <div className="p-6 max-w-md w-full">
+              <h3 className="text-xl font-bold text-yellow-100 mb-4">Assign Quest: {assignmentModal.quest.name}</h3>
+              <div className="space-y-2">
+                {guildData.members?.map((member: any) => (
+                  <button
+                    key={member.uid}
+                    onClick={() => handleAssignQuest(assignmentModal.questKey, member)}
+                    className="w-full text-left parchment p-3 hover:bg-gray-700/50"
+                  >
+                    <p className="font-medium text-yellow-100">{member.name}</p>
+                    <p className="text-sm text-gray-300">{member.email}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </Modal>
+        )}
+
         {/* All the Modals (same as before) */}
         {/* 4-Panel Quest Interface, Guild Management, Armory, etc. */}
         {selectedQuest && (
@@ -1525,18 +1619,20 @@ export default function App() {
             saveConversation={saveConversation}
             updateGold={updateGold}
             soundManager={soundManager}
-            awsModelId={import.meta.env.VITE_NOVA_INFERENCE_PROFILE_ARN || "anthropic.claude-3-sonnet-20240229-v1:0"}
             bedrockClient={bedrockClient}
             consumeEnergy={energyManagement.consumeEnergy}
             setGuildData={setGuildData}
             vision={guildData?.vision}
             savePersonalizedQuestDetails={savePersonalizedQuestDetails}
+            currentUserRole={currentUserRole}
+            user={user}
           />
         )}
         {showGuildManagement && (
           <GuildManagement
             guildData={guildData}
             onClose={() => { setShowGuildManagement(false); if (userInteracted) soundManager.play('swordDraw'); }}
+            setGuildData={setGuildData}
           />
         )}
         {showArmory && (
@@ -1867,7 +1963,7 @@ export default function App() {
                 <button
                   onClick={() => {
                     navigator.clipboard.writeText(selectedDocument?.content || '');
-                    alert('Copied to clipboard!');
+                    setModalContent({ title: "Copied!", message: "Document content copied to clipboard." });
                   }}
                   className="text-gray-400 hover:text-white"
                 >
@@ -1915,6 +2011,39 @@ export default function App() {
             onPurchase={energyManagement.purchaseEnergy}
             purchasing={energyManagement.purchasingEnergy}
           />
+        )}
+
+        {/* Generic Info Modal */}
+        {modalContent && (
+          <Modal
+            open={!!modalContent}
+            size="lg"
+            onClose={() => setModalContent(null)}
+            className="no-scrollbar"
+          >
+            <div className="p-6 w-full text-center parchment">
+              <h3 className="text-2xl font-bold text-yellow-100 mb-4">{modalContent.title}</h3>
+              <p className="text-gray-300 my-4 whitespace-pre-wrap">{modalContent.message}</p>
+              <button
+                onClick={() => setModalContent(null)}
+                className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-8 py-3 rounded-lg hover:from-purple-500 hover:to-pink-500 transition-all magic-border"
+              >
+                Close
+              </button>
+            </div>
+            <style>
+              {`
+                .no-scrollbar::-webkit-scrollbar {
+                  display: none !important;
+                }
+                .no-scrollbar {
+                  -ms-overflow-style: none !important;
+                  scrollbar-width: none !important;
+                  overflow: hidden !important;
+                }
+              `}
+            </style>
+          </Modal>
         )}
       </main>
     </div>

@@ -19,13 +19,19 @@ export const CORE_ATTRIBUTES = {
 };
 
 // Guild Roles - Standard business themed
-export const GUILD_ROLES = {
+export const CORE_ROLES = {
     engineer: { name: 'Engineer', attribute: 'tech', icon: '💻', description: 'Technology specialist' },
     treasurer: { name: 'Finance Lead', attribute: 'finance', icon: '💰', description: 'Manages the finances' },
     herald: { name: 'Marketing Lead', attribute: 'marketing', icon: '📢', description: 'Handles marketing and communications' },
     vanguard: { name: 'Sales Lead', attribute: 'sales', icon: '🛒', description: 'Leads sales efforts' },
     loremaster: { name: 'Legal Advisor', attribute: 'legal', icon: '⚖️', description: 'Ensures legal compliance' },
     quartermaster: { name: 'Operations Manager', attribute: 'operations', icon: '🏢', description: 'Oversees operations' }
+};
+
+export const PERMISSION_ROLES = {
+    leader: { name: 'Guild Leader', icon: '👑', description: 'Full control. Can manage quests and the alliance.' },
+    knight: { name: 'Knight', icon: '⚔️', description: 'Can update quest progress and add comments.' },
+    scout: { name: 'Scout', icon: '🔭', description: 'Read-only access to observe progress.' }
 };
 
 // Armory Items - Standard business themed

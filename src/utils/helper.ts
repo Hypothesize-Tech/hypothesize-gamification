@@ -3,6 +3,7 @@ import { ARMORY_ITEMS } from './constant';
 import { BedrockRuntimeClient, InvokeModelCommand } from '@aws-sdk/client-bedrock-runtime';
 import { Castle, Crown, Swords } from 'lucide-react';
 import { Shield } from 'lucide-react';
+import visionQuestAchievement from '../assets/wallpaper_9.png';
 
 export const calculateLevel = (xp: number) => {
     const baseXP = 100;
@@ -275,77 +276,75 @@ export const generateFollowUpQuestions = async (
 };
 
 export async function getSuggestedSageQuestions({ quest, guildData, guildLevel, conversation, bedrockClient }: { quest: any, guildData: any, guildLevel: any, conversation?: any[], bedrockClient?: BedrockRuntimeClient }) {
+    if (!bedrockClient) {
+        return ["How should I get started?", "What's the most important thing to focus on?", "What are some common mistakes to avoid?"];
+    }
+
     if (conversation && conversation.length > 0 && bedrockClient) {
         const context = `Quest: ${quest.name} - ${quest.description}. Seeker's progress: ${JSON.stringify(guildData.questProgress?.[`${quest.stageId}_${quest.id}`]?.inputs || {})}`;
-        return await generateFollowUpQuestions(context, conversation, bedrockClient);
+        const newQuestions = await generateFollowUpQuestions(context, conversation, bedrockClient);
+        return newQuestions;
     }
-
-    const base: string[] = [];
-    // Quest-specific
-    if (quest.id === 'vision') {
-        base.push(
-            'What makes a compelling vision for a new founder?',
-            'How can I inspire my team with our mission?',
-            'What are common mistakes in startup vision statements?',
-            'How do I align my Guild around our vision?'
-        );
-    } else if (quest.id === 'problem') {
-        base.push(
-            'How do I validate if this problem is real?',
-            'What are the best ways to interview potential users?',
-            'How do I find my target audience\'s pain points?',
-            'What signals show a problem is worth solving?'
-        );
-    } else if (quest.id === 'solution') {
-        base.push(
-            'How do I make my solution stand out?',
-            'What features should I prioritize first?',
-            'How do I test my solution with real users?',
-            'What makes a solution valuable for customers?'
-        );
-    } else if (quest.id === 'market') {
-        base.push(
-            'How do I estimate the size of my market?',
-            'What are the best ways to research competitors?',
-            'How do I spot trends in my industry?',
-            'What are signs of a good market opportunity?'
-        );
-    } else if (quest.id === 'legal') {
-        base.push(
-            'What legal structure is best for my startup?',
-            'How do I protect my intellectual property?',
-            'What agreements should my team have?',
-            'What are common legal mistakes for new founders?'
-        );
-    } else {
-        base.push(
-            `What advice do you have for this Quest: ${quest.name}?`,
-            'What are common pitfalls for founders at this stage?',
-            'How can I make progress on this Quest?'
-        );
+    // Default questions
+    switch (quest.id) {
+        case 'vision':
+            return [
+                "What makes a good vision statement?",
+                "Can you give me an example of a strong vision statement?",
+                "How do I align my vision with my company's mission and values?",
+                "How specific should my vision be at this early stage?",
+            ];
+        case 'problem':
+            return [
+                "How do I know if the problem I'm solving is big enough?",
+                "What's the best way to validate the problem with potential customers?",
+                "Can you help me frame my problem statement?",
+                "What's the difference between a problem and a solution?",
+            ];
+        case 'solution':
+            return [
+                "How do I create a unique value proposition?",
+                "What are some effective ways to brainstorm and evaluate solutions?",
+                "How do I avoid building a solution nobody wants?",
+                "Can you help me define the core features of my MVP?",
+            ];
+        case 'market':
+            return [
+                "How do I calculate the Total Addressable Market (TAM)?",
+                "What are the best strategies for identifying my target market segment?",
+                "Can you help me analyze my top competitors?",
+                "What is a go-to-market strategy and why do I need one?",
+            ];
+        default:
+            return [
+                "How should I get started on this quest?",
+                "What is the most important outcome for this quest?",
+                "What are some common mistakes to avoid?",
+                "Can you give me a real-world example related to this topic?",
+            ];
     }
-
-    // Guild level context
-    if (guildLevel.level >= 4) {
-        base.push('What advanced strategies should I consider at my Guild level?');
-    }
-    if ((guildData?.xp || 0) > 1000) {
-        base.push('How do experienced founders approach this challenge?');
-    }
-    if (guildData?.coreAttribute) {
-        base.push(`How can I use my strength in ${guildData.coreAttribute} to excel in this Quest?`);
-    }
-    return base.sort(() => 0.5 - Math.random()).slice(0, 4);
 }
 
-export const triggerConfetti = (options = {}) => {
-    const defaults = {
-        particleCount: 100,
+export const triggerConfetti = () => {
+    confetti({
+        particleCount: 150,
         spread: 70,
         origin: { y: 0.6 },
-        colors: ['#ffd700', '#ff6b35', '#fef3c7', '#c084fc', '#9333ea']
-    };
-    confetti({ ...defaults, ...options });
+        colors: ['#bb0000', '#ffffff', '#ffd700']
+    });
+};
+
+export const generateAchievementImageUrl = (achievementName: string) => {
+    // For major achievements, return a specific branded image.
+    if (achievementName.toLowerCase().includes('vision quest')) {
+        return visionQuestAchievement;
+    }
+
+    // For other quests, generate a dynamic placeholder.
+    const text = `Achievement Unlocked: ${achievementName}`;
+    // Using a placeholder service. In a real application, this could be a service
+    // that generates a branded image. e.g., using a serverless function with a library like Sharp or Puppeteer.
+    return `https://via.placeholder.com/1200x630/1a202c/FFFFFF?text=${encodeURIComponent(text)}`;
 };
 
 export const QUEST_STAGES = {
