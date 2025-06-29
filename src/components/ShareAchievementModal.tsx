@@ -1,5 +1,6 @@
 import React from 'react';
 import { Linkedin, X as XIcon, Share2, Download } from 'lucide-react';
+import wallpaperImage from '../assets/wallpaper_9.png';
 
 interface ShareAchievementModalProps {
     isOpen: boolean;
@@ -7,7 +8,6 @@ interface ShareAchievementModalProps {
     achievement: {
         name: string;
         description: string;
-        imageUrl: string; // URL to the generated achievement image
     };
     shareUrls: {
         linkedIn: string;
@@ -29,10 +29,8 @@ const ShareAchievementModal: React.FC<ShareAchievementModalProps> = ({
     };
 
     const handleDownload = () => {
-        // This assumes the imageUrl is on the same origin or has CORS headers that allow this.
-        // For cross-origin images, a server-side endpoint would be needed to facilitate the download.
         const link = document.createElement('a');
-        link.href = achievement.imageUrl;
+        link.href = wallpaperImage;
         link.download = `${achievement.name.replace(/\s+/g, '_')}_Achievement.png`;
         document.body.appendChild(link);
         link.click();
@@ -55,7 +53,7 @@ const ShareAchievementModal: React.FC<ShareAchievementModalProps> = ({
 
                 <div className="my-6">
                     <img
-                        src={achievement.imageUrl}
+                        src={wallpaperImage}
                         alt={`${achievement.name} Achievement`}
                         className="w-full rounded-lg border-2 border-yellow-600 shadow-lg"
                     />
