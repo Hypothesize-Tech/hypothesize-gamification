@@ -3,6 +3,14 @@
 import React, { useState, useEffect } from 'react';
 import { Upload, Mail, Zap, Coins, Users } from 'lucide-react';
 
+import aiSage from '../assets/ai_sage.png';
+import engineerAvatar from '../assets/avatar_1.png';
+import heraldAvatar from '../assets/avatar_2.png';
+import vanguardAvatar from '../assets/avatar_3.png';
+import loremasterAvatar from '../assets/avatar_4.png';
+import quartermasterAvatar from '../assets/avatar_5.png';
+import treasurerAvatar from '../assets/avatar_6.png';
+
 // FOUNDER ONBOARDING COMPONENT
 const FounderOnboarding: React.FC<{
     onComplete: (data: any) => void;
@@ -33,42 +41,48 @@ const FounderOnboarding: React.FC<{
             name: 'The Engineer',
             description: 'The builder of things, focused on product and technology.',
             attribute: 'Tech',
-            sageResponse: "An Engineer. You see the world as a set of systems to be built and improved. Your path will be one of logic, creation, and technological excellence. Your 'Tech' attribute has received a bonus."
+            sageResponse: "An Engineer. You see the world as a set of systems to be built and improved. Your path will be one of logic, creation, and technological excellence. Your 'Tech' attribute has received a bonus.",
+            avatar: engineerAvatar
         },
         {
             id: 'herald',
             name: 'The Herald',
             description: 'The storyteller, focused on marketing and brand.',
             attribute: 'Marketing',
-            sageResponse: "A Herald. You believe that a great story can change the world. Your path will be one of communication, brand-building, and connecting with your future customers. Your 'Marketing' attribute has received a bonus."
+            sageResponse: "A Herald. You believe that a great story can change the world. Your path will be one of communication, brand-building, and connecting with your future customers. Your 'Marketing' attribute has received a bonus.",
+            avatar: heraldAvatar
         },
         {
             id: 'vanguard',
             name: 'The Vanguard',
             description: 'The deal-maker, focused on sales and revenue.',
             attribute: 'Sales',
-            sageResponse: "A Vanguard. You stand at the forefront, forging relationships and driving growth. Your path will be one of persuasion, negotiation, and building revenue. Your 'Sales' attribute has received a bonus."
+            sageResponse: "A Vanguard. You stand at the forefront, forging relationships and driving growth. Your path will be one of persuasion, negotiation, and building revenue. Your 'Sales' attribute has received a bonus.",
+            avatar: vanguardAvatar
         },
         {
             id: 'loremaster',
             name: 'The Loremaster',
             description: 'The strategist, focused on law and market knowledge.',
             attribute: 'Legal',
-            sageResponse: "A Loremaster. You understand that knowledge is power and strategy is the key to victory. Your path will be one of careful planning, compliance, and strategic positioning. Your 'Legal' attribute has received a bonus."
+            sageResponse: "A Loremaster. You understand that knowledge is power and strategy is the key to victory. Your path will be one of careful planning, compliance, and strategic positioning. Your 'Legal' attribute has received a bonus.",
+            avatar: loremasterAvatar
         },
         {
             id: 'quartermaster',
             name: 'The Quartermaster',
             description: 'The organizer, focused on operations and efficiency.',
             attribute: 'Operations',
-            sageResponse: "A Quartermaster. You know that an idea is only as strong as its execution. Your path will be one of organization, efficiency, and flawless operations. Your 'Operations' attribute has received a bonus."
+            sageResponse: "A Quartermaster. You know that an idea is only as strong as its execution. Your path will be one of organization, efficiency, and flawless operations. Your 'Operations' attribute has received a bonus.",
+            avatar: quartermasterAvatar
         },
         {
             id: 'treasurer',
             name: 'The Treasurer',
             description: 'The financier, focused on capital and financial health.',
             attribute: 'Finance',
-            sageResponse: "A Treasurer. You see the numbers behind the vision, managing the lifeblood of the venture. Your path will be one of financial prudence, investment, and sustainable growth. Your 'Finance' attribute has received a bonus."
+            sageResponse: "A Treasurer. You see the numbers behind the vision, managing the lifeblood of the venture. Your path will be one of financial prudence, investment, and sustainable growth. Your 'Finance' attribute has received a bonus.",
+            avatar: treasurerAvatar
         }
     ];
 
@@ -80,7 +94,7 @@ const FounderOnboarding: React.FC<{
                 {step === 0 && (
                     <>
                         <div className="text-center mb-8">
-                            <div className="text-8xl mb-6">🧙‍♂️</div>
+                            <img src={aiSage} alt="Tenzing the Sage" className="w-32 h-32 rounded-full mx-auto mb-6 border-4 border-purple-500 shadow-lg" />
                             <h2 className="text-3xl font-bold text-white mb-6">Welcome, Founder</h2>
                         </div>
 
@@ -289,7 +303,7 @@ const FounderOnboarding: React.FC<{
                             <p>Now, tell me about yourself. A founder wears many hats, but every great leader has a core strength. Your choice here will define your starting attributes and the kind of challenges you'll excel at.</p>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
                             {FOUNDER_ROLES.map((role) => {
                                 const isSelected = onboardingData.role === role.id;
 
@@ -297,14 +311,15 @@ const FounderOnboarding: React.FC<{
                                     <button
                                         key={role.id}
                                         onClick={() => updateData('role', role.id)}
-                                        className={`p-6 rounded-lg border-2 transition-all text-left ${isSelected
+                                        className={`p-6 rounded-lg border-2 transition-all text-left flex flex-col items-center ${isSelected
                                             ? 'border-purple-500 bg-purple-900/30'
                                             : 'border-gray-600 bg-gray-700 hover:border-purple-400'
                                             }`}
                                     >
+                                        <img src={role.avatar} alt={role.name} className="w-24 h-24 rounded-full mb-4 border-4 border-gray-600 group-hover:border-purple-400 transition-all" />
                                         <h4 className="font-bold text-white text-lg mb-2">{role.name}</h4>
-                                        <p className="text-sm text-gray-300 mb-3">{role.description}</p>
-                                        <p className="text-xs text-purple-400 font-semibold">+{role.attribute} attribute bonus</p>
+                                        <p className="text-sm text-gray-300 mb-3 text-center">{role.description}</p>
+                                        <p className="text-xs text-purple-400 font-semibold mt-auto">+{role.attribute} attribute bonus</p>
                                     </button>
                                 );
                             })}
@@ -313,7 +328,7 @@ const FounderOnboarding: React.FC<{
                         {onboardingData.role && (
                             <div className="bg-gray-700 rounded-lg p-6 mb-8">
                                 <div className="flex items-center mb-3">
-                                    <div className="text-3xl mr-3">🧙‍♂️</div>
+                                    <img src={aiSage} alt="Tenzing" className="w-12 h-12 rounded-full mr-4 border-2 border-purple-500" />
                                     <p className="text-purple-400 font-semibold">Tenzing speaks:</p>
                                 </div>
                                 <p className="text-gray-300 leading-relaxed">
@@ -371,7 +386,7 @@ const FounderOnboarding: React.FC<{
                                     type="text"
                                     value={onboardingData.guildName || (user && user.guildName) || ''}
                                     onChange={(e) => updateData('guildName', e.target.value)}
-                                    placeholder="Your startup/guild name"
+                                    placeholder="Your startup/Guild name"
                                     className="w-full p-4 bg-gray-700 text-white rounded-lg text-lg border border-gray-600 focus:border-purple-500 focus:outline-none"
                                 />
                             </div>
@@ -447,25 +462,25 @@ const FounderOnboarding: React.FC<{
                                     <h4 className="font-bold text-blue-400 text-xl">Energy</h4>
                                 </div>
                                 <p className="text-gray-300 leading-relaxed">
-                                    <span className="font-semibold">Energy is your capacity for action.</span> You will spend it to complete tasks and quests on your roadmap. Your energy replenishes by 50 points every day, so manage your time wisely.
+                                    <span className="font-semibold">Energy is your capacity for action.</span> You will spend it to complete tasks and help the Guild advance. It replenishes daily.
                                 </p>
                             </div>
 
                             <div className="bg-yellow-900/30 border border-yellow-700 rounded-lg p-6">
                                 <div className="flex items-center space-x-3 mb-4">
-                                    <Coins className="w-8 h-8 text-yellow-400" />
-                                    <h4 className="font-bold text-yellow-400 text-xl">Gold</h4>
+                                    <Users className="w-8 h-8 text-yellow-400" />
+                                    <h4 className="font-bold text-yellow-400 text-xl">Guild Vault</h4>
                                 </div>
                                 <p className="text-gray-300 leading-relaxed">
-                                    <span className="font-semibold">Gold is your currency for strategic advantage.</span> Use it to seek my advice when you are stuck, contribute to your Guild's growth, pay for its monthly upkeep, or purchase powerful Treasures. These treasures provide permanent bonuses, like reducing costs or boosting your XP gain. A wise investment can change the course of your venture.
+                                    <span className="font-semibold">The Guild Vault holds all of the team's Gold.</span> This shared resource is used for major expenses, like upgrading your headquarters, paying monthly upkeep, or acquiring powerful Treasures that benefit the entire Guild.
                                 </p>
                             </div>
 
                             <div className="bg-purple-900/30 border border-purple-700 rounded-lg p-8 text-center">
                                 <div className="text-6xl mb-4">🎁</div>
-                                <h4 className="font-bold text-purple-400 text-xl mb-3">Founder's Grant</h4>
+                                <h4 className="font-bold text-purple-400 text-xl mb-3">Starting Grant</h4>
                                 <p className="text-gray-300 text-lg leading-relaxed">
-                                    To begin your journey, we are awarding you a <span className="text-yellow-400 font-bold text-xl">Founder's Grant of 50 Gold</span>. Spend it wisely.
+                                    To build this shared wealth, we are granting a <span className="text-yellow-400 font-bold text-xl">Starting Grant of 50 Gold</span> on your behalf, which will be deposited directly into your Guild's Vault.
                                 </p>
                             </div>
                         </div>
@@ -583,48 +598,48 @@ const MemberOnboarding: React.FC<{
         setOnboardingData({ ...onboardingData, [key]: value });
     };
 
-    const FOUNDER_ROLES = [
+    const MEMBER_ROLES = [
         {
             id: 'engineer',
             name: 'The Engineer',
             description: 'The builder of things, focused on product and technology.',
             attribute: 'Tech',
-            sageResponse: "An Engineer. You see the world as a set of systems to be built and improved. Your path will be one of logic, creation, and technological excellence. Your 'Tech' attribute has received a bonus."
+            avatar: engineerAvatar
         },
         {
             id: 'herald',
             name: 'The Herald',
             description: 'The storyteller, focused on marketing and brand.',
             attribute: 'Marketing',
-            sageResponse: "A Herald. You believe that a great story can change the world. Your path will be one of communication, brand-building, and connecting with your future customers. Your 'Marketing' attribute has received a bonus."
+            avatar: heraldAvatar
         },
         {
             id: 'vanguard',
             name: 'The Vanguard',
             description: 'The deal-maker, focused on sales and revenue.',
             attribute: 'Sales',
-            sageResponse: "A Vanguard. You stand at the forefront, forging relationships and driving growth. Your path will be one of persuasion, negotiation, and building revenue. Your 'Sales' attribute has received a bonus."
+            avatar: vanguardAvatar
         },
         {
             id: 'loremaster',
             name: 'The Loremaster',
             description: 'The strategist, focused on law and market knowledge.',
             attribute: 'Legal',
-            sageResponse: "A Loremaster. You understand that knowledge is power and strategy is the key to victory. Your path will be one of careful planning, compliance, and strategic positioning. Your 'Legal' attribute has received a bonus."
+            avatar: loremasterAvatar
         },
         {
             id: 'quartermaster',
             name: 'The Quartermaster',
             description: 'The organizer, focused on operations and efficiency.',
             attribute: 'Operations',
-            sageResponse: "A Quartermaster. You know that an idea is only as strong as its execution. Your path will be one of organization, efficiency, and flawless operations. Your 'Operations' attribute has received a bonus."
+            avatar: quartermasterAvatar
         },
         {
             id: 'treasurer',
             name: 'The Treasurer',
             description: 'The financier, focused on capital and financial health.',
             attribute: 'Finance',
-            sageResponse: "A Treasurer. You see the numbers behind the vision, managing the lifeblood of the venture. Your path will be one of financial prudence, investment, and sustainable growth. Your 'Finance' attribute has received a bonus."
+            avatar: treasurerAvatar
         }
     ];
 
@@ -788,21 +803,21 @@ const MemberOnboarding: React.FC<{
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-                            {FOUNDER_ROLES.map((role) => {
-                                const isSelected = onboardingData.role === role.id;
-
+                            {MEMBER_ROLES.map((r) => {
+                                const isSelected = onboardingData.role === r.id;
                                 return (
                                     <button
-                                        key={role.id}
-                                        onClick={() => updateData('role', role.id)}
-                                        className={`p-6 rounded-lg border-2 transition-all text-left ${isSelected
-                                            ? 'border-purple-500 bg-purple-900/30'
-                                            : 'border-gray-600 bg-gray-700 hover:border-purple-400'
+                                        key={r.id}
+                                        onClick={() => updateData('role', r.id)}
+                                        className={`p-6 rounded-lg border-2 transition-all text-left flex flex-col items-center ${isSelected
+                                            ? 'border-blue-500 bg-blue-900/30'
+                                            : 'border-gray-600 bg-gray-700 hover:border-blue-400'
                                             }`}
                                     >
-                                        <h4 className="font-bold text-white text-lg mb-2">{role.name}</h4>
-                                        <p className="text-sm text-gray-300 mb-3">{role.description}</p>
-                                        <p className="text-xs text-purple-400 font-semibold">+{role.attribute} attribute bonus</p>
+                                        <img src={r.avatar} alt={r.name} className="w-24 h-24 rounded-full mb-4 border-4 border-gray-600 group-hover:border-blue-400 transition-all" />
+                                        <h4 className="font-bold text-white text-lg mb-2">{r.name}</h4>
+                                        <p className="text-sm text-gray-300 mb-3 text-center">{r.description}</p>
+                                        <p className="text-xs text-blue-400 font-semibold mt-auto">+{r.attribute} attribute bonus</p>
                                     </button>
                                 );
                             })}
@@ -811,14 +826,11 @@ const MemberOnboarding: React.FC<{
                         {onboardingData.role && (
                             <div className="bg-gray-700 rounded-lg p-6 mb-8">
                                 <div className="flex items-center mb-3">
-                                    <div className="text-3xl mr-3">🧙‍♂️</div>
+                                    <img src={aiSage} alt="Tenzing" className="w-12 h-12 rounded-full mr-4 border-2 border-purple-500" />
                                     <p className="text-purple-400 font-semibold">Tenzing speaks:</p>
                                 </div>
-                                <p className="text-gray-300 leading-relaxed mb-4">
-                                    {FOUNDER_ROLES.find(r => r.id === onboardingData.role)?.sageResponse}
-                                </p>
-                                <p className="text-blue-300">
-                                    Because you chose the path of the <span className="font-semibold">{FOUNDER_ROLES.find(r => r.id === onboardingData.role)?.name}</span>, you have a core proficiency. This means whenever you complete a quest that matches your role—for example, a {FOUNDER_ROLES.find(r => r.id === onboardingData.role)?.attribute} quest for {FOUNDER_ROLES.find(r => r.id === onboardingData.role)?.name}—you will receive a significant XP bonus, allowing you to level up your core skill faster than others.
+                                <p className="text-gray-300 leading-relaxed">
+                                    {MEMBER_ROLES.find(r => r.id === onboardingData.role)?.description}
                                 </p>
                             </div>
                         )}
@@ -918,7 +930,7 @@ const MemberOnboarding: React.FC<{
                                     <p className="text-purple-400 font-semibold">Tenzing speaks:</p>
                                 </div>
                                 <div className="text-gray-300 space-y-3">
-                                    <p>"Welcome to the '<span className="text-blue-400 font-semibold">{inviteData.guildName}</span>' Guild, <span className="text-white font-semibold">{FOUNDER_ROLES.find(r => r.id === onboardingData.role)?.name || (user && user.role && FOUNDER_ROLES.find(r => r.id === user.role)?.name)}</span>."</p>
+                                    <p>"Welcome to the '<span className="text-blue-400 font-semibold">{inviteData.guildName}</span>' Guild, <span className="text-white font-semibold">{MEMBER_ROLES.find(r => r.id === onboardingData.role)?.name || (user && user.role && MEMBER_ROLES.find(r => r.id === user.role)?.name)}</span>."</p>
                                 </div>
                             </div>
 

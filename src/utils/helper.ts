@@ -52,14 +52,14 @@ export const calculateXPWithBonuses = (baseXP: number, rating: number, questAttr
     }
     const equippedGear = userData.equippedGear || [];
     equippedGear.forEach((itemId: string) => {
-        const item = ARMORY_ITEMS.gear.find(g => g.id === itemId);
+        const item = ARMORY_ITEMS.items.find((g: any) => g.id === itemId);
         if (item?.stats.xpBonus) {
             xp *= (1 + item.stats.xpBonus / 100);
         }
     });
     const treasures = userData.treasures || [];
     treasures.forEach((treasureId: string) => {
-        const treasure = ARMORY_ITEMS.treasures.find(t => t.id === treasureId);
+        const treasure = ARMORY_ITEMS.specials.find((t: any) => t.id === treasureId);
         if (treasure?.effect.attribute === questAttribute) {
             xp *= (1 + treasure.effect.bonus / 100);
         }
@@ -74,7 +74,7 @@ export const calculateGoldReward = (baseGold: number, rating: number, userData: 
     }
     const equippedGear = userData.equippedGear || [];
     equippedGear.forEach((itemId: string) => {
-        const item = ARMORY_ITEMS.gear.find(g => g.id === itemId);
+        const item = ARMORY_ITEMS.items.find((g: any) => g.id === itemId);
         if (item?.stats.goldBonus) {
             gold *= (1 + item.stats.goldBonus / 100);
         }
@@ -86,14 +86,13 @@ export const consultAISage = async (
     context: string,
     question: string,
     userData: any,
-    awsModelId: string,
     bedrockClient: BedrockRuntimeClient
 ) => {
     try {
         const ceoContext = userData?.ceoAvatar ?
             `Channel the expertise of ${userData.ceoAvatar.name}, ${userData.ceoAvatar.title}.` : '';
         const command = new InvokeModelCommand({
-            modelId: awsModelId,
+            modelId: import.meta.env.VITE_NOVA_INFERENCE_PROFILE_ARN || "arn:aws:bedrock:us-east-1:148123604300:inference-profile/us.amazon.nova-pro-v1:0",
             body: JSON.stringify({
                 messages: [
                     {
@@ -123,7 +122,6 @@ export const consultAISage = async (
 export const generateAIDocument = async (
     template: any,
     userData: any,
-    awsModelId: string,
     bedrockClient: BedrockRuntimeClient
 ) => {
     const context = `\nVision: ${userData.vision}\nIndustry: ${userData.onboardingData?.industry || 'General'}\nStage: ${userData.onboardingData?.stage || 'Early'}\nCore Strength: ${userData.coreAttribute}\n`;
@@ -135,19 +133,18 @@ export const generateAIDocument = async (
         marketing_plan: "Plan your marketing strategy",
         product_roadmap: "Outline the product development roadmap"
     };
-    return consultAISage(context, prompts[template.id] || "Create a business document", userData, awsModelId, bedrockClient);
+    return consultAISage(context, prompts[template.id] || "Create a business document", userData, bedrockClient);
 };
 
 export const fetchDynamicResources = async (
     questTopic: string,
     questDescription: string,
-    awsModelId: string,
     bedrockClient: BedrockRuntimeClient
 ) => {
     try {
         const searchPrompt = `Find the best resources for a founder working on: ${questTopic}. Context: ${questDescription}. \n\nReturn a JSON array with exactly 5 resources in this format:\n[\n  {\n    "title": "Resource Title",\n    "type": "book|article|tool|course|guide|video",\n    "description": "Brief description",\n    "url": "https://...",\n    "icon": "appropriate emoji",\n    "difficulty": "beginner|intermediate|advanced",\n    "timeToComplete": "e.g., 1 hour, 2 weeks"\n  }\n]\n\nFocus on high-quality, actionable resources from reputable sources.`;
         const command = new InvokeModelCommand({
-            modelId: awsModelId,
+            modelId: import.meta.env.VITE_NOVA_INFERENCE_PROFILE_ARN || "arn:aws:bedrock:us-east-1:148123604300:inference-profile/us.amazon.nova-pro-v1:0",
             body: JSON.stringify({
                 messages: [
                     {
@@ -201,13 +198,12 @@ export const getDefaultResources = (questTopic: string) => {
 export const rateQuestSubmission = async (
     questData: any,
     userData: any,
-    awsModelId: string,
     bedrockClient: BedrockRuntimeClient
 ) => {
     try {
         const ratingPrompt = `As a business mentor, rate this Quest submission on a scale of 1-5 stars.\n\nQuest: ${questData.questName}\nSubmission: ${JSON.stringify(questData.inputs)}\n\nProvide your feedback as a JSON object:\n{\n  "rating": [1-5],\n  "feedback": "Brief feedback",\n  "suggestions": ["Improvement suggestion 1", "Improvement suggestion 2"]\n}`;
         const command = new InvokeModelCommand({
-            modelId: awsModelId,
+            modelId: import.meta.env.VITE_NOVA_INFERENCE_PROFILE_ARN || "arn:aws:bedrock:us-east-1:148123604300:inference-profile/us.amazon.nova-pro-v1:0",
             body: JSON.stringify({
                 messages: [
                     {
@@ -237,8 +233,53 @@ export const rateQuestSubmission = async (
     }
 };
 
+export const generateFollowUpQuestions = async (
+    context: string,
+    conversation: any[],
+    bedrockClient: BedrockRuntimeClient
+): Promise<string[]> => {
+    try {
+        const conversationText = conversation.map(msg => `${msg.type}: ${msg.content}`).join('\\n');
+        const prompt = `Based on the following quest context and conversation, generate 3-4 insightful and relevant follow-up questions that the user could ask. These questions should help the user dig deeper into the topic, overcome challenges, or think about the next steps.
+        
+        Context: ${context}
+        Conversation:
+        ${conversationText}
+        
+        Return a JSON array of strings: ["question 1", "question 2", "question 3"]`;
 
-export function getSuggestedSageQuestions({ quest, guildData, guildLevel }: { quest: any, guildData: any, guildLevel: any }) {
+        const command = new InvokeModelCommand({
+            modelId: import.meta.env.VITE_NOVA_INFERENCE_PROFILE_ARN || "arn:aws:bedrock:us-east-1:148123604300:inference-profile/us.amazon.nova-pro-v1:0",
+            body: JSON.stringify({
+                messages: [{ role: "user", content: [{ text: prompt }] }],
+            }),
+            contentType: "application/json",
+            accept: "application/json"
+        });
+
+        const response = await bedrockClient.send(command);
+        const responseBody = JSON.parse(new TextDecoder().decode(response.body));
+        const content = responseBody.output?.message?.content?.[0]?.text || "[]";
+
+        try {
+            const questions = JSON.parse(content);
+            return Array.isArray(questions) ? questions.slice(0, 4) : [];
+        } catch (e) {
+            console.error('Error parsing follow-up questions:', e);
+            return [];
+        }
+    } catch (error) {
+        console.error('Error generating follow-up questions:', error);
+        return [];
+    }
+};
+
+export async function getSuggestedSageQuestions({ quest, guildData, guildLevel, conversation, bedrockClient }: { quest: any, guildData: any, guildLevel: any, conversation?: any[], bedrockClient?: BedrockRuntimeClient }) {
+    if (conversation && conversation.length > 0 && bedrockClient) {
+        const context = `Quest: ${quest.name} - ${quest.description}. Seeker's progress: ${JSON.stringify(guildData.questProgress?.[`${quest.stageId}_${quest.id}`]?.inputs || {})}`;
+        return await generateFollowUpQuestions(context, conversation, bedrockClient);
+    }
+
     const base: string[] = [];
     // Quest-specific
     if (quest.id === 'vision') {
@@ -294,7 +335,7 @@ export function getSuggestedSageQuestions({ quest, guildData, guildLevel }: { qu
     if (guildData?.coreAttribute) {
         base.push(`How can I use my strength in ${guildData.coreAttribute} to excel in this Quest?`);
     }
-    return base;
+    return base.sort(() => 0.5 - Math.random()).slice(0, 4);
 }
 
 export const triggerConfetti = (options = {}) => {
@@ -366,7 +407,6 @@ export const QUEST_STAGES = {
     }
 };
 
-
 export const createMagicalParticles = () => {
     const particleCount = 30;
 
@@ -381,5 +421,89 @@ export const createMagicalParticles = () => {
         if (document.body) {
             document.body.appendChild(particle);
         }
+    }
+};
+
+export const getPersonalizedQuestDetails = async (
+    vision: string,
+    quest: any,
+    bedrockClient: BedrockRuntimeClient
+) => {
+    try {
+        let specializedInstructions = "";
+        if (quest.id === 'market') { // Corresponds to "Scout the Territory"
+            specializedInstructions = "For the `contextualAdvice`, you MUST include a list of 3-5 potential competitors based on the user's vision. For the `resourceCache`, include market analysis tools.";
+        } else if (quest.id === 'legal') { // Corresponds to "Forge the Legal Shield"
+            specializedInstructions = "For the `contextualAdvice`, you MUST include specific warnings about relevant regulations (like GDPR, CCPA, HIPAA, etc.) if applicable to the user's vision. For the `resourceCache`, include links to legal document templates or services.";
+        }
+
+        const prompt = `You are the AI Sage, an expert startup advisor forging a personalized Quest Map for a founder.
+The founder's vision is: "${vision}"
+
+They are now undertaking the quest: "${quest.name} - ${quest.description}"
+
+Your task is to enchant this quest with personalized guidance. Provide your response as a single, valid JSON object with the following keys:
+- "contextualAdvice": "A paragraph of specific, actionable advice for this quest, tailored directly to the founder's vision. ${specializedInstructions}"
+- "specificChallenges": ["A list of 3 potential challenges the founder might face, specific to their vision and this quest.", "Challenge 2", "Challenge 3"]
+- "resourceCache": [
+    {
+      "title": "Resource Title 1",
+      "type": "book|article|tool|course|guide|video",
+      "description": "A brief, compelling description of why this resource is useful for this specific founder and quest.",
+      "url": "https://...",
+      "icon": "📚"
+    },
+    {
+      "title": "Resource Title 2",
+      "type": "tool",
+      "description": "Description for tool.",
+      "url": "https://...",
+      "icon": "🛠️"
+    }
+  ]
+
+Ensure the JSON is well-formed. Do not include any text outside of the JSON object.
+`;
+
+        const command = new InvokeModelCommand({
+            modelId: import.meta.env.VITE_NOVA_INFERENCE_PROFILE_ARN || "arn:aws:bedrock:us-east-1:148123604300:inference-profile/us.amazon.nova-pro-v1:0",
+            body: JSON.stringify({
+                messages: [{ role: "user", content: [{ text: prompt }] }],
+            }),
+            contentType: "application/json",
+            accept: "application/json"
+        });
+
+        const response = await bedrockClient.send(command);
+        const responseBody = JSON.parse(new TextDecoder().decode(response.body));
+        const content = responseBody.output?.message?.content?.[0]?.text || "{}";
+
+        try {
+            // Find the start and end of the JSON object
+            const startIndex = content.indexOf('{');
+            const endIndex = content.lastIndexOf('}');
+            if (startIndex === -1 || endIndex === -1) {
+                throw new Error("No JSON object found in the AI response.");
+            }
+            const jsonString = content.substring(startIndex, endIndex + 1);
+            const details = JSON.parse(jsonString);
+            return details;
+        } catch (e) {
+            console.error('Error parsing personalized quest details:', e, "Raw content:", content);
+            return {
+                contextualAdvice: "The AI Sage is pondering... but couldn't forge a personalized path for this quest. Try consulting the Sage in the chat.",
+                specificChallenges: ["Connecting to the ethereal plane of knowledge.", "Deciphering ancient runes of wisdom.", "Avoiding pesky knowledge gremlins."],
+                resourceCache: getDefaultResources(quest.id)
+            };
+        }
+    } catch (error: any) {
+        console.error('Error getting personalized quest details:', error);
+        // Add more detailed error info
+        const errorMessage = error.message || "An unknown error occurred";
+        return {
+            contextualAdvice: `A magical interference prevented the Sage from personalizing this quest. Please try again. (Error: ${errorMessage})`,
+            specificChallenges: [],
+            resourceCache: getDefaultResources(quest.id)
+        };
     }
 };

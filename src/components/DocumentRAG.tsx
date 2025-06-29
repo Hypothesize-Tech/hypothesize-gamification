@@ -17,7 +17,7 @@ import '@react-pdf-viewer/core/lib/styles/index.css';
 import '@react-pdf-viewer/default-layout/lib/styles/index.css';
 import Modal from './Modal';
 import confetti from 'canvas-confetti';
-import paperBg from '../assets/paper.jpg';
+import paperBg from '../assets/wallpaper_2.jpg';
 
 const parchmentStyles = `
   .parchment-container {
@@ -461,10 +461,10 @@ export const DocumentRAG: React.FC<DocumentRAGProps> = ({ userId, ceoAvatar, ope
                                     <div className="flex-1">
                                         <h2 className="text-3xl font-bold old-paper-text flex items-center space-x-2" style={{ fontFamily: 'Georgia, serif' }}>
                                             <Database className="w-7 h-7 text-amber-700" />
-                                            <span>Document Assistant</span>
+                                            <span>AI Sage's Archives</span>
                                         </h2>
                                         <p className="old-paper-text opacity-80 mt-1 text-sm italic">
-                                            Upload your documents and let the Assistant analyze their content
+                                            Upload your documents and let the AI Sage analyze their content
                                         </p>
                                     </div>
                                     {ceoAvatar && (
@@ -551,7 +551,7 @@ export const DocumentRAG: React.FC<DocumentRAGProps> = ({ userId, ceoAvatar, ope
                                     {/* Chat Header */}
                                     <div className="mb-4 flex items-center space-x-2">
                                         <Sparkles className="w-5 h-5 text-amber-700" />
-                                        <h3 className="text-lg font-bold old-paper-text">Ask the Assistant</h3>
+                                        <h3 className="text-lg font-bold old-paper-text">Ask the Sage</h3>
                                     </div>
 
                                     {/* Chat Messages */}
@@ -600,7 +600,7 @@ export const DocumentRAG: React.FC<DocumentRAGProps> = ({ userId, ceoAvatar, ope
                                                 <div className="parchment-inner rounded-lg p-4 max-w-[85%]">
                                                     <div className="flex items-center space-x-2">
                                                         <Loader2 className="w-4 h-4 animate-spin text-amber-700" />
-                                                        <p className="text-base old-paper-text italic">The Assistant is processing your request...</p>
+                                                        <p className="text-base old-paper-text italic">The Sage is processing your request...</p>
                                                     </div>
                                                 </div>
                                             </div>
@@ -615,7 +615,7 @@ export const DocumentRAG: React.FC<DocumentRAGProps> = ({ userId, ceoAvatar, ope
                                             value={currentQuestion}
                                             onChange={(e) => setCurrentQuestion(e.target.value)}
                                             onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleAskQuestion()}
-                                            placeholder="Ask the Assistant about your documents..."
+                                            placeholder="Ask the Sage about your documents..."
                                             className="flex-1 p-3 bg-amber-50/30 old-paper-text rounded-lg placeholder-amber-700/50 
                                                      border border-amber-700/30 focus:outline-none focus:border-amber-700/50 text-base
                                                      transition-all"

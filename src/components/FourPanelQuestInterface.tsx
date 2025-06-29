@@ -1,13 +1,16 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import { QUEST_INPUT_TEMPLATES } from "../utils/constant";
-import { calculateGoldReward, calculateLevel, calculateXPWithBonuses, consultAISage, fetchDynamicResources, getSuggestedSageQuestions, rateQuestSubmission, triggerConfetti } from "../utils/helper";
+import { calculateGoldReward, calculateLevel, calculateXPWithBonuses, consultAISage, fetchDynamicResources, getPersonalizedQuestDetails, getSuggestedSageQuestions, rateQuestSubmission, triggerConfetti } from "../utils/helper";
 import { Canvas } from "@react-three/fiber";
 import DiamondSword3D from "./DiamondSword3D";
-import { BookOpen, Coins, Edit3, ExternalLink, Loader2, MessageCircle, RefreshCw, Save, Scroll, Send, Sparkles, Swords, Trophy, X, ChevronDown, ChevronUp, Zap } from "lucide-react";
+import { BookOpen, Coins, Edit3, ExternalLink, Loader2, RefreshCw, Save, Scroll, Send, Sparkles, Swords, Trophy, X, ChevronDown, ChevronUp, Zap, Wand2 } from "lucide-react";
 import ReactMarkdown from 'react-markdown';
 import { BedrockRuntimeClient } from '@aws-sdk/client-bedrock-runtime';
 import { EnergyWarning } from './EnergySystem';
 import { ENERGY_COSTS } from '../config/energy';
+import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
+import "./FourPanelQuestInterface.css";
+
 
 export const FourPanelQuestInterface = ({
     quest,
@@ -22,6 +25,8 @@ export const FourPanelQuestInterface = ({
     bedrockClient,
     consumeEnergy,
     setGuildData,
+    vision,
+    savePersonalizedQuestDetails,
 }: {
     quest: any;
     guildData: any;
@@ -38,6 +43,8 @@ export const FourPanelQuestInterface = ({
         onEnergyConsumed?: () => void
     ) => Promise<boolean>;
     setGuildData: React.Dispatch<React.SetStateAction<any | null>>;
+    vision: string;
+    savePersonalizedQuestDetails: (questKey: string, personalizedData: any) => Promise<void>;
 }) => {
     const questKey = `${quest.stageId}_${quest.id}`;
     const questProgress = guildData?.questProgress?.[questKey];
@@ -52,13 +59,42 @@ export const FourPanelQuestInterface = ({
     const [resourcesLoading, setResourcesLoading] = useState(true);
     const [rating, setRating] = useState<any>(isCompleted ? { rating: questProgress?.rating, feedback: questProgress?.feedback } : null);
     const [showSuggestedQuestions, setShowSuggestedQuestions] = useState(true);
+    const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
+    const [personalizedDetails, setPersonalizedDetails] = useState<any>(questProgress?.personalizedData || null);
+    const [isPersonalizing, setIsPersonalizing] = useState(false);
 
     useEffect(() => {
-        if (isCompleted) {
-            setUserInputs(questProgress?.inputs || {});
-            setSageMessages(questProgress?.sageConversation || []);
-            setRating({ rating: questProgress?.rating, feedback: questProgress?.feedback });
-        }
+        const fetchInitialData = async () => {
+            if (isCompleted) {
+                setUserInputs(questProgress?.inputs || {});
+                setSageMessages(questProgress?.sageConversation || []);
+                setRating({ rating: questProgress?.rating, feedback: questProgress?.feedback });
+                setResourcesLoading(false);
+                setPersonalizedDetails(questProgress?.personalizedData || null);
+            } else {
+                // Fetch personalized details if they don't exist
+                if (!questProgress?.personalizedData) {
+                    setIsPersonalizing(true);
+                    const details = await getPersonalizedQuestDetails(vision, quest, bedrockClient);
+                    setPersonalizedDetails(details);
+                    await savePersonalizedQuestDetails(questKey, details);
+                    setIsPersonalizing(false);
+                }
+
+                // Set initial suggested questions
+                const levelInfo = calculateLevel(guildData?.xp || 0);
+                const questions = await getSuggestedSageQuestions({ quest, guildData, guildLevel: levelInfo, bedrockClient, awsModelId });
+                setSuggestedQuestions(questions);
+
+                // Fetch dynamic resources (now uses personalized data if available)
+                setResourcesLoading(true);
+                const resources = personalizedDetails?.resourceCache || await fetchDynamicResources(quest.name, quest.description, awsModelId, bedrockClient);
+                setDynamicResources(resources);
+                setResourcesLoading(false);
+            }
+        };
+
+        fetchInitialData();
         // eslint-disable-next-line
     }, [questKey]);
 
@@ -74,6 +110,7 @@ export const FourPanelQuestInterface = ({
 
         setSageLoading(true);
         soundManager.play('magicCast');
+        setShowSuggestedQuestions(false);
 
         const userMessage = sageInput;
         setSageInput('');
@@ -84,12 +121,18 @@ export const FourPanelQuestInterface = ({
                 `Quest: ${quest.name} - ${quest.description}. Seeker's progress: ${JSON.stringify(userInputs)}`,
                 userMessage,
                 { ...guildData, ceoAvatar },
-                awsModelId,
                 bedrockClient
             );
 
             setSageMessages(prev => [...prev, { type: 'sage', content: response }]);
             await saveConversation(quest, userMessage, response);
+
+            // Generate new suggested questions based on the new context
+            const levelInfo = calculateLevel(guildData?.xp || 0);
+            const newConversation = [...sageMessages, { type: 'user', content: userMessage }, { type: 'sage', content: response }];
+            const questions = await getSuggestedSageQuestions({ quest, guildData, guildLevel: levelInfo, conversation: newConversation, bedrockClient, awsModelId });
+            setSuggestedQuestions(questions);
+
         } catch (error) {
             setSageMessages(prev => [...prev, {
                 type: 'sage',
@@ -158,7 +201,6 @@ export const FourPanelQuestInterface = ({
     };
 
     const levelInfo = calculateLevel(guildData?.xp || 0);
-    const suggestedQuestions = getSuggestedSageQuestions({ quest, guildData, guildLevel: levelInfo });
     const sageInputRef = useRef<HTMLInputElement>(null);
 
     const handleSuggestedSageQuestion = async (question: string) => {
@@ -170,6 +212,7 @@ export const FourPanelQuestInterface = ({
         }
 
         setSageLoading(true);
+        setShowSuggestedQuestions(false);
         setSageMessages(prev => [...prev, { type: 'user', content: question }]);
         try {
             soundManager.play('magicCast');
@@ -177,11 +220,17 @@ export const FourPanelQuestInterface = ({
                 `Quest: ${quest.name} - ${quest.description}. Seeker's progress: ${JSON.stringify(userInputs)}`,
                 question,
                 { ...guildData, ceoAvatar },
-                awsModelId,
                 bedrockClient
             );
             setSageMessages(prev => [...prev, { type: 'sage', content: response }]);
             await saveConversation(quest, question, response);
+
+            // Generate new suggested questions
+            const newLevelInfo = calculateLevel(guildData?.xp || 0);
+            const newConversation = [...sageMessages, { type: 'user', content: question }, { type: 'sage', content: response }];
+            const questions = await getSuggestedSageQuestions({ quest, guildData, guildLevel: newLevelInfo, conversation: newConversation, bedrockClient, awsModelId });
+            setSuggestedQuestions(questions);
+
         } catch (error) {
             setSageMessages(prev => [...prev, {
                 type: 'sage',
@@ -239,377 +288,388 @@ export const FourPanelQuestInterface = ({
             </div>
 
             {/* 4-Panel Grid */}
-            <div className="grid grid-cols-2 grid-rows-2 gap-4 p-4 flex-1 overflow-hidden">
-                {/* Top Left - Quest Details */}
-                <div className="parchment p-6 flex flex-col overflow-hidden">
-                    <div className="flex items-center mb-4 flex-shrink-0">
-                        <Scroll className="w-5 h-5 text-yellow-500 mr-2" />
-                        <h3 className="text-lg font-bold text-yellow-100">Quest Details</h3>
-                    </div>
-
-                    <div className="space-y-4 overflow-y-auto flex-1 pr-2">
-                        <div className="parchment p-4">
-                            <h4 className="font-semibold mb-2 text-yellow-100">Your Quest</h4>
-                            <p className="text-gray-300">{quest.description}</p>
-                        </div>
-
-                        <div className="parchment p-4">
-                            <h4 className="font-semibold mb-2 text-yellow-100">How to Complete</h4>
-                            <ul className="list-disc list-inside text-gray-300 space-y-1">
-                                <li>Complete all required entries</li>
-                                <li>Ask the Assistant for advice ({ENERGY_COSTS.AI_SAGE_CONSULTATION} energy per question)</li>
-                                <li>Review the resources</li>
-                                <li>Record your progress</li>
-                            </ul>
-                        </div>
-
-                        <div className="parchment p-4">
-                            <h4 className="font-semibold mb-2 text-yellow-100">Rewards</h4>
-                            <div className="space-y-2">
-                                <div className="flex items-center space-x-4">
-                                    <div className="flex items-center space-x-2">
-                                        <Sparkles className="w-5 h-5 text-yellow-500" />
-                                        <span>{quest.xp} XP</span>
+            <div className="p-4 flex-1 overflow-hidden">
+                <PanelGroup direction="vertical" className="h-full">
+                    <Panel defaultSize={50}>
+                        <PanelGroup direction="horizontal" className="h-full">
+                            <Panel defaultSize={50}>
+                                {/* Top Left - Quest Details */}
+                                <div className="parchment p-6 flex flex-col overflow-hidden h-full">
+                                    <div className="flex items-center mb-4 flex-shrink-0">
+                                        <Scroll className="w-5 h-5 text-yellow-500 mr-2" />
+                                        <h3 className="text-lg font-bold text-yellow-100">Quest Details</h3>
                                     </div>
-                                    <div className="flex items-center space-x-2">
-                                        <Coins className="w-5 h-5 text-yellow-500" />
-                                        <span>{quest.xp / 2} Gold (base)</span>
-                                    </div>
-                                </div>
-                                <p className="text-xs text-gray-400">Final reward is based on the Grand Master's judgment (1-5 stars)</p>
-                                <p className="text-xs text-yellow-400 mt-1">Complete all quests in this stage to earn 500 gold coins!</p>
-                            </div>
-                        </div>
 
-                        {rating && (
-                            <div className="parchment p-4 magic-border">
-                                <h4 className="font-semibold mb-2 flex items-center text-yellow-100">
-                                    Review: {'⭐'.repeat(rating.rating)}
-                                </h4>
-                                <p className="text-sm text-gray-300 mb-2">{rating.feedback}</p>
-                                <div className="flex items-center space-x-4 text-sm">
-                                    <span className="text-green-400">+{calculateXPWithBonuses(quest.xp, rating.rating, quest.attribute || 'general', guildData)} XP</span>
-                                </div>
-                            </div>
-                        )}
+                                    <div className="space-y-4 overflow-y-auto flex-1 pr-2">
+                                        <div className="parchment p-4">
+                                            <h4 className="font-semibold mb-2 text-yellow-100">Your Quest</h4>
+                                            <p className="text-gray-300">{quest.description}</p>
+                                        </div>
 
-                        {ceoAvatar && (
-                            <div className={`p-4 rounded-lg bg-gradient-to-r ${ceoAvatar.color} bg-opacity-20 parchment`}>
-                                <div className="flex items-center mb-2">
-                                    <span className="text-2xl mr-2">{ceoAvatar.avatar}</span>
-                                    <p className="font-semibold text-yellow-100">{ceoAvatar.name}'s Wisdom</p>
-                                </div>
-                                <p className="text-sm italic text-gray-300">"{ceoAvatar.advice}"</p>
-                            </div>
-                        )}
-                    </div>
-                </div>
+                                        <div className="parchment p-4">
+                                            <h4 className="font-semibold mb-2 text-yellow-100">How to Complete</h4>
+                                            <ul className="list-disc list-inside text-gray-300 space-y-1">
+                                                <li>Complete all required entries</li>
+                                                <li>Ask the Sage for advice ({ENERGY_COSTS.AI_SAGE_CONSULTATION} energy per question)</li>
+                                                <li>Review the resources</li>
+                                                <li>Record your progress</li>
+                                            </ul>
+                                        </div>
 
-                {/* Top Right - Input Section */}
-                <div className="parchment p-6 flex flex-col overflow-hidden">
-                    <div className="flex items-center mb-4 flex-shrink-0">
-                        <Edit3 className="w-5 h-5 text-yellow-500 mr-2" />
-                        <h3 className="text-lg font-bold text-yellow-100">
-                            {inputTemplate?.title || 'Sacred Inscriptions'}
-                        </h3>
-                    </div>
+                                        {isPersonalizing ? (
+                                            <div className="parchment p-4 flex items-center justify-center">
+                                                <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                                                <span>The Sage is personalizing your quest...</span>
+                                            </div>
+                                        ) : personalizedDetails?.contextualAdvice && (
+                                            <div className="parchment p-4">
+                                                <h4 className="font-semibold mb-2 text-yellow-100 flex items-center">
+                                                    <Wand2 className="w-4 h-4 mr-2" />
+                                                    Sage's Enchantment
+                                                </h4>
+                                                <p className="text-gray-300 text-sm italic">{personalizedDetails.contextualAdvice}</p>
+                                            </div>
+                                        )}
 
-                    <div className="space-y-4 overflow-y-auto flex-1 pr-2">
-                        {inputTemplate ? (
-                            inputTemplate.fields.map((field: any) => (
-                                <div key={field.name}>
-                                    <label className="block text-sm font-medium mb-2 text-yellow-100">
-                                        {field.label}
-                                    </label>
-                                    {field.type === 'textarea' ? (
-                                        <textarea
-                                            value={userInputs[field.name] || ''}
-                                            onChange={(e) => handleInputChange(field.name, e.target.value)}
-                                            placeholder={field.placeholder}
-                                            className="w-full p-3 bg-gray-700 rounded-lg text-white resize-none h-24"
-                                            disabled={isCompleted}
-                                        />
-                                    ) : field.type === 'select' ? (
-                                        <select
-                                            value={userInputs[field.name] || ''}
-                                            onChange={(e) => handleInputChange(field.name, e.target.value)}
-                                            className="w-full p-3 bg-gray-700 rounded-lg text-white"
-                                            disabled={isCompleted}
-                                        >
-                                            <option value="">Choose wisely...</option>
-                                            {field.options?.map((option: any) => (
-                                                <option key={option} value={option}>{option}</option>
-                                            ))}
-                                        </select>
-                                    ) : (
-                                        <input
-                                            type="text"
-                                            value={userInputs[field.name] || ''}
-                                            onChange={(e) => handleInputChange(field.name, e.target.value)}
-                                            placeholder={field.placeholder}
-                                            className="w-full p-3 bg-gray-700 rounded-lg text-white"
-                                            disabled={isCompleted}
-                                        />
-                                    )}
-                                </div>
-                            ))
-                        ) : (
-                            <div>
-                                <label className="block text-sm font-medium mb-2 text-yellow-100">
-                                    Thy Quest Journal
-                                </label>
-                                <textarea
-                                    value={userInputs.general || ''}
-                                    onChange={(e) => handleInputChange('general', e.target.value)}
-                                    placeholder="Chronicle thy deeds for this quest..."
-                                    className="w-full p-3 bg-gray-700 rounded-lg text-white resize-none h-48"
-                                    disabled={isCompleted}
-                                />
-                            </div>
-                        )}
-
-                        {!isCompleted && guildData && !guildData.isPremium && guildData.currentEnergy < ENERGY_COSTS.QUEST_COMPLETION && (
-                            <div className="mt-4">
-                                <EnergyWarning
-                                    action="Completing this quest"
-                                    energyCost={ENERGY_COSTS.QUEST_COMPLETION}
-                                    currentEnergy={guildData.currentEnergy}
-                                    onPurchaseClick={() => {
-                                        alert("Please close the quest and purchase energy from the main screen.");
-                                    }}
-                                />
-                            </div>
-                        )}
-
-                        <div className="flex space-x-3 mt-4">
-                            <button
-                                onClick={() => {
-                                    soundManager.play('swordDraw');
-                                    alert('Thy progress has been saved to the archives!');
-                                }}
-                                className="flex-1 px-4 py-2 bg-gray-700 rounded-lg hover:bg-gray-600 transition-all flex items-center justify-center space-x-2"
-                                disabled={isCompleted}
-                            >
-                                <Save className="w-4 h-4" />
-                                <span>Save to Archives</span>
-                            </button>
-                            <button
-                                onClick={handleCompleteQuest}
-                                disabled={isSaving || isCompleted}
-                                className="flex-1 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 rounded-lg hover:from-green-500 hover:to-emerald-500 transition-all disabled:opacity-50 flex items-center justify-center space-x-2 magic-border"
-                            >
-                                {isSaving ? (
-                                    <>
-                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                        <span>Submitting...</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <Trophy className="w-4 h-4" />
-                                        <span>Complete Quest</span>
-                                    </>
-                                )}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Bottom Left - Dynamic Resources Library */}
-                <div className="parchment p-6 flex flex-col overflow-hidden">
-                    <div className="flex items-center justify-between mb-4 flex-shrink-0">
-                        <div className="flex items-center">
-                            <BookOpen className="w-5 h-5 text-green-500 mr-2" />
-                            <h3 className="text-lg font-bold text-yellow-100">Ancient Grimoire</h3>
-                        </div>
-                        {!resourcesLoading && (
-                            <button
-                                onClick={async () => {
-                                    setResourcesLoading(true);
-                                    const resources = await fetchDynamicResources(quest.name, quest.description, awsModelId, bedrockClient);
-                                    setDynamicResources(resources);
-                                    setResourcesLoading(false);
-                                }}
-                                className="p-2 -m-2 text-gray-400 hover:text-white"
-                                title="Refresh resources"
-                            >
-                                <RefreshCw className="w-4 h-4" />
-                            </button>
-                        )}
-                    </div>
-
-                    <div className="space-y-3 overflow-y-auto flex-1 pr-2">
-                        {resourcesLoading ? (
-                            <div className="text-center py-8">
-                                <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2 text-purple-500" />
-                                <p className="text-gray-400">Loading resources...</p>
-                            </div>
-                        ) : dynamicResources.length > 0 ? (
-                            <>
-                                {dynamicResources.map((resource, index) => (
-                                    <a
-                                        key={index}
-                                        href={resource.url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="block parchment p-3 hover:transform hover:scale-105 transition-all"
-                                        onMouseEnter={() => soundManager.play('swordDraw')}
-                                    >
-                                        <div className="flex items-start justify-between">
-                                            <div className="flex items-start space-x-3">
-                                                <span className="text-2xl mt-1">{resource.icon}</span>
-                                                <div className="flex-1">
-                                                    <p className="font-medium text-yellow-100">{resource.title}</p>
-                                                    <p className="text-xs text-gray-300 mt-1">{resource.description}</p>
-                                                    <div className="flex items-center space-x-3 mt-2 text-xs">
-                                                        <span className="text-purple-400">{resource.type}</span>
-                                                        <span className="text-gray-500">•</span>
-                                                        <span className="text-gray-400">{resource.timeToComplete}</span>
-                                                        <span className="text-gray-500">•</span>
-                                                        <span className={`${resource.difficulty === 'apprentice' ? 'text-green-400' :
-                                                            resource.difficulty === 'journeyman' ? 'text-yellow-400' :
-                                                                'text-red-400'
-                                                            }`}>
-                                                            {resource.difficulty}
-                                                        </span>
+                                        <div className="parchment p-4">
+                                            <h4 className="font-semibold mb-2 text-yellow-100">Rewards</h4>
+                                            <div className="space-y-2">
+                                                <div className="flex items-center space-x-4">
+                                                    <div className="flex items-center space-x-2">
+                                                        <Sparkles className="w-5 h-5 text-yellow-500" />
+                                                        <span>{quest.xp} XP</span>
+                                                    </div>
+                                                    <div className="flex items-center space-x-2">
+                                                        <Coins className="w-5 h-5 text-yellow-500" />
+                                                        <span>{quest.xp / 2} Gold (base)</span>
                                                     </div>
                                                 </div>
+                                                <p className="text-xs text-gray-400">Final reward is based on the Grand Master's judgment (1-5 stars)</p>
+                                                <p className="text-xs text-yellow-400 mt-1">Complete all quests in this stage to earn 500 gold coins!</p>
                                             </div>
-                                            <ExternalLink className="w-4 h-4 text-gray-400 flex-shrink-0" />
                                         </div>
-                                    </a>
-                                ))}
-                            </>
-                        ) : (
-                            <div className="text-center py-8 text-gray-400">
-                                <BookOpen className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                                <p>No resources found. Try refreshing again.</p>
-                            </div>
-                        )}
-                    </div>
-                </div>
 
-                {/* Bottom Right - AI Sage Chat */}
-                <div className="parchment p-6 flex flex-col overflow-hidden">
-                    <div className="flex items-center justify-between mb-4 flex-shrink-0">
-                        <div className="flex items-center">
-                            <Sparkles className="w-5 h-5 text-purple-500 mr-2" />
-                            <h3 className="text-lg font-bold text-yellow-100">Consult the Assistant</h3>
-                        </div>
-                        <div className="flex items-center space-x-2 text-sm">
-                            <Zap className="w-4 h-4 text-blue-400" />
-                            <span className="font-medium text-yellow-100">{ENERGY_COSTS.AI_SAGE_CONSULTATION} energy per response</span>
-                        </div>
-                    </div>
+                                        {rating && (
+                                            <div className="parchment p-4 magic-border">
+                                                <h4 className="font-semibold mb-2 flex items-center text-yellow-100">
+                                                    Review: {'⭐'.repeat(rating.rating)}
+                                                </h4>
+                                                <p className="text-sm text-gray-300 mb-2">{rating.feedback}</p>
+                                                <div className="flex items-center space-x-4 text-sm">
+                                                    <span className="text-green-400">+{calculateXPWithBonuses(quest.xp, rating.rating, quest.attribute || 'general', guildData)} XP</span>
+                                                </div>
+                                            </div>
+                                        )}
 
-                    <div className="flex-1 overflow-y-auto mb-4 space-y-3 pr-2">
-                        {sageMessages.length === 0 ? (
-                            <div className="text-center py-8 text-gray-400">
-                                <MessageCircle className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                                <p>Ask a question to the Assistant</p>
-                                <p className="text-sm mt-2">Each response requires {ENERGY_COSTS.AI_SAGE_CONSULTATION} energy</p>
-                            </div>
-                        ) : (
-                            sageMessages.map((message, index) => (
-                                <div
-                                    key={index}
-                                    className={`${message.type === 'user' ? 'text-right' : 'text-left'}`}
-                                >
-                                    <div
-                                        className={`inline-block max-w-[80%] p-3 rounded-lg ${message.type === 'user'
-                                            ? 'bg-purple-800 text-white'
-                                            : 'parchment text-gray-100'
-                                            }`}
-                                    >
-                                        {message.type === 'sage' ? (
-                                            <ReactMarkdown>{message.content}</ReactMarkdown>
-                                        ) : (
-                                            <p>{message.content}</p>
+                                        {ceoAvatar && (
+                                            <div className={`p-4 rounded-lg bg-gradient-to-r ${ceoAvatar.color} bg-opacity-20 parchment`}>
+                                                <div className="flex items-center mb-2">
+                                                    <span className="text-2xl mr-2">{ceoAvatar.avatar}</span>
+                                                    <p className="font-semibold text-yellow-100">{ceoAvatar.name}'s Wisdom</p>
+                                                </div>
+                                                <p className="text-sm italic text-gray-300">"{ceoAvatar.advice}"</p>
+                                            </div>
                                         )}
                                     </div>
                                 </div>
-                            ))
-                        )}
-                        {sageLoading && (
-                            <div className="text-left">
-                                <div className="inline-block parchment rounded-lg p-3">
-                                    <div className="flex items-center space-x-2">
-                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-500"></div>
-                                        <span className="text-sm">The Assistant is processing your request...</span>
+                            </Panel>
+                            <PanelResizeHandle className="resize-handle-vertical" />
+                            <Panel defaultSize={50}>
+                                {/* Top Right - Input Section */}
+                                <div className="parchment p-6 flex flex-col overflow-hidden h-full">
+                                    <div className="flex items-center mb-4 flex-shrink-0">
+                                        <Edit3 className="w-5 h-5 text-yellow-500 mr-2" />
+                                        <h3 className="text-lg font-bold text-yellow-100">
+                                            {inputTemplate?.title || 'Sacred Inscriptions'}
+                                        </h3>
+                                    </div>
+
+                                    <div className="space-y-4 overflow-y-auto flex-1 pr-2">
+                                        {inputTemplate ? (
+                                            inputTemplate.fields.map((field: any) => (
+                                                <div key={field.name}>
+                                                    <label className="block text-sm font-medium mb-2 text-yellow-100">
+                                                        {field.label}
+                                                    </label>
+                                                    {field.type === 'textarea' ? (
+                                                        <textarea
+                                                            value={userInputs[field.name] || ''}
+                                                            onChange={(e) => handleInputChange(field.name, e.target.value)}
+                                                            placeholder={field.placeholder}
+                                                            className="w-full p-3 bg-gray-700 rounded-lg text-white resize-none h-24"
+                                                            disabled={isCompleted}
+                                                        />
+                                                    ) : field.type === 'select' ? (
+                                                        <select
+                                                            value={userInputs[field.name] || ''}
+                                                            onChange={(e) => handleInputChange(field.name, e.target.value)}
+                                                            className="w-full p-3 bg-gray-700 rounded-lg text-white"
+                                                            disabled={isCompleted}
+                                                        >
+                                                            <option value="">Choose wisely...</option>
+                                                            {field.options?.map((option: any) => (
+                                                                <option key={option} value={option}>{option}</option>
+                                                            ))}
+                                                        </select>
+                                                    ) : (
+                                                        <input
+                                                            type="text"
+                                                            value={userInputs[field.name] || ''}
+                                                            onChange={(e) => handleInputChange(field.name, e.target.value)}
+                                                            placeholder={field.placeholder}
+                                                            className="w-full p-3 bg-gray-700 rounded-lg text-white"
+                                                            disabled={isCompleted}
+                                                        />
+                                                    )}
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <div>
+                                                <label className="block text-sm font-medium mb-2 text-yellow-100">
+                                                    Thy Quest Journal
+                                                </label>
+                                                <textarea
+                                                    value={userInputs.general || ''}
+                                                    onChange={(e) => handleInputChange('general', e.target.value)}
+                                                    placeholder="Chronicle thy deeds for this quest..."
+                                                    className="w-full p-3 bg-gray-700 rounded-lg text-white resize-none h-48"
+                                                    disabled={isCompleted}
+                                                />
+                                            </div>
+                                        )}
+
+                                        {!isCompleted && guildData && !guildData.isPremium && guildData.currentEnergy < ENERGY_COSTS.QUEST_COMPLETION && (
+                                            <div className="mt-4">
+                                                <EnergyWarning
+                                                    action="Completing this quest"
+                                                    energyCost={ENERGY_COSTS.QUEST_COMPLETION}
+                                                    currentEnergy={guildData.currentEnergy}
+                                                    onPurchaseClick={() => {
+                                                        alert("Please close the quest and purchase energy from the main screen.");
+                                                    }}
+                                                />
+                                            </div>
+                                        )}
+
+                                        <div className="flex space-x-3 mt-4">
+                                            <button
+                                                onClick={() => {
+                                                    soundManager.play('swordDraw');
+                                                    alert('Thy progress has been saved to the archives!');
+                                                }}
+                                                className="flex-1 px-4 py-2 bg-gray-700 rounded-lg hover:bg-gray-600 transition-all flex items-center justify-center space-x-2"
+                                                disabled={isCompleted}
+                                            >
+                                                <Save className="w-4 h-4" />
+                                                <span>Save to Archives</span>
+                                            </button>
+                                            <button
+                                                onClick={handleCompleteQuest}
+                                                disabled={isSaving || isCompleted}
+                                                className="flex-1 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 rounded-lg hover:from-green-500 hover:to-emerald-500 transition-all disabled:opacity-50 flex items-center justify-center space-x-2 magic-border"
+                                            >
+                                                {isSaving ? (
+                                                    <>
+                                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                                        <span>Submitting...</span>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Trophy className="w-4 h-4" />
+                                                        <span>Complete Quest</span>
+                                                    </>
+                                                )}
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Suggested Questions */}
-                    {!isCompleted && !sageLoading && suggestedQuestions.length > 0 && (
-                        <div className="mb-3 flex flex-col gap-2">
-                            <button
-                                type="button"
-                                className="flex items-center gap-2 self-end mb-1 px-2 py-1 bg-purple-900/70 text-purple-200 rounded-full text-xs hover:bg-purple-700 hover:text-white transition-all border border-purple-700"
-                                onClick={() => setShowSuggestedQuestions((prev) => !prev)}
-                                aria-label={showSuggestedQuestions ? 'Hide suggested questions' : 'Show suggested questions'}
-                            >
-                                {showSuggestedQuestions ? (
-                                    <><span>Hide Suggestions</span><ChevronUp className="ml-1 w-4 h-4" /></>
-                                ) : (
-                                    <><span>Show Suggestions</span><ChevronDown className="ml-1 w-4 h-4" /></>
-                                )}
-                            </button>
-                            {showSuggestedQuestions && (
-                                <>
-                                    {chunkArray(suggestedQuestions, 2).map((row, rowIndex) => (
-                                        <div key={rowIndex} className="flex gap-2">
-                                            {row.map((q: string, i: number) => (
-                                                <button
-                                                    key={i}
-                                                    type="button"
-                                                    className="flex-1 px-3 py-1 bg-purple-900/70 text-purple-200 rounded-full text-xs hover:bg-purple-700 hover:text-white transition-all border border-purple-700 disabled:opacity-50"
-                                                    onClick={() => handleSuggestedSageQuestion(q)}
-                                                    disabled={sageLoading}
-                                                >
-                                                    {q}
-                                                </button>
-                                            ))}
+                            </Panel>
+                        </PanelGroup>
+                    </Panel>
+                    <PanelResizeHandle className="resize-handle-horizontal" />
+                    <Panel defaultSize={50}>
+                        <PanelGroup direction="horizontal" className="h-full">
+                            <Panel defaultSize={50}>
+                                {/* Bottom Left - Dynamic Resources Library */}
+                                <div className="parchment p-6 flex flex-col overflow-hidden h-full">
+                                    <div className="flex items-center justify-between mb-4 flex-shrink-0">
+                                        <div className="flex items-center">
+                                            <BookOpen className="w-5 h-5 text-green-500 mr-2" />
+                                            <h3 className="text-lg font-bold text-yellow-100">Ancient Grimoire</h3>
                                         </div>
-                                    ))}
-                                </>
-                            )}
-                        </div>
-                    )}
+                                        {!resourcesLoading && (
+                                            <button
+                                                onClick={async () => {
+                                                    setResourcesLoading(true);
+                                                    const resources = await fetchDynamicResources(quest.name, quest.description, awsModelId, bedrockClient);
+                                                    setDynamicResources(resources);
+                                                    setResourcesLoading(false);
+                                                }}
+                                                className="p-2 -m-2 text-gray-400 hover:text-white"
+                                                title="Refresh resources"
+                                            >
+                                                <RefreshCw className="w-4 h-4" />
+                                            </button>
+                                        )}
+                                    </div>
 
-                    {!isCompleted && guildData && !guildData.isPremium && guildData.currentEnergy < ENERGY_COSTS.AI_SAGE_CONSULTATION && (
-                        <EnergyWarning
-                            action="AI Sage consultation"
-                            energyCost={ENERGY_COSTS.AI_SAGE_CONSULTATION}
-                            currentEnergy={guildData.currentEnergy}
-                            onPurchaseClick={() => {
-                                alert("Please close the quest and purchase energy from the main screen.");
-                            }}
-                        />
-                    )}
+                                    <div className="space-y-3 overflow-y-auto flex-1 pr-2">
+                                        {isPersonalizing || resourcesLoading ? (
+                                            <div className="text-center py-8">
+                                                <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2 text-purple-500" />
+                                                <p className="text-gray-400">{isPersonalizing ? 'Enchanting resources...' : 'Loading resources...'}</p>
+                                            </div>
+                                        ) : (personalizedDetails?.resourceCache || dynamicResources).length > 0 ? (
+                                            <>
+                                                {(personalizedDetails.resourceCache || dynamicResources).map((resource: any, index: number) => (
+                                                    <a
+                                                        key={index}
+                                                        href={resource.url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="block parchment p-3 hover:transform hover:scale-105 transition-all"
+                                                        onMouseEnter={() => soundManager.play('swordDraw')}
+                                                    >
+                                                        <div className="flex items-start justify-between">
+                                                            <div className="flex items-start space-x-3">
+                                                                <span className="text-2xl mt-1">{resource.icon}</span>
+                                                                <div className="flex-1">
+                                                                    <p className="font-medium text-yellow-100">{resource.title}</p>
+                                                                    <p className="text-xs text-gray-300 mt-1">{resource.description}</p>
+                                                                    <div className="flex items-center space-x-3 mt-2 text-xs">
+                                                                        <span className="text-purple-400">{resource.type}</span>
+                                                                        <span className="text-gray-500">•</span>
+                                                                        <span className="text-gray-400">{resource.timeToComplete}</span>
+                                                                        <span className="text-gray-500">•</span>
+                                                                        <span className={`${resource.difficulty === 'apprentice' ? 'text-green-400' :
+                                                                            resource.difficulty === 'journeyman' ? 'text-yellow-400' :
+                                                                                'text-red-400'
+                                                                            }`}>
+                                                                            {resource.difficulty}
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <ExternalLink className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                                                        </div>
+                                                    </a>
+                                                ))}
+                                            </>
+                                        ) : (
+                                            <div className="text-center py-8 text-gray-400">
+                                                <BookOpen className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                                                <p>No resources found. Try refreshing again.</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </Panel>
+                            <PanelResizeHandle className="resize-handle-vertical" />
+                            <Panel defaultSize={50}>
+                                {/* Bottom Right - AI Sage Chat */}
+                                <div className="parchment p-6 flex flex-col overflow-hidden h-full">
+                                    <div className="flex items-center justify-between mb-4 flex-shrink-0">
+                                        <div className="flex items-center">
+                                            <Sparkles className="w-5 h-5 text-purple-500 mr-2" />
+                                            <h3 className="text-lg font-bold text-yellow-100">Consult the Sage</h3>
+                                        </div>
+                                        <div className="flex items-center space-x-2 text-sm">
+                                            <Zap className="w-4 h-4 text-blue-400" />
+                                            <span className="font-medium text-yellow-100">{ENERGY_COSTS.AI_SAGE_CONSULTATION} energy per response</span>
+                                        </div>
+                                    </div>
 
-                    <div className="flex space-x-2 flex-shrink-0">
-                        <input
-                            type="text"
-                            value={sageInput}
-                            onChange={(e) => setSageInput(e.target.value)}
-                            onKeyPress={(e) => e.key === 'Enter' && handleSageChat()}
-                            placeholder="Ask the Assistant a question..."
-                            className="flex-1 p-3 bg-gray-700 rounded-lg text-white"
-                            disabled={sageLoading || isCompleted}
-                            ref={sageInputRef}
-                        />
-                        <button
-                            onClick={handleSageChat}
-                            disabled={sageLoading || !sageInput.trim() || isCompleted}
-                            className="px-4 py-3 bg-purple-800 rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                            title={guildData.gold < 20 ? 'Insufficient gold coins' : ''}
-                        >
-                            <Send className="w-5 h-5" />
-                        </button>
-                    </div>
-                </div>
+                                    <div className="flex-1 overflow-y-auto space-y-4 pr-2">
+                                        {sageMessages.length === 0 && (
+                                            <div className="text-center py-8">
+                                                <Sparkles className="w-12 h-12 text-yellow-500/50 mx-auto mb-3" />
+                                                <p className="text-gray-400 px-4">
+                                                    Ask the Sage for advice on this quest.
+                                                </p>
+                                            </div>
+                                        )}
+                                        {sageMessages.map((msg, index) => (
+                                            <div key={index} className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                                <div className={`max-w-[85%] rounded-lg p-3 ${msg.type === 'user' ? 'bg-blue-900/50' : 'bg-gray-800/60'}`}>
+                                                    <div className="prose prose-sm max-w-none text-gray-200">
+                                                        <ReactMarkdown>{msg.content}</ReactMarkdown>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                        {sageLoading && (
+                                            <div className="flex justify-start">
+                                                <div className="bg-gray-800/60 rounded-lg p-3 max-w-[85%]">
+                                                    <div className="flex items-center space-x-2">
+                                                        <Loader2 className="w-4 h-4 animate-spin text-yellow-500" />
+                                                        <p className="text-gray-200 italic">The Sage is contemplating...</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Suggested Questions */}
+                                    <div className="flex-shrink-0 mt-2">
+                                        <button
+                                            onClick={() => setShowSuggestedQuestions(!showSuggestedQuestions)}
+                                            className="w-full text-left p-2 rounded hover:bg-gray-800/50 flex justify-between items-center"
+                                        >
+                                            <span className="text-sm font-semibold text-yellow-300">Suggested Questions</span>
+                                            {showSuggestedQuestions ? <ChevronUp className="w-4 h-4 text-yellow-300" /> : <ChevronDown className="w-4 h-4 text-yellow-300" />}
+                                        </button>
+                                        {showSuggestedQuestions && (
+                                            <div className="grid grid-cols-2 gap-2 mt-2">
+                                                {suggestedQuestions.map((q, i) => (
+                                                    <button
+                                                        key={i}
+                                                        onClick={() => handleSuggestedSageQuestion(q)}
+                                                        disabled={isCompleted || sageLoading}
+                                                        className="text-left text-xs p-2 bg-gray-800/70 rounded hover:bg-gray-700/90 text-gray-300 disabled:opacity-50 transition-colors"
+                                                    >
+                                                        {q}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {!isCompleted && guildData && !guildData.isPremium && guildData.currentEnergy < ENERGY_COSTS.AI_SAGE_CONSULTATION && (
+                                        <EnergyWarning
+                                            action="AI Sage consultation"
+                                            energyCost={ENERGY_COSTS.AI_SAGE_CONSULTATION}
+                                            currentEnergy={guildData.currentEnergy}
+                                            onPurchaseClick={() => {
+                                                alert("Please close the quest and purchase energy from the main screen.");
+                                            }}
+                                        />
+                                    )}
+
+                                    <div className="mt-4 flex gap-2 flex-shrink-0">
+                                        <input
+                                            type="text"
+                                            value={sageInput}
+                                            onChange={(e) => setSageInput(e.target.value)}
+                                            onKeyPress={(e) => e.key === 'Enter' && handleSageChat()}
+                                            placeholder="Ask the Sage a question..."
+                                            className="flex-1 p-3 bg-gray-700 rounded-lg text-white"
+                                            disabled={sageLoading || isCompleted}
+                                            ref={sageInputRef}
+                                        />
+                                        <button
+                                            onClick={handleSageChat}
+                                            disabled={sageLoading || !sageInput.trim() || isCompleted}
+                                            className="px-4 py-3 bg-purple-800 rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                                            title={guildData.gold < 20 ? 'Insufficient gold coins' : ''}
+                                        >
+                                            <Send className="w-5 h-5" />
+                                        </button>
+                                    </div>
+                                </div>
+                            </Panel>
+                        </PanelGroup>
+                    </Panel>
+                </PanelGroup>
             </div>
         </div>
     );

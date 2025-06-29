@@ -7,7 +7,6 @@ import {
 import {
   doc,
   setDoc,
-  getDoc,
   updateDoc,
   serverTimestamp,
   arrayUnion,
@@ -180,15 +179,11 @@ if (typeof window !== 'undefined') {
 }
 
 const bedrockClient = new BedrockRuntimeClient({
-  region: import.meta.env.VITE_AWS_REGION || 'us-west-2',
-  ...(import.meta.env.VITE_AWS_ACCESS_KEY_ID && import.meta.env.VITE_AWS_SECRET_ACCESS_KEY
-    ? {
-      credentials: {
-        accessKeyId: import.meta.env.VITE_AWS_ACCESS_KEY_ID,
-        secretAccessKey: import.meta.env.VITE_AWS_SECRET_ACCESS_KEY
-      }
-    }
-    : {})
+  region: import.meta.env.VITE_AWS_REGION || 'us-west-1',
+  credentials: {
+    accessKeyId: import.meta.env.VITE_AWS_ACCESS_KEY_ID,
+    secretAccessKey: import.meta.env.VITE_AWS_SECRET_ACCESS_KEY,
+  }
 });
 
 export default function App() {
@@ -650,6 +645,15 @@ export default function App() {
         alert("Invitations have been sent to your team members!");
       }
 
+      // Automatically open the first quest for the user
+      const fundamentalsStage = Object.values(QUEST_STAGES).find((s: any) => s.id === 'fundamentals');
+      if (fundamentalsStage) {
+        const visionQuest = fundamentalsStage.quests.find((q: any) => q.id === 'vision');
+        if (visionQuest) {
+          setSelectedQuest(visionQuest);
+        }
+      }
+
     } catch (error: any) {
       console.error('Error creating guild:', error);
       if (userInteracted) soundManager.play('error');
@@ -1012,6 +1016,28 @@ export default function App() {
     }
   };
 
+  const savePersonalizedQuestDetails = async (questKey: string, personalizedData: any) => {
+    if (!user || !guildData) return;
+    try {
+      await updateDoc(doc(db, 'guilds', user.uid), {
+        [`questProgress.${questKey}.personalizedData`]: personalizedData
+      });
+      // Optionally update local state to avoid re-fetch
+      setGuildData((prev: any) => ({
+        ...prev,
+        questProgress: {
+          ...prev.questProgress,
+          [questKey]: {
+            ...prev.questProgress?.[questKey],
+            personalizedData
+          }
+        }
+      }));
+    } catch (error) {
+      console.error('Error saving personalized quest details:', error);
+    }
+  };
+
   const handleArmoryPurchase = async (item: any, category: string) => {
     if (!user || !guildData) return;
 
@@ -1203,7 +1229,6 @@ export default function App() {
     );
   }
 
-  // MAIN APPLICATION UI (same as before)
   return (
     <div className="min-h-screen text-white">
       {/* Header */}
@@ -1353,128 +1378,137 @@ export default function App() {
       </div>
 
       {/* Document Generation Bar */}
-      <div className="bg-gradient-to-r from-amber-900/30 to-orange-900/30 border-b border-yellow-700">
-        <div className="max-w-7xl mx-auto px-4 py-3">
-          <div className="flex items-center justify-between flex-wrap gap-3">
-            <div className="flex items-center space-x-2">
-              <Scroll className="w-5 h-5 text-yellow-400" />
-              <span className="text-sm font-medium text-yellow-100">Document Creation</span>
+      {guildData?.guildLevel >= 2 && (
+        <div className="bg-gradient-to-r from-amber-900/30 to-orange-900/30 border-b border-yellow-700">
+          <div className="max-w-7xl mx-auto px-4 py-3">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center space-x-2">
+                <Scroll className="w-5 h-5 text-yellow-400" />
+                <span className="text-sm font-medium text-yellow-100">Document Creation</span>
+              </div>
+              <div className="flex items-center space-x-2 flex-wrap">
+                {DOCUMENT_TEMPLATES.map(template => (
+                  <button
+                    key={template.id}
+                    onClick={() => handleGenerateDocument(template)}
+                    disabled={generatingDoc}
+                    className="px-3 py-1 parchment rounded-lg text-sm hover:transform hover:scale-105 transition-all disabled:opacity-50"
+                    title={`Create ${template.name} (+${template.xp} XP, ${ENERGY_COSTS.DOCUMENT_GENERATION} energy)`}
+                    onMouseEnter={() => { if (userInteracted) soundManager.play('swordDraw'); }}
+                  >
+                    {typeof template.icon === 'string' ? <span>{template.icon}</span> : null} {template.name}
+                  </button>
+                ))}
+              </div>
             </div>
-            <div className="flex items-center space-x-2 flex-wrap">
-              {DOCUMENT_TEMPLATES.map(template => (
-                <button
-                  key={template.id}
-                  onClick={() => handleGenerateDocument(template)}
-                  disabled={generatingDoc}
-                  className="px-3 py-1 parchment rounded-lg text-sm hover:transform hover:scale-105 transition-all disabled:opacity-50"
-                  title={`Create ${template.name} (+${template.xp} XP, ${ENERGY_COSTS.DOCUMENT_GENERATION} energy)`}
-                  onMouseEnter={() => { if (userInteracted) soundManager.play('swordDraw'); }}
-                >
-                  {typeof template.icon === 'string' ? <span>{template.icon}</span> : null} {template.name}
-                </button>
-              ))}
-            </div>
+            {generatingDoc && (
+              <div className="mt-2 text-center text-sm text-purple-400 animate-pulse">
+                Generating document...
+              </div>
+            )}
           </div>
-          {generatingDoc && (
-            <div className="mt-2 text-center text-sm text-purple-400 animate-pulse">
-              Generating document...
-            </div>
-          )}
         </div>
-      </div>
+      )}
 
       {/* Main Quest Map */}
       <main className="max-w-7xl mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {Object.values(QUEST_STAGES).map((stage) => {
-            const StageIcon = stage.icon;
+        <div className="text-center mb-12">
+          <h2 className="text-4xl font-bold text-yellow-200 tracking-wider">Quest Map</h2>
+          <p className="text-lg text-gray-400 mt-2">Your startup journey unfolds here. Complete all quests in a stage to unlock the next.</p>
+        </div>
+
+        <div className="relative flex flex-col items-center space-y-8">
+          {Object.values(QUEST_STAGES).map((stage, index, stages) => {
             const isLocked = stage.id !== 'fundamentals' && guildData?.guildLevel <
               (stage.id === 'kickoff' ? 2 : stage.id === 'gtm' ? 3 : stage.id === 'growth' ? 4 : 5);
+            const StageIcon = stage.icon;
 
             return (
-              <div
-                key={stage.id}
-                className={`parchment rounded-lg p-6 shadow-xl ${isLocked ? 'opacity-50' : ''} hero-3d`}
-              >
-                <div className="flex items-center mb-4">
-                  <div className={`p-3 rounded-lg ${stage.color} bg-opacity-20 mr-4`}>
-                    {typeof StageIcon === 'string' ? (
-                      <span className={`w-8 h-8 ${stage.color.replace('bg-', 'text-')}`} style={{ fontSize: '2rem' }}>{StageIcon}</span>
-                    ) : null}
+              <React.Fragment key={stage.id}>
+                <div
+                  className={`w-full max-w-4xl parchment rounded-lg p-6 shadow-xl transition-all duration-500 ${isLocked ? 'opacity-50 grayscale' : 'hover:shadow-2xl'
+                    } hero-3d`}
+                >
+                  <div className="flex items-center mb-4">
+                    <div className={`p-3 rounded-lg ${stage.color} bg-opacity-20 mr-4`}>
+                      {typeof StageIcon === 'string' ? (
+                        <span className={`w-8 h-8 ${stage.color.replace('bg-', 'text-')}`} style={{ fontSize: '2rem' }}>{StageIcon}</span>
+                      ) : null}
+                    </div>
+                    <div>
+                      <h3 className="text-2xl font-bold text-yellow-100">{stage.name}</h3>
+                      <p className="text-sm text-gray-300">{stage.description}</p>
+                      {isLocked && (
+                        <p className="text-xs text-orange-400 mt-1">⚠️ Complete previous stages to unlock</p>
+                      )}
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-xl font-bold text-yellow-100">{stage.name}</h3>
-                    <p className="text-sm text-gray-300">{stage.description}</p>
-                    {isLocked && (
-                      <p className="text-xs text-orange-400 mt-1">⚠️ Complete previous stages to unlock</p>
-                    )}
-                  </div>
-                </div>
 
-                <div className="space-y-2">
-                  {stage.quests.map((quest) => {
-                    const questKey = `${stage.id}_${quest.id}`;
-                    const questProgress = guildData?.questProgress?.[questKey];
-                    const isCompleted = questProgress?.completed;
-                    const xpEarned = questProgress?.xpReward;
+                  <div className="space-y-3">
+                    {stage.quests.map((quest) => {
+                      const questKey = `${stage.id}_${quest.id}`;
+                      const questProgress = guildData?.questProgress?.[questKey];
+                      const isCompleted = questProgress?.completed;
+                      const xpEarned = questProgress?.xpReward;
 
-                    return (
-                      <div
-                        key={quest.id}
-                        onClick={() => {
-                          if (!isLocked) {
-                            setSelectedQuest({ ...quest, stageId: stage.id });
-                            if (userInteracted) soundManager.play('swordDraw');
-                          }
-                        }}
-                        onMouseEnter={() => { if (userInteracted) soundManager.play('swordDraw'); }}
-                        className={`p-3 rounded-lg cursor-pointer transition-all ${isLocked
-                          ? 'bg-gray-700/50 cursor-not-allowed'
-                          : isCompleted
-                            ? 'parchment border-2 border-green-700 bg-green-900/20 relative hover:transform hover:scale-105'
-                            : 'parchment hover:transform hover:scale-105'
-                          }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
-                            {isCompleted ? (
-                              <>
-                                <Trophy className="w-5 h-5 text-green-500" />
-                                <span className="ml-1 px-2 py-0.5 bg-green-700/80 text-xs text-green-100 rounded-full font-semibold">Completed</span>
-                              </>
-                            ) : (
-                              <Target className="w-5 h-5 text-gray-400" />
-                            )}
-                            <div>
-                              <p className="font-medium text-yellow-100 flex items-center">
-                                {quest.name}
-                                {isCompleted && xpEarned && (
-                                  <span className="ml-2 px-2 py-0.5 bg-gradient-to-r from-green-600 to-emerald-600 text-xs text-white rounded-full font-semibold border border-green-400">
-                                    +{xpEarned} XP
+                      return (
+                        <div
+                          key={quest.id}
+                          onClick={() => {
+                            if (!isLocked) {
+                              setSelectedQuest({ ...quest, stageId: stage.id });
+                              if (userInteracted) soundManager.play('swordDraw');
+                            }
+                          }}
+                          onMouseEnter={() => { if (!isLocked && userInteracted) soundManager.play('swordDraw'); }}
+                          className={`p-4 rounded-lg cursor-pointer transition-all duration-300 ${isLocked
+                            ? 'bg-gray-700/50 cursor-not-allowed'
+                            : isCompleted
+                              ? 'parchment border-2 border-green-700 bg-green-900/30 relative hover:transform hover:scale-102 hover:shadow-lg'
+                              : 'parchment hover:transform hover:scale-102 hover:shadow-lg'
+                            }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-4">
+                              {isCompleted ? (
+                                <Trophy className="w-6 h-6 text-green-400" />
+                              ) : (
+                                <Target className="w-6 h-6 text-gray-400" />
+                              )}
+                              <div>
+                                <p className="font-semibold text-yellow-100 flex items-center">
+                                  {quest.name}
+                                  {isCompleted && (
+                                    <span className="ml-3 px-2 py-0.5 bg-green-700/80 text-xs text-green-100 rounded-full font-semibold">Completed</span>
+                                  )}
+                                </p>
+                                <div className="flex items-center space-x-3 text-sm mt-1">
+                                  <span className="text-gray-300">{quest.xp} XP</span>
+                                  <span className="text-gray-500">•</span>
+                                  <span className={CORE_ATTRIBUTES[quest.attribute as keyof typeof CORE_ATTRIBUTES]?.color || 'text-gray-400'}>
+                                    {CORE_ATTRIBUTES[quest.attribute as keyof typeof CORE_ATTRIBUTES]?.name || 'General'}
                                   </span>
-                                )}
-                              </p>
-                              <div className="flex items-center space-x-3 text-sm">
-                                <span className="text-gray-300">{quest.xp} XP</span>
-                                <span className="text-gray-500">•</span>
-                                <span className={CORE_ATTRIBUTES[quest.attribute as keyof typeof CORE_ATTRIBUTES]?.color || 'text-gray-400'}>
-                                  {CORE_ATTRIBUTES[quest.attribute as keyof typeof CORE_ATTRIBUTES]?.name || 'General'}
-                                </span>
+                                </div>
                               </div>
                             </div>
+                            <div className="flex items-center space-x-2">
+                              {isCompleted && xpEarned && (
+                                <span className="px-2 py-0.5 bg-gradient-to-r from-green-600 to-emerald-600 text-xs text-white rounded-full font-semibold border border-green-400">
+                                  +{xpEarned} XP
+                                </span>
+                              )}
+                              <ChevronRight className="w-5 h-5 text-gray-400" />
+                            </div>
                           </div>
-                          <ChevronRight className="w-5 h-5 text-gray-400" />
                         </div>
-                        {isCompleted && (
-                          <div className="absolute top-2 right-2 flex items-center space-x-1">
-                            <span className="text-green-400 text-xs font-bold">✓</span>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
+                {index < stages.length - 1 && (
+                  <div className="h-16 w-1 bg-gradient-to-b from-yellow-700/50 via-yellow-600/30 to-yellow-700/50 border-l border-r border-dashed border-yellow-800/80"></div>
+                )}
+              </React.Fragment>
             );
           })}
         </div>
@@ -1495,6 +1529,8 @@ export default function App() {
             bedrockClient={bedrockClient}
             consumeEnergy={energyManagement.consumeEnergy}
             setGuildData={setGuildData}
+            vision={guildData?.vision}
+            savePersonalizedQuestDetails={savePersonalizedQuestDetails}
           />
         )}
         {showGuildManagement && (
@@ -1511,8 +1547,8 @@ export default function App() {
             soundManager={soundManager}
           />
         )}
-        <Modal open={showDashboard} size='lg' onClose={() => { setShowDashboard(false); if (userInteracted) soundManager.play('swordDraw'); }}>
-          <div className="p-6 max-w-4xl w-full">
+        <Modal open={showDashboard} size='full' onClose={() => { setShowDashboard(false); if (userInteracted) soundManager.play('swordDraw'); }}>
+          <div className="p-6 w-full">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-2xl font-bold text-yellow-100">Progress</h3>
               <button

@@ -295,36 +295,35 @@ export const ONBOARDING_QUESTIONS = [
         category: 'attributes'
     },
     {
-        id: 'guildName',
+        id: 'allianceName',
         question: 'Name Your Guild',
         type: 'text',
         placeholder: 'Enter your Guild name',
         icon: 'Crown',
-        category: 'guild'
+        category: 'alliance'
     }
 ];
 
 // Achievement Badges - Standard business themed
 export const ACHIEVEMENTS = [
-    { id: 'first_quest', name: 'First Quest', icon: '🗂️', description: 'Complete your first Quest', xpRequired: 100 },
-    { id: 'onboarding_complete', name: 'Onboarding Complete', icon: '✅', description: 'Complete onboarding', xpRequired: 50 },
-    { id: 'first_sage_chat', name: 'First Consultation', icon: '💬', description: 'Consult the AI Assistant', xpRequired: 150 },
-    { id: 'mvp_launched', name: 'Product Launch', icon: '🚀', description: 'Launch your first product', xpRequired: 1000 },
-    { id: 'first_customers', name: 'First Customers', icon: '👥', description: 'Acquire your first 10 customers', xpRequired: 1500 },
-    { id: 'document_master', name: 'Document Master', icon: '📄', description: 'Create 5 key documents', xpRequired: 500 },
-    { id: 'conversation_pro', name: 'Consultation Pro', icon: '💬', description: 'Hold 20 consultations', xpRequired: 800 },
-    { id: 'funded', name: 'Funded', icon: '💰', description: 'Secure funding', xpRequired: 3000 },
-    { id: 'scaling', name: 'Scaling Up', icon: '📈', description: 'Grow your business', xpRequired: 5000 },
-    { id: 'week_streak', name: 'Consistent Performer', icon: '🔥', description: 'Log in for 7 days', xpRequired: 200 },
-    { id: 'gold_hoarder', name: 'Gold Collector', icon: '👑', description: 'Amass 10,000 gold coins', goldRequired: 10000 },
-    { id: 'gear_collector', name: 'Resource Collector', icon: '🛠️', description: 'Acquire 5 premium items', purchases: 5 },
-    { id: 'guild_master', name: 'Guild Leader', icon: '🏢', description: 'Fill all Guild positions', special: 'fullGuild' },
-    { id: 'attribute_master', name: 'Skill Master', icon: '⭐', description: 'Master any single skill (5000 XP)', special: 'attributeMastery' },
-    { id: 'daily_champion', name: 'Daily Achiever', icon: '☀️', description: 'Claim rewards for 30 days', dailyStreak: 30 },
-    { id: 'stage_complete_fundamentals', name: 'Fundamentals Complete', icon: '🎯', description: 'Complete Fundamentals', special: 'stage' },
-    { id: 'stage_complete_kickoff', name: 'Kickoff Complete', icon: '🚀', description: 'Complete Kickoff', special: 'stage' },
-    { id: 'stage_complete_gtm', name: 'Go-To-Market Complete', icon: '📢', description: 'Complete Go-To-Market', special: 'stage' },
-    { id: 'stage_complete_growth', name: 'Growth Complete', icon: '📈', description: 'Complete Growth Stage', special: 'stage' }
+    { id: 'onboarding_complete', name: 'Adventurer', description: 'Began your Startup Quest.', icon: '🎉', xpRequired: 0 },
+    { id: 'alliance_founded', name: 'Guild Founder', description: 'You have founded your own Guild.', icon: '🏰', xpRequired: 0 },
+    { id: 'role_chosen', name: 'Pathfinder', description: 'You have chosen your Founder Archetype.', icon: '🎭', xpRequired: 0 },
+    { id: 'first_quest_complete', name: 'First Victory', description: 'Completed your first quest.', icon: '🏆', xpRequired: 100 },
+    { id: 'level_5', name: 'Seasoned Pro', description: 'Reached level 5.', icon: '🌟', xpRequired: 2500 },
+    { id: 'level_10', name: 'Veteran', description: 'Reached level 10.', icon: '⚔️', xpRequired: 10000 },
+    { id: 'conversation_pro', name: 'Sage Follower', description: 'Had 20 conversations with the AI Sage.', icon: '💬', xpRequired: 0 },
+    { id: 'document_master', name: 'Scroll Master', description: 'Generated 5 documents.', icon: '📜', xpRequired: 0 },
+    { id: 'gold_hoarder', name: 'Gold Hoarder', description: 'Accumulated 10,000 gold coins.', icon: '💰', goldRequired: 10000 },
+    { id: 'gear_collector', name: 'Collector', description: 'Purchased 5 items from the armory.', icon: '🛍️', goldRequired: 0 },
+    { id: 'daily_champion', name: 'Daily Champion', description: 'Maintained a 30-day login streak.', icon: '🗓️', goldRequired: 0 },
+    { id: 'first_ten_customers', name: 'Community Builder', description: 'Acquired your first 10 customers.', icon: '👥', goldRequired: 0 },
+    { id: 'mvp_launched', name: 'Innovator', description: 'Launched your Minimum Viable Product.', icon: '🚀', goldRequired: 0 },
+    { id: 'secured_funding', name: 'Financier', description: 'Secured external funding for your venture.', icon: '🏦', goldRequired: 0 },
+    { id: 'stage_complete_fundamentals', name: 'Forest Navigator', description: 'Completed the Forest of Fundamentals.', icon: '🌲', xpRequired: 0 },
+    { id: 'stage_complete_kickoff', name: 'City Dweller', description: 'Completed The Kickoff City quests.', icon: '🌇', xpRequired: 0 },
+    { id: 'stage_complete_gtm', name: 'Plains Wanderer', description: 'Completed The Go-to-Market Plains.', icon: '🌾', xpRequired: 0 },
+    { id: 'stage_complete_growth', name: 'Mountain Conqueror', description: 'Completed The Growth Mountains.', icon: '🏔️', xpRequired: 0 }
 ];
 
 // Document Templates - Standard business themed

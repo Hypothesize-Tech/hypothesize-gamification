@@ -149,6 +149,39 @@ export function GoldPurchase({ user, guildData, onClose, soundManager, onPurchas
     const [paymentMethod, setPaymentMethod] = useState<'paypal' | 'razorpay'>('paypal');
     const [isIndia, setIsIndia] = useState(false);
 
+    const handleLocationRequest = () => {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                async (position) => {
+                    try {
+                        const response = await fetch(
+                            `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${position.coords.latitude}&longitude=${position.coords.longitude}&localityLanguage=en`
+                        );
+                        const data = await response.json();
+                        const countryCode = data.countryCode;
+                        const selectedCurrency = CURRENCIES[countryCode as keyof typeof CURRENCIES] || CURRENCIES.DEFAULT;
+                        setCurrency(selectedCurrency);
+                        setIsIndia(countryCode === 'IN');
+                        setLocationPermission('granted');
+
+                        // Set default payment method based on location
+                        if (countryCode === 'IN') {
+                            setPaymentMethod('razorpay');
+                        }
+                    } catch (error) {
+                        console.error('Error getting location:', error);
+                        setCurrency(CURRENCIES.DEFAULT);
+                    }
+                },
+                (error) => {
+                    console.error('Location error:', error);
+                    setCurrency(CURRENCIES.DEFAULT);
+                    setLocationPermission('denied');
+                }
+            );
+        }
+    };
+
     useEffect(() => {
         if (razorpayError) {
             console.error("Razorpay error:", razorpayError);
@@ -186,40 +219,6 @@ export function GoldPurchase({ user, guildData, onClose, soundManager, onPurchas
     };
 
     const limitedOffer = isIndia ? indiaLimitedOffer : globalLimitedOffer;
-
-    // Get user location and set currency
-    useEffect(() => {
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                async (position) => {
-                    try {
-                        const response = await fetch(
-                            `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${position.coords.latitude}&longitude=${position.coords.longitude}&localityLanguage=en`
-                        );
-                        const data = await response.json();
-                        const countryCode = data.countryCode;
-                        const selectedCurrency = CURRENCIES[countryCode as keyof typeof CURRENCIES] || CURRENCIES.DEFAULT;
-                        setCurrency(selectedCurrency);
-                        setIsIndia(countryCode === 'IN');
-                        setLocationPermission('granted');
-
-                        // Set default payment method based on location
-                        if (countryCode === 'IN') {
-                            setPaymentMethod('razorpay');
-                        }
-                    } catch (error) {
-                        console.error('Error getting location:', error);
-                        setCurrency(CURRENCIES.DEFAULT);
-                    }
-                },
-                (error) => {
-                    console.error('Location error:', error);
-                    setCurrency(CURRENCIES.DEFAULT);
-                    setLocationPermission('denied');
-                }
-            );
-        }
-    }, []);
 
     // Countdown timer
     useEffect(() => {
@@ -434,10 +433,12 @@ export function GoldPurchase({ user, guildData, onClose, soundManager, onPurchas
                     {/* Currency & Location */}
                     <div className="mt-4 flex items-center justify-between">
                         <div className="flex items-center space-x-2 text-yellow-200">
-                            <MapPin className="w-4 h-4" />
+                            <button onClick={handleLocationRequest} className="p-1 rounded-full hover:bg-yellow-800/50 transition-colors" title="Detect local currency">
+                                <MapPin className="w-4 h-4" />
+                            </button>
                             <span>Currency: {currency.code}</span>
                             {locationPermission === 'denied' && (
-                                <span className="text-xs text-orange-400">(Location denied, using USD)</span>
+                                <span className="text-xs text-orange-400">(Location denied)</span>
                             )}
                         </div>
                         {isVIP && (
@@ -529,10 +530,9 @@ export function GoldPurchase({ user, guildData, onClose, soundManager, onPurchas
                             <Coins className="w-6 h-6 mr-2 text-yellow-400" />
                             Treasury Packages
                         </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                        <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-4">
                             {basePlans.map((plan) => {
                                 const bonusCoins = weekendOffer ? Math.floor(plan.coins * 0.25) : 0;
-                                const totalCoins = plan.coins + (plan.bonus || 0) + bonusCoins;
                                 const price = formatPrice(plan.price, !isIndia);
 
                                 return (
@@ -561,7 +561,12 @@ export function GoldPurchase({ user, guildData, onClose, soundManager, onPurchas
                                         <div className="space-y-2">
                                             <div className="flex items-center justify-center space-x-2">
                                                 <Coins className="w-5 h-5 text-yellow-500" />
-                                                <span className="text-2xl font-bold text-yellow-100">{totalCoins}</span>
+                                                <span className="text-2xl font-bold text-yellow-100">
+                                                    {plan.coins}
+                                                    {(plan.bonus > 0 || bonusCoins > 0) && (
+                                                        <span className="text-green-400 text-xl"> + {plan.bonus + bonusCoins}</span>
+                                                    )}
+                                                </span>
                                             </div>
 
                                             {bonusCoins > 0 && (

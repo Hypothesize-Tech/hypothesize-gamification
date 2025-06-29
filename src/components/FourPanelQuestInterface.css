@@ -1,0 +1,46 @@
+.resize-handle-horizontal, .resize-handle-vertical {
+    background: rgba(255, 215, 0, 0.2);
+    border-radius: 5px;
+    border: 1px solid rgba(255, 215, 0, 0.3);
+    transition: background-color 0.2s;
+    position: relative;
+}
+
+.resize-handle-horizontal:hover, .resize-handle-vertical:hover {
+    background: rgba(255, 215, 0, 0.4);
+}
+
+.resize-handle-vertical {
+    width: 10px;
+    margin: 0 -1px;
+    cursor: col-resize;
+}
+
+.resize-handle-horizontal {
+    height: 10px;
+    margin: -1px 0;
+    cursor: row-resize;
+}
+
+/* Add grip icon */
+.resize-handle-horizontal::after, .resize-handle-vertical::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+.resize-handle-vertical::after {
+    width: 6px;
+    height: 24px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='6' height='24' viewBox='0 0 6 24'%3E%3Cg fill='%23FBBF24' fill-opacity='0.5'%3E%3Ccircle cx='3' cy='3' r='1.5'/%3E%3Ccircle cx='3' cy='9' r='1.5'/%3E%3Ccircle cx='3' cy='15' r='1.5'/%3E%3Ccircle cx='3' cy='21' r='1.5'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+.resize-handle-horizontal::after {
+    width: 24px;
+    height: 6px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='6' viewBox='0 0 24 6'%3E%3Cg fill='%23FBBF24' fill-opacity='0.5'%3E%3Ccircle cx='3' cy='3' r='1.5'/%3E%3Ccircle cx='9' cy='3' r='1.5'/%3E%3Ccircle cx='15' cy='3' r='1.5'/%3E%3Ccircle cx='21' cy='3' r='1.5'/%3E%3C/g%3E%3C/svg%3E");
+} 

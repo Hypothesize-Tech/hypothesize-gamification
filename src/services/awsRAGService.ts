@@ -23,26 +23,18 @@ const s3BucketName = import.meta.env.VITE_S3_BUCKET_NAME || 'ai-startup-quest-do
 // Initialize AWS Clients
 const s3Client = new S3Client({
     region: awsRegion,
-    ...(import.meta.env.VITE_AWS_ACCESS_KEY_ID && import.meta.env.VITE_AWS_SECRET_ACCESS_KEY
-        ? {
-            credentials: {
-                accessKeyId: import.meta.env.VITE_AWS_ACCESS_KEY_ID,
-                secretAccessKey: import.meta.env.VITE_AWS_SECRET_ACCESS_KEY
-            }
-        }
-        : {})
+    credentials: {
+        accessKeyId: import.meta.env.VITE_AWS_ACCESS_KEY_ID,
+        secretAccessKey: import.meta.env.VITE_AWS_SECRET_ACCESS_KEY
+    }
 });
 
 const bedrockClient = new BedrockRuntimeClient({
     region: awsRegion,
-    ...(import.meta.env.VITE_AWS_ACCESS_KEY_ID && import.meta.env.VITE_AWS_SECRET_ACCESS_KEY
-        ? {
-            credentials: {
-                accessKeyId: import.meta.env.VITE_AWS_ACCESS_KEY_ID,
-                secretAccessKey: import.meta.env.VITE_AWS_SECRET_ACCESS_KEY
-            }
-        }
-        : {})
+    credentials: {
+        accessKeyId: import.meta.env.VITE_AWS_ACCESS_KEY_ID,
+        secretAccessKey: import.meta.env.VITE_AWS_SECRET_ACCESS_KEY
+    }
 });
 
 // Types
@@ -725,7 +717,7 @@ Question: ${question}
 Please provide a specific, well-formatted answer based on the excerpts above. If you find relevant information, cite which excerpt it comes from.`;
 
             const command = new InvokeModelCommand({
-                modelId: import.meta.env.VITE_NOVA_INFERENCE_PROFILE_ARN || "anthropic.claude-3-sonnet-20240229-v1:0",
+                modelId: import.meta.env.VITE_NOVA_INFERENCE_PROFILE_ARN || "arn:aws:bedrock:us-east-1:148123604300:inference-profile/us.amazon.nova-pro-v1:0",
                 body: JSON.stringify({
                     messages: [
                         {
