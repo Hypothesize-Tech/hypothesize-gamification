@@ -3,6 +3,7 @@ import { ARMORY_ITEMS } from './constant';
 import { BedrockRuntimeClient, InvokeModelCommand } from '@aws-sdk/client-bedrock-runtime';
 import { Castle, Crown, Swords } from 'lucide-react';
 import { Shield } from 'lucide-react';
+import { achievements } from '../config/achievements';
 
 export const calculateLevel = (xp: number) => {
     const baseXP = 100;
@@ -492,4 +493,47 @@ Ensure the JSON is well-formed. Do not include any text outside of the JSON obje
             resourceCache: getDefaultResources(quest.id)
         };
     }
+};
+
+export const checkAndAwardAchievements = (
+    userRole: string,
+    completedQuests: { [key: string]: any },
+    existingAchievements: { [key: string]: any }
+) => {
+    const newAchievements = [];
+    const roleAchievements = (achievements as any)[userRole.toLowerCase()];
+
+    if (!roleAchievements) {
+        return [];
+    }
+
+    const completedQuestIds = Object.keys(completedQuests).map(questKey => {
+        // questKey is in format "stageId_questId", so we extract questId
+        return questKey.split('_').slice(1).join('_');
+    });
+
+
+    for (const achievementName in roleAchievements) {
+        // Check if user already has this achievement
+        if (existingAchievements && existingAchievements[achievementName]) {
+            continue;
+        }
+
+        const achievement = roleAchievements[achievementName];
+        const requiredQuests = achievement.requiredQuests;
+
+        // Check if all required quests for this achievement are completed
+        const hasCompletedAll = requiredQuests.every((questId: string) =>
+            completedQuestIds.includes(questId)
+        );
+
+        if (hasCompletedAll) {
+            newAchievements.push({
+                name: achievementName,
+                ...achievement,
+            });
+        }
+    }
+
+    return newAchievements;
 };

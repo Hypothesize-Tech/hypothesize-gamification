@@ -66,7 +66,8 @@ import {
   generateAIDocument,
   QUEST_STAGES,
   triggerConfetti,
-  calculateLevel
+  calculateLevel,
+  checkAndAwardAchievements,
 } from './utils/helper';
 import { ArmoryInterface } from './components/ArmoryInterface';
 import { FourPanelQuestInterface } from './components/FourPanelQuestInterface';
@@ -87,6 +88,7 @@ import { createInviteLink, generateGuildInviteEmail, sendEmail } from './utils/e
 
 // IMPORT THE ONBOARDING FLOWS
 import { FounderOnboarding, MemberOnboarding } from './components/OnboardingFlows';
+import AchievementPopup from './components/AchievementPopup';
 import { UserProfile } from './components/UserProfile';
 
 class Canvas3DErrorBoundary extends React.Component<
@@ -219,6 +221,7 @@ export default function App() {
   const [showGoldPurchase, setShowGoldPurchase] = useState(false);
   const [modalContent, setModalContent] = useState<{ title: string; message: string } | null>(null);
   const [assignmentModal, setAssignmentModal] = useState<{ quest: any; questKey: string } | null>(null);
+  const [newlyAwardedAchievements, setNewlyAwardedAchievements] = useState<any[]>([]);
   const [showUserProfile, setShowUserProfile] = useState(false);
 
   const energyManagement = useEnergyManagement(
@@ -952,107 +955,62 @@ export default function App() {
   };
 
   const completeQuest = async (questData: any) => {
-    if (!user || !guildData || !selectedQuest) return;
+    if (!user || !guildData) return;
 
-    if (!navigator.onLine) {
-      setModalContent({ title: "Offline", message: "You are offline. Connect to complete your quest." });
-      return;
-    }
+    soundManager.play('questComplete');
+    triggerConfetti();
 
-    const hasEnergy = await energyManagement.consumeEnergy('QUEST_COMPLETION');
-    if (!hasEnergy) {
-      return;
+    const questKey = `${selectedQuest.stageId}_${selectedQuest.id}`;
+    const guildRef = doc(db, 'guilds', guildData.guildId);
+
+    const updates: { [key: string]: any } = {
+      [`questProgress.${questKey}`]: {
+        ...questData,
+        completed: true,
+      },
+      xp: increment(questData.xpReward),
+      gold: increment(questData.goldReward),
+      lastQuestCompletedAt: serverTimestamp(),
+    };
+
+    // --- Achievement Logic ---
+    const updatedQuestProgress = {
+      ...guildData.questProgress,
+      [questKey]: { completed: true }
+    };
+
+    const currentUserMember = guildData.members.find((m: any) => m.uid === user.uid);
+    const currentUserRole = currentUserMember?.role;
+
+    if (currentUserRole) {
+      const existingAchievements = guildData.achievements || {};
+      const newAchievements = checkAndAwardAchievements(
+        currentUserRole,
+        updatedQuestProgress,
+        existingAchievements
+      );
+
+      if (newAchievements.length > 0) {
+        setNewlyAwardedAchievements(newAchievements);
+        const achievementsUpdate: { [key: string]: any } = {};
+        newAchievements.forEach((ach: any) => {
+          achievementsUpdate[`achievements.${ach.name}`] = {
+            unlockedAt: serverTimestamp(),
+            description: ach.description,
+            icon: ach.icon
+          };
+        });
+        Object.assign(updates, achievementsUpdate);
+      }
     }
+    // --- End Achievement Logic ---
 
     try {
-      const questKey = `${selectedQuest.stageId}_${selectedQuest.id}`;
-      const newXP = (guildData.xp || 0) + questData.xpReward;
-      const newGold = guildData.gold || 0;
-
-      const updatedProgress = {
-        ...guildData.questProgress,
-        [questKey]: {
-          completed: true,
-          completedAt: questData.completedAt,
-          inputs: questData.inputs,
-          sageConversation: questData.sageConversation,
-          rating: questData.rating,
-          feedback: questData.feedback,
-          xpReward: questData.xpReward,
-          goldReward: questData.goldReward
-        }
-      };
-
-      const newAchievements = ACHIEVEMENTS.filter(achievement => {
-        if (achievement.xpRequired && newXP >= achievement.xpRequired) {
-          return !guildData.achievements?.includes(achievement.id);
-        }
-        if (achievement.goldRequired && newGold >= achievement.goldRequired) {
-          return !guildData.achievements?.includes(achievement.id);
-        }
-        return false;
-      }).map(a => a.id);
-
-      const stage = QUEST_STAGES[selectedQuest.stageId.toUpperCase() as keyof typeof QUEST_STAGES];
-      const stageQuests = stage.quests;
-      const completedStageQuests = stageQuests.filter(q =>
-        updatedProgress[`${selectedQuest.stageId}_${q.id}`]?.completed
-      ).length;
-
-      let stageBonus = 0;
-      let newGuildLevel = guildData.guildLevel || 1;
-
-      if (completedStageQuests === stageQuests.length) {
-        stageBonus = 500;
-        if (userInteracted) soundManager.play('levelUp');
-        triggerConfetti({ particleCount: 200, spread: 100 });
-
-        const stageAchievement = `stage_complete_${selectedQuest.stageId}`;
-        if (!guildData.achievements?.includes(stageAchievement)) {
-          newAchievements.push(stageAchievement);
-        }
-
-        if (selectedQuest.stageId === 'fundamentals') newGuildLevel = 2;
-        else if (selectedQuest.stageId === 'kickoff') newGuildLevel = 3;
-        else if (selectedQuest.stageId === 'gtm') newGuildLevel = 4;
-        else if (selectedQuest.stageId === 'growth') newGuildLevel = 5;
-      }
-
-      await updateDoc(doc(db, 'guilds', user.uid), {
-        xp: newXP,
-        gold: newGold + stageBonus,
-        guildLevel: newGuildLevel,
-        [`questProgress.${questKey}`]: updatedProgress[questKey],
-        ...(newAchievements.length > 0 ? { achievements: arrayUnion(...newAchievements) } : {})
-      });
-
-      setGuildData({
-        ...guildData,
-        xp: newXP,
-        gold: newGold + stageBonus,
-        guildLevel: newGuildLevel,
-        questProgress: updatedProgress,
-        achievements: [...(guildData.achievements || []), ...newAchievements]
-      });
-
-      let message = `Quest completed! You earned +${questData.xpReward} XP.`;
-      if (stageBonus > 0) {
-        message += `\n\nStage completed! You earned a bonus of ${stageBonus} gold coins and unlocked the next stage!`;
-      }
-
-      const justification = `You received a rating of ${questData.rating}/5. ${questData.feedback ? `\n\nFeedback from the Sage: "${questData.feedback}"` : ''}`;
-
-      setModalContent({
-        title: `Quest Completed: ${selectedQuest.name}`,
-        message: `${message}\n\n${justification}`
-      });
-
+      await updateDoc(guildRef, updates);
       setSelectedQuest(null);
-
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error completing quest:', error);
-      if (userInteracted) soundManager.play('error');
-      setModalContent({ title: "Error", message: "Quest completion failed. Please try again." });
+      alert('There was an error completing the quest. Please try again.');
     }
   };
 
@@ -1376,15 +1334,16 @@ export default function App() {
               </button>
               <button
                 onClick={() => setShowUserProfile(true)}
-                className="bg-blue-600/50 hover:bg-blue-500/50 text-white font-bold py-2 px-4 rounded-lg flex items-center space-x-2 transition-all duration-300"
+                className="text-gray-400 hover:text-white"
+                title="User Profile"
               >
-                <User className="w-6 h-6" />
+                <User className="w-5 h-5" />
               </button>
               <button
                 onClick={handleSignOut}
-                className="bg-red-600/50 hover:bg-red-500/50 text-white font-bold py-2 px-4 rounded-lg flex items-center space-x-2 transition-all duration-300"
+                className="text-gray-400 hover:text-white"
               >
-                <LogOut className="w-6 h-6" />
+                <LogOut className="w-5 h-5" />
               </button>
             </div>
           </div>
@@ -2053,16 +2012,28 @@ export default function App() {
             </style>
           </Modal>
         )}
-
-        {showUserProfile && (
-          <UserProfile
-            guildData={guildData}
-            user={user}
-            ceoAvatar={ceoAvatar}
-            onClose={() => setShowUserProfile(false)}
-          />
-        )}
       </main>
+
+      <button className="fixed bottom-4 right-4 bg-yellow-600 text-white p-3 rounded-full shadow-lg z-20" onClick={toggleSound}>
+        {soundEnabled ? <Volume2 /> : <VolumeX />}
+      </button>
+
+      {newlyAwardedAchievements.length > 0 && (
+        <AchievementPopup
+          achievements={newlyAwardedAchievements}
+          onClose={() => setNewlyAwardedAchievements([])}
+          soundManager={soundManager}
+        />
+      )}
+
+      {showUserProfile && (
+        <UserProfile
+          guildData={guildData}
+          ceoAvatar={ceoAvatar}
+          onClose={() => setShowUserProfile(false)}
+          user={user}
+        />
+      )}
     </div>
   );
 }

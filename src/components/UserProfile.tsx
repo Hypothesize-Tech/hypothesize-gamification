@@ -1,4 +1,4 @@
-import { User, Shield, Star, Award, X } from 'lucide-react';
+import { Shield, Award, X } from 'lucide-react';
 import { CORE_ATTRIBUTES, ARMORY_ITEMS } from '../utils/constant';
 import { calculateLevel } from '../utils/helper';
 import './UserProfile.css';
