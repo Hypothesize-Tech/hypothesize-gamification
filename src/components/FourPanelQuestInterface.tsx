@@ -581,7 +581,7 @@ export const FourPanelQuestInterface = ({
                                             </div>
                                         ) : (personalizedDetails?.resourceCache || dynamicResources).length > 0 ? (
                                             <>
-                                                {(personalizedDetails.resourceCache || dynamicResources).map((resource: any, index: number) => (
+                                                {(personalizedDetails?.resourceCache || dynamicResources).map((resource: any, index: number) => (
                                                     <a
                                                         key={index}
                                                         href={resource.url}

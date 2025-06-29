@@ -109,7 +109,6 @@ export const consultAISage = async (
                 ],
             }),
             contentType: "application/json",
-            accept: "application/json"
         });
         const response = await bedrockClient.send(command);
         const responseBody = JSON.parse(new TextDecoder().decode(response.body));
@@ -159,7 +158,6 @@ export const fetchDynamicResources = async (
                 ],
             }),
             contentType: "application/json",
-            accept: "application/json"
         });
         const response = await bedrockClient.send(command);
         const responseBody = JSON.parse(new TextDecoder().decode(response.body));
@@ -214,7 +212,6 @@ export const rateQuestSubmission = async (
                 ],
             }),
             contentType: "application/json",
-            accept: "application/json"
         });
         const response = await bedrockClient.send(command);
         const responseBody = JSON.parse(new TextDecoder().decode(response.body));
@@ -255,7 +252,6 @@ export const generateFollowUpQuestions = async (
                 messages: [{ role: "user", content: [{ text: prompt }] }],
             }),
             contentType: "application/json",
-            accept: "application/json"
         });
 
         const response = await bedrockClient.send(command);
@@ -458,7 +454,6 @@ Ensure the JSON is well-formed. Do not include any text outside of the JSON obje
                 messages: [{ role: "user", content: [{ text: prompt }] }],
             }),
             contentType: "application/json",
-            accept: "application/json"
         });
 
         const response = await bedrockClient.send(command);

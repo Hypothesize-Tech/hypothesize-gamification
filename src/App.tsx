@@ -1120,11 +1120,6 @@ export default function App() {
     setSoundEnabled(newState);
   };
 
-  const levelInfo = calculateLevel(guildData?.xp || 0);
-  const stats = calculateStats();
-  const guildLevel = GUILD_LEVELS[guildData?.guildLevel as keyof typeof GUILD_LEVELS] || GUILD_LEVELS[1];
-  const currentUserRole = guildData?.members?.find((m: any) => m.uid === user.uid)?.permissionRole;
-
   const handleAssignQuest = async (questKey: string, member: any) => {
     if (!user || !guildData || !guildData.isFounder) return;
 
@@ -1255,6 +1250,11 @@ export default function App() {
       </div>
     );
   }
+
+  const levelInfo = calculateLevel(guildData?.xp || 0);
+  const stats = calculateStats();
+  const guildLevel = GUILD_LEVELS[guildData?.guildLevel as keyof typeof GUILD_LEVELS] || GUILD_LEVELS[1];
+  const currentUserRole = guildData?.members?.find((m: any) => m.uid === user.uid)?.permissionRole;
 
   return (
     <div className="min-h-screen text-white">
