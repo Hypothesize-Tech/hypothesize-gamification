@@ -17,16 +17,13 @@ import '@react-pdf-viewer/core/lib/styles/index.css';
 import '@react-pdf-viewer/default-layout/lib/styles/index.css';
 import Modal from './Modal';
 import confetti from 'canvas-confetti';
+import paperBg from '../assets/paper.jpg';
 
 const parchmentStyles = `
   .parchment-container {
     position: relative;
-    background: 
-      radial-gradient(ellipse at top left, rgba(255, 253, 235, 0.9) 0%, transparent 40%),
-      radial-gradient(ellipse at bottom right, rgba(255, 248, 220, 0.9) 0%, transparent 40%),
-      radial-gradient(ellipse at center, rgba(245, 235, 215, 0.95) 0%, rgba(235, 225, 205, 0.95) 50%, rgba(225, 215, 195, 0.95) 100%),
-      url("data:image/svg+xml,%3Csvg width='100' height='100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='turbulence' baseFrequency='0.9' numOctaves='4' seed='2' /%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.02'/%3E%3C/svg%3E"),
-      linear-gradient(135deg, #f9f5e7 0%, #f5e6d3 25%, #f0ddc7 50%, #f5e6d3 75%, #f9f5e7 100%);
+    background: url(${paperBg}) no-repeat center center;
+    background-size: cover;
     box-shadow: 
       inset 0 0 120px rgba(166, 124, 82, 0.3),
       inset 0 0 60px rgba(139, 69, 19, 0.2),
@@ -81,46 +78,6 @@ const parchmentStyles = `
     background-image: 
       url("data:image/svg+xml,%3Csvg width='200' height='200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='roughPaper'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.04' numOctaves='5' result='noise' seed='3'/%3E%3CfeDiffuseLighting in='noise' lighting-color='white' surfaceScale='1.5'%3E%3CfeDistantLight azimuth='45' elevation='60'/%3E%3C/feDiffuseLighting%3E%3CfeGaussianBlur stdDeviation='0.5'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23roughPaper)' opacity='1'/%3E%3C/svg%3E");
     mix-blend-mode: multiply;
-  }
-
-  .torn-edge-top {
-    position: absolute;
-    top: -3px;
-    left: -3px;
-    right: -3px;
-    height: 35px;
-    background: url("data:image/svg+xml,%3Csvg width='120' height='35' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0,30 Q3,20 8,25 T16,22 Q20,18 25,20 T35,18 Q40,16 43,19 T50,17 Q55,15 58,18 T65,16 Q70,14 73,17 T80,15 Q85,13 88,16 T95,14 Q100,12 103,15 T110,13 Q115,11 120,14 L120,0 L0,0 Z' fill='%23f5e6d3' stroke='%23a0826d' stroke-width='0.3' opacity='0.95'/%3E%3Cpath d='M0,32 Q5,25 10,28 T20,26 T30,27 T40,25 T50,26 T60,24 T70,25 T80,23 T90,24 T100,22 T110,23 T120,21 L120,35 L0,35 Z' fill='%23000000' opacity='0.1'/%3E%3C/svg%3E") repeat-x;
-    filter: drop-shadow(0 2px 6px rgba(0,0,0,0.3));
-  }
-
-  .torn-edge-bottom {
-    position: absolute;
-    bottom: -3px;
-    left: -3px;
-    right: -3px;
-    height: 35px;
-    background: url("data:image/svg+xml,%3Csvg width='120' height='35' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0,5 Q3,15 8,10 T16,13 Q20,17 25,15 T35,17 Q40,19 43,16 T50,18 Q55,20 58,17 T65,19 Q70,21 73,18 T80,20 Q85,22 88,19 T95,21 Q100,23 103,20 T110,22 Q115,24 120,21 L120,35 L0,35 Z' fill='%23f5e6d3' stroke='%23a0826d' stroke-width='0.3' opacity='0.95'/%3E%3Cpath d='M0,3 Q5,10 10,7 T20,9 T30,8 T40,10 T50,9 T60,11 T70,10 T80,12 T90,11 T100,13 T110,12 T120,14 L120,0 L0,0 Z' fill='%23000000' opacity='0.1'/%3E%3C/svg%3E") repeat-x;
-    filter: drop-shadow(0 -2px 6px rgba(0,0,0,0.3));
-  }
-
-  .torn-edge-left {
-    position: absolute;
-    top: -3px;
-    left: -3px;
-    bottom: -3px;
-    width: 35px;
-    background: url("data:image/svg+xml,%3Csvg width='35' height='120' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30,0 Q20,3 25,8 T22,16 Q18,20 20,25 T18,35 Q16,40 19,43 T17,50 Q15,55 18,58 T16,65 Q14,70 17,73 T15,80 Q13,85 16,88 T14,95 Q12,100 15,103 T13,110 Q11,115 14,120 L0,120 L0,0 Z' fill='%23f5e6d3' stroke='%23a0826d' stroke-width='0.3' opacity='0.95'/%3E%3Cpath d='M32,0 Q25,5 28,10 T26,20 T27,30 T25,40 T26,50 T24,60 T25,70 T23,80 T24,90 T22,100 T23,110 T21,120 L35,120 L35,0 Z' fill='%23000000' opacity='0.1'/%3E%3C/svg%3E") repeat-y;
-    filter: drop-shadow(2px 0 6px rgba(0,0,0,0.3));
-  }
-
-  .torn-edge-right {
-    position: absolute;
-    top: -3px;
-    right: -3px;
-    bottom: -3px;
-    width: 35px;
-    background: url("data:image/svg+xml,%3Csvg width='35' height='120' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M5,0 Q15,3 10,8 T13,16 Q17,20 15,25 T17,35 Q19,40 16,43 T18,50 Q20,55 17,58 T19,65 Q21,70 18,73 T20,80 Q22,85 19,88 T21,95 Q23,100 20,103 T22,110 Q24,115 21,120 L35,120 L35,0 Z' fill='%23f5e6d3' stroke='%23a0826d' stroke-width='0.3' opacity='0.95'/%3E%3Cpath d='M3,0 Q10,5 7,10 T9,20 T8,30 T10,40 T9,50 T11,60 T10,70 T12,80 T11,90 T13,100 T12,110 T14,120 L0,120 L0,0 Z' fill='%23000000' opacity='0.1'/%3E%3C/svg%3E") repeat-y;
-    filter: drop-shadow(-2px 0 6px rgba(0,0,0,0.3));
   }
 
   .paper-wrinkles {
@@ -474,12 +431,6 @@ export const DocumentRAG: React.FC<DocumentRAGProps> = ({ userId, ceoAvatar, ope
                         {/* Paper texture overlay */}
                         <div className="paper-texture"></div>
                         <div className="paper-wrinkles"></div>
-
-                        {/* Torn edges */}
-                        <div className="torn-edge-top"></div>
-                        <div className="torn-edge-bottom"></div>
-                        <div className="torn-edge-left"></div>
-                        <div className="torn-edge-right"></div>
 
                         {/* Coffee and tea stains */}
                         <div className="coffee-stain" style={{ top: '15%', right: '10%', width: '120px', height: '100px' }}></div>
