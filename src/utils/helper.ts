@@ -4,6 +4,18 @@ import { BedrockRuntimeClient, InvokeModelCommand } from '@aws-sdk/client-bedroc
 import { Castle, Crown, Swords } from 'lucide-react';
 import { Shield } from 'lucide-react';
 import { achievements } from '../config/achievements';
+import {
+    MILESTONE_ACHIEVEMENTS,
+    PERSONAL_ACHIEVEMENTS,
+    ENGAGEMENT_ACHIEVEMENTS,
+    GUILD_ACHIEVEMENTS,
+} from '../config/achievements.v2';
+
+interface NewAchievement {
+    name: string;
+    description: string;
+    [key: string]: any;
+}
 
 export const calculateLevel = (xp: number) => {
     const baseXP = 100;
@@ -489,45 +501,222 @@ Ensure the JSON is well-formed. Do not include any text outside of the JSON obje
         };
     }
 };
-export const checkAndAwardAchievements = (
-    userRole: string,
-    completedQuests: { [key: string]: any },
-    existingAchievements: { [key: string]: any }
-) => {
-    const newAchievements = [];
-    const roleAchievements = (achievements as any)[userRole.toLowerCase()];
 
-    if (!roleAchievements) {
-        return [];
-    }
-
-    const completedQuestIds = Object.keys(completedQuests).map(questKey => {
-        // questKey is in format "stageId_questId", so we extract questId
-        return questKey.split('_').slice(1).join('_');
-    });
-
-
-    for (const achievementName in roleAchievements) {
-        // Check if user already has this achievement
-        if (existingAchievements && existingAchievements[achievementName]) {
+const checkMilestoneAchievements = (completedQuestIds: string[], existingAchievements: { [key: string]: any }) => {
+    const newAchievements: NewAchievement[] = [];
+    for (const achievementName in MILESTONE_ACHIEVEMENTS) {
+        if (existingAchievements[achievementName]) {
             continue;
         }
 
-        const achievement = roleAchievements[achievementName];
-        const requiredQuests = achievement.requiredQuests;
-
-        // Check if all required quests for this achievement are completed
-        const hasCompletedAll = requiredQuests.every((questId: string) =>
+        const achievement = (MILESTONE_ACHIEVEMENTS as any)[achievementName];
+        const hasCompletedAll = achievement.requiredQuests.every((questId: string) =>
             completedQuestIds.includes(questId)
         );
 
         if (hasCompletedAll) {
+            newAchievements.push({ name: achievementName, ...achievement });
+        }
+    }
+    return newAchievements;
+};
+
+const checkPersonalAchievements = (userData: any, existingAchievements: { [key: string]: any }) => {
+    const newAchievements: NewAchievement[] = [];
+    const attributes = ['tech', 'marketing', 'sales', 'legal', 'operations', 'finance'];
+
+    // Attribute achievements
+    attributes.forEach(attr => {
+        const a = PERSONAL_ACHIEVEMENTS.attribute;
+        const attrLevel = userData.attributes?.[attr]?.level || 0;
+        const achievementName = a.name(attr);
+        a.levels.forEach(levelInfo => {
+            const levelAchievementName = `${achievementName} ${levelInfo.name}`;
+            if (attrLevel >= levelInfo.level && !existingAchievements[levelAchievementName]) {
+                newAchievements.push({
+                    name: levelAchievementName,
+                    description: a.description(levelInfo.level, attr),
+                });
+            }
+        });
+    });
+
+    // Polymath achievements
+    const p = PERSONAL_ACHIEVEMENTS.polymath;
+    const minAttributeLevel = Math.min(...attributes.map(attr => userData.attributes?.[attr]?.level || 0));
+    p.levels.forEach(levelInfo => {
+        const achievementName = `${p.name} ${levelInfo.name}`;
+        if (minAttributeLevel >= levelInfo.level && !existingAchievements[achievementName]) {
             newAchievements.push({
                 name: achievementName,
-                ...achievement,
+                description: p.description(levelInfo.level),
             });
+        }
+    });
+
+
+    // Quest-Taker achievements
+    const q = PERSONAL_ACHIEVEMENTS.quest_taker;
+    const completedQuestsCount = Object.keys(userData.completedQuests || {}).length;
+    q.levels.forEach(levelInfo => {
+        const achievementName = `${q.name} ${levelInfo.name}`;
+        if (completedQuestsCount >= levelInfo.count && !existingAchievements[achievementName]) {
+            newAchievements.push({
+                name: achievementName,
+                description: q.description(levelInfo.count),
+            });
+        }
+    });
+
+    return newAchievements;
+}
+
+const checkEngagementAchievements = (userData: any, existingAchievements: { [key: string]: any }) => {
+    const newAchievements: NewAchievement[] = [];
+    const loginStreak = userData.loginStats?.streak || 0;
+    const totalLogins = userData.loginStats?.totalLogins || 0;
+
+    // Daily Dedication
+    const d = ENGAGEMENT_ACHIEVEMENTS.daily_dedication;
+    d.levels.forEach(levelInfo => {
+        const achievementName = `${d.name} ${levelInfo.name}`;
+        if (loginStreak >= levelInfo.days && !existingAchievements[achievementName]) {
+            newAchievements.push({
+                name: achievementName,
+                description: d.description(levelInfo.days),
+            });
+        }
+    });
+
+
+    // The Regular
+    const r = ENGAGEMENT_ACHIEVEMENTS.the_regular;
+    r.levels.forEach(levelInfo => {
+        const achievementName = `${r.name} ${levelInfo.name}`;
+        if (totalLogins >= levelInfo.days && !existingAchievements[achievementName]) {
+            newAchievements.push({
+                name: achievementName,
+                description: r.description(levelInfo.days),
+            });
+        }
+    });
+
+    return newAchievements;
+}
+
+const checkGuildAchievements = (userData: any, existingAchievements: { [key: string]: any }) => {
+    if (!userData.guild) return [];
+    const newAchievements: NewAchievement[] = [];
+    const guildData = userData.guild;
+
+    // Founding Achievements
+    const f = GUILD_ACHIEVEMENTS.founding;
+    if (guildData.id && !existingAchievements[f["The Fellowship Begins"].name]) {
+        newAchievements.push(f["The Fellowship Begins"]);
+    }
+    if (guildData.roles?.length >= 6 && !existingAchievements[f["All Hands on Deck"].name]) {
+        newAchievements.push(f["All Hands on Deck"]);
+    }
+    if (userData.synergyQuestCompleted && !existingAchievements[f.Synergist.name]) {
+        newAchievements.push(f.Synergist);
+    }
+
+    // Collaborative Achievements
+    const c = GUILD_ACHIEVEMENTS.collaborative;
+    const synergyBonuses = guildData.synergyBonuses || 0;
+    c.powerhouse_partnership.levels.forEach(levelInfo => {
+        const achievementName = `${c.powerhouse_partnership.name} ${levelInfo.name}`;
+        if (synergyBonuses >= levelInfo.count && !existingAchievements[achievementName]) {
+            newAchievements.push({
+                name: achievementName,
+                description: c.powerhouse_partnership.description(levelInfo.count),
+            });
+        }
+    });
+
+    const maxGuildLevel = Math.max(0, ...Object.values(guildData.attributeLevels || {}).map(v => Number(v)));
+    c.guild_excellence.levels.forEach(levelInfo => {
+        const achievementName = `${c.guild_excellence.name} ${levelInfo.name}`;
+        if (maxGuildLevel >= levelInfo.level && !existingAchievements[achievementName]) {
+            newAchievements.push({
+                name: achievementName,
+                description: c.guild_excellence.description(levelInfo.level),
+            });
+        }
+    });
+
+
+    // Management Achievements
+    const m = GUILD_ACHIEVEMENTS.management;
+    const upkeepPaid = guildData.upkeep?.consecutiveMonthsPaid || 0;
+    m.sustainable_venture.levels.forEach(levelInfo => {
+        const achievementName = `${m.sustainable_venture.name} ${levelInfo.name}`;
+        if (upkeepPaid >= levelInfo.months && !existingAchievements[achievementName]) {
+            newAchievements.push({
+                name: achievementName,
+                description: m.sustainable_venture.description(levelInfo.months),
+            });
+        }
+    });
+
+    const hqLevels = m.master_architects.levels.map(l => l.hq);
+    const currentHqLevel = guildData.headquartersLevel || "";
+    const currentHqIndex = hqLevels.indexOf(currentHqLevel);
+    m.master_architects.levels.forEach((levelInfo, index) => {
+        const achievementName = `${m.master_architects.name} ${levelInfo.name}`;
+        if (currentHqIndex >= index && !existingAchievements[achievementName]) {
+            newAchievements.push({
+                name: achievementName,
+                description: m.master_architects.description(levelInfo.hq),
+            });
+        }
+    });
+
+    return newAchievements;
+}
+
+export const checkAndAwardAchievements = (
+    userData: any,
+) => {
+    const completedQuests = userData.completedQuests || {};
+    const existingAchievements = userData.achievements || {};
+
+    const completedQuestIds = Object.keys(completedQuests).map(questKey => {
+        return questKey.split('_').slice(1).join('_');
+    });
+
+    const newRoleAchievements = [];
+    const roleAchievements = (achievements as any)[userData.role?.toLowerCase()];
+    if (roleAchievements) {
+        for (const achievementName in roleAchievements) {
+            if (existingAchievements && existingAchievements[achievementName]) {
+                continue;
+            }
+            const achievement = roleAchievements[achievementName];
+            const requiredQuests = achievement.requiredQuests;
+            const hasCompletedAll = requiredQuests.every((questId: string) =>
+                completedQuestIds.includes(questId)
+            );
+            if (hasCompletedAll) {
+                newRoleAchievements.push({
+                    name: achievementName,
+                    ...achievement,
+                });
+            }
         }
     }
 
-    return newAchievements;
+    const newMilestoneAchievements = checkMilestoneAchievements(completedQuestIds, existingAchievements);
+    const newPersonalAchievements = checkPersonalAchievements(userData, existingAchievements);
+    const newEngagementAchievements = checkEngagementAchievements(userData, existingAchievements);
+    const newGuildAchievements = checkGuildAchievements(userData, existingAchievements);
+
+
+    return [
+        ...newRoleAchievements,
+        ...newMilestoneAchievements,
+        ...newPersonalAchievements,
+        ...newEngagementAchievements,
+        ...newGuildAchievements,
+    ];
 };
