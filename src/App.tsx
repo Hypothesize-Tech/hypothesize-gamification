@@ -78,9 +78,9 @@ import { EpicMedievalLoader } from './components/EpicMedievalLoader';
 import { GoldPurchase } from './components/GoldPurchase';
 import type { GuildDataWithEnergy } from './components/EnergySystem';
 import {
-  EnergyBar,
   EnergyPurchaseModal,
   useEnergyManagement,
+  EnergyBar,
 } from './components/EnergySystem';
 import { ENERGY_CONFIG, ENERGY_COSTS } from './config/energy';
 import { v4 as uuidv4 } from 'uuid';
@@ -91,6 +91,7 @@ import { FounderOnboarding, MemberOnboarding } from './components/OnboardingFlow
 import AchievementPopup from './components/AchievementPopup';
 import { UserProfile } from './components/UserProfile';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { Beastiary } from './components/Beastiary';
 
 class Canvas3DErrorBoundary extends React.Component<
   { children: React.ReactNode },
@@ -212,12 +213,13 @@ export default function App() {
   const [generatingDoc, setGeneratingDoc] = useState(false);
   const [ceoAvatar, setCeoAvatar] = useState<any | null>(null);
   const [showCEOProfile, setShowCEOProfile] = useState(false);
-  const [showDashboard, setShowDashboard] = useState(false);
+  const [showDashboard, setShowDashboard] = useState(true);
   const [showResources, setShowResources] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
   const [guildDataError, setGuildDataError] = useState<string | null>(null);
   const [showArmory, setShowArmory] = useState(false);
   const [showGuildManagement, setShowGuildManagement] = useState(false);
+  const [showBeastiary, setShowBeastiary] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [showGoldPurchase, setShowGoldPurchase] = useState(false);
   const [modalContent, setModalContent] = useState<{ title: string; message: string } | null>(null);
@@ -1159,6 +1161,61 @@ export default function App() {
     }
   };
 
+  const handleShowDashboard = () => {
+    setSelectedQuest(null);
+    setShowArmory(false);
+    setShowGuildManagement(false);
+    setShowBeastiary(false);
+    setShowDashboard(true);
+    soundManager.play('swordDraw');
+  };
+
+  const handleShowArmory = () => {
+    setSelectedQuest(null);
+    setShowGuildManagement(false);
+    setShowBeastiary(false);
+    setShowDashboard(false);
+    setShowArmory(true);
+    soundManager.play('swordDraw');
+  };
+
+  const handleShowGuildManagement = () => {
+    setSelectedQuest(null);
+    setShowArmory(false);
+    setShowBeastiary(false);
+    setShowDashboard(false);
+    setShowGuildManagement(true);
+    soundManager.play('swordDraw');
+  };
+
+  const handleShowBeastiary = () => {
+    setSelectedQuest(null);
+    setShowArmory(false);
+    setShowGuildManagement(false);
+    setShowDashboard(false);
+    setShowBeastiary(true);
+    soundManager.play('swordDraw');
+  };
+
+  const handleOpenQuest = (quest: any) => {
+    if (
+      !guildData?.guildLevel ||
+      (quest.stageId === 'fundamentals' && guildData.guildLevel < 1) ||
+      (quest.stageId === 'kickoff' && guildData.guildLevel < 2) ||
+      (quest.stageId === 'gtm' && guildData.guildLevel < 3) ||
+      (quest.stageId === 'growth' && guildData.guildLevel < 4) ||
+      (quest.stageId === 'launch' && guildData.guildLevel < 5)
+    ) {
+      setModalContent({
+        title: "Quest Unlocked",
+        message: "You need to complete previous stages to unlock this quest."
+      });
+      return;
+    }
+    setSelectedQuest(quest);
+    soundManager.play('swordDraw');
+  };
+
   if (loading) {
     return <EpicMedievalLoader />;
   }
@@ -1268,53 +1325,112 @@ export default function App() {
   const currentUserRole = guildData?.members?.find((m: any) => m.uid === user.uid)?.permissionRole;
 
   return (
-    <div className="min-h-screen text-white">
-      {/* Header */}
-      <header className="parchment shadow-lg border-b-4 border-yellow-700">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <Crown className="w-8 h-8 text-yellow-500 treasure-glow" />
-            <h1 className="text-2xl font-bold text-yellow-100">The Startup Quest</h1>
-            {!isOnline && (
-              <div className="flex items-center space-x-1 px-2 py-1 bg-orange-900/50 rounded-lg text-orange-400 text-sm">
-                <AlertTriangle className="w-4 h-4" />
-                <span>Offline</span>
-              </div>
-            )}
-          </div>
-          <div className="flex items-center space-x-6">
-            {guildData && (
-              <EnergyBar
-                currentEnergy={guildData.currentEnergy}
-                maxEnergy={guildData.maxEnergy}
-                isPremium={guildData.isPremium}
-                onPurchaseClick={() => energyManagement.setShowEnergyPurchase(true)}
-              />
-            )}
-            {ceoAvatar && (
-              <button
-                onClick={() => { setShowCEOProfile(true); if (userInteracted) soundManager.play('swordDraw'); }}
-                className={`flex items-center space-x-2 px-3 py-1 rounded-lg bg-gradient-to-r ${ceoAvatar.color} bg-opacity-80 hover:bg-opacity-100 transition-all`}
-              >
-                <span className="text-2xl">{ceoAvatar.avatar}</span>
-                <span className="text-sm font-medium">{ceoAvatar.name}</span>
-              </button>
-            )}
+    <div className="flex h-screen bg-gray-900 text-white font-sans">
+      {/* Sidebar */}
+      <div className="w-64 bg-gray-800 flex flex-col p-4 border-r border-yellow-700/50">
+        <div className="flex items-center space-x-3 mb-8">
+          <Crown className="w-8 h-8 text-yellow-500" />
+          <h1 className="text-xl font-bold text-yellow-100">The Startup Quest</h1>
+        </div>
 
-            <div className="text-right">
-              <p className="text-sm text-gray-300">Level {levelInfo.level}</p>
-              <div className="flex items-center space-x-2">
-                <div className="w-32 bg-gray-700 rounded-full h-2">
-                  <div
-                    className="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full transition-all"
-                    style={{ width: `${levelInfo.progress}%` }}
-                  />
-                </div>
-                <span className="text-sm text-yellow-100">{guildData?.xp || 0} XP</span>
-              </div>
+        <div className="flex-1 overflow-y-auto pr-2 space-y-2">
+          {/* Navigation Buttons */}
+          <button
+            onClick={handleShowDashboard}
+            className={`w-full flex items-center space-x-3 px-3 py-3 rounded-lg transition-all text-left ${showDashboard && !selectedQuest ? 'bg-yellow-400/20 text-yellow-200 border-l-4 border-yellow-400' : 'text-gray-400 hover:bg-gray-700/50'
+              }`}
+          >
+            <Trophy className="w-5 h-5" />
+            <span>Quests</span>
+          </button>
+
+          <button
+            onClick={handleShowArmory}
+            className={`w-full flex items-center space-x-3 px-3 py-3 rounded-lg transition-all text-left ${showArmory ? 'bg-yellow-400/20 text-yellow-200 border-l-4 border-yellow-400' : 'text-gray-400 hover:bg-gray-700/50'
+              }`}
+          >
+            <Swords className="w-5 h-5" />
+            <span>Armory</span>
+          </button>
+
+          <button
+            onClick={handleShowGuildManagement}
+            className={`w-full flex items-center space-x-3 px-3 py-3 rounded-lg transition-all text-left ${showGuildManagement ? 'bg-yellow-400/20 text-yellow-200 border-l-4 border-yellow-400' : 'text-gray-400 hover:bg-gray-700/50'
+              }`}
+          >
+            <Castle className="w-5 h-5" />
+            <span>Guild Hall</span>
+          </button>
+
+          <button
+            onClick={handleShowBeastiary}
+            className={`w-full flex items-center space-x-3 px-3 py-3 rounded-lg transition-all text-left ${showBeastiary ? 'bg-yellow-400/20 text-yellow-200 border-l-4 border-yellow-400' : 'text-gray-400 hover:bg-gray-700/50'
+              }`}
+          >
+            <BookOpen className="w-5 h-5" />
+            <span>Beastiary</span>
+          </button>
+
+        </div>
+
+        <div className="mt-auto p-2 space-y-2">
+          {/* User Profile & Logout */}
+          <button
+            onClick={() => setShowUserProfile(true)}
+            className="w-full flex items-center space-x-3 px-3 py-3 rounded-lg transition-all text-left text-gray-400 hover:bg-gray-700/50"
+          >
+            <User className="w-5 h-5" />
+            <span>Profile</span>
+          </button>
+          <button
+            onClick={handleSignOut}
+            className="w-full flex items-center space-x-3 px-3 py-3 rounded-lg transition-all text-left text-gray-400 hover:bg-gray-700/50"
+          >
+            <LogOut className="w-5 h-5" />
+            <span>Sign Out</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <main className="flex-1 flex flex-col bg-black/50 overflow-hidden">
+        {/* Top Header Bar */}
+        <header className="parchment shadow-md px-6 py-3 border-b-2 border-yellow-700 flex-shrink-0">
+          <div className="flex items-center justify-between">
+            {/* Left side: Guild Info */}
+            <div className="flex items-center space-x-4">
+              <span className="text-yellow-100 font-bold text-lg">{guildData?.guildName}</span>
+              <span className="text-sm text-gray-300 hidden md:block">Level {levelInfo.level} - {guildLevel.name}</span>
             </div>
 
-            <div className="flex items-center space-x-2">
+            {/* Right side: Stats and Actions */}
+            <div className="flex items-center space-x-4">
+              {guildData && (
+                <EnergyBar
+                  currentEnergy={guildData.currentEnergy}
+                  maxEnergy={guildData.maxEnergy}
+                  isPremium={guildData.isPremium}
+                  onPurchaseClick={() => energyManagement.setShowEnergyPurchase(true)}
+                />
+              )}
+              <div className="flex items-center space-x-2">
+                <Coins className="w-5 h-5 text-yellow-500" />
+                <span className="font-bold text-yellow-100">{guildData?.gold || 0}</span>
+                <button
+                  onClick={() => { setShowGoldPurchase(true); if (userInteracted) soundManager.play('coinCollect'); }}
+                  className="px-2 py-1 bg-gradient-to-r from-yellow-600 to-amber-600 rounded text-xs hover:from-yellow-500 hover:to-amber-500"
+                  title="Purchase Gold"
+                >
+                  +
+                </button>
+              </div>
+              <button
+                onClick={() => { setShowDocuments(true); if (userInteracted) soundManager.play('swordDraw'); }}
+                className="text-gray-400 hover:text-white"
+                title="Documents (RAG)"
+              >
+                <Scroll className="w-5 h-5" />
+              </button>
               <button
                 onClick={toggleSound}
                 className="text-gray-400 hover:text-white"
@@ -1322,249 +1438,228 @@ export default function App() {
               >
                 {soundEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
               </button>
-              <button
-                onClick={() => { setShowDashboard(true); if (userInteracted) soundManager.play('swordDraw'); }}
-                className="text-gray-400 hover:text-white"
-                title="Progress"
-              >
-                <BarChart3 className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() => { setShowHistory(true); if (userInteracted) soundManager.play('swordDraw'); }}
-                className="text-gray-400 hover:text-white"
-                title="Conversation History"
-              >
-                <History className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() => { setShowDocuments(true); if (userInteracted) soundManager.play('swordDraw'); }}
-                className="text-gray-400 hover:text-white"
-                title="Documents"
-              >
-                <Scroll className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() => setShowUserProfile(true)}
-                className="text-gray-400 hover:text-white"
-                title="User Profile"
-              >
-                <User className="w-5 h-5" />
-              </button>
-              <button
-                onClick={handleSignOut}
-                className="text-gray-400 hover:text-white"
-              >
-                <LogOut className="w-5 h-5" />
-              </button>
             </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      {/* Guild Info Bar */}
-      <div className="parchment border-b border-yellow-700">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <Castle className="w-5 h-5 text-blue-400" />
-            <span className="text-yellow-100 font-bold">{guildData?.guildName}</span>
-            <span className="text-sm text-gray-300">Quest: {guildData?.vision}</span>
-          </div>
-          <div className="flex items-center space-x-4">
-            <button
-              onClick={() => { setShowGuildManagement(true); if (userInteracted) soundManager.play('swordDraw'); }}
-              className="flex items-center space-x-2 px-3 py-1 bg-blue-800 rounded-lg text-sm hover:bg-blue-700 transition-all"
-            >
-              <UserPlus className="w-4 h-4" />
-              <span>Guild Management</span>
-            </button>
-            <div className="flex items-center space-x-2">
-              <span className="text-2xl">{typeof guildLevel.icon === 'string' ? guildLevel.icon : null}</span>
-              <span className="text-sm font-medium text-yellow-100">{guildLevel.name}</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Coins className="w-5 h-5 text-yellow-500" />
-              <span className="font-bold text-yellow-100">{guildData?.gold || 0}</span>
-              <button
-                onClick={() => { setShowGoldPurchase(true); if (userInteracted) soundManager.play('coinCollect'); }}
-                className="px-3 py-1 bg-gradient-to-r from-yellow-600 to-amber-600 rounded-lg text-sm hover:from-yellow-500 hover:to-amber-500 transition-all ml-2 flex items-center space-x-1 magic-border"
-              >
-                <span>+</span>
-                <ShoppingBag className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => { setShowArmory(true); if (userInteracted) soundManager.play('swordDraw'); }}
-                className="px-3 py-1 bg-yellow-800 rounded-lg text-sm hover:bg-yellow-700 transition-all"
-              >
-                <ShoppingBag className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="flex items-center space-x-2">
-              {guildData?.achievements?.slice(0, 5).map((achievementId: string) => {
-                const achievement = ACHIEVEMENTS.find(a => a.id === achievementId);
-                return achievement ? (
-                  <span key={achievementId} className="text-2xl" title={achievement.name}>
-                    {typeof achievement.icon === 'string' ? achievement.icon : null}
-                  </span>
-                ) : null;
-              })}
-              {guildData?.achievements?.length > 5 && (
-                <span className="text-sm text-gray-400">+{guildData.achievements.length - 5}</span>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
 
-      {/* Daily Bonus Bar */}
-      <div className="bg-gradient-to-r from-purple-900/30 to-indigo-900/30 border-b border-yellow-700">
-        <div className="max-w-7xl mx-auto px-4 py-3">
-          <DailyBonus guildData={guildData} onClaim={claimDailyBonus} soundManager={soundManager} />
-        </div>
-      </div>
-
-      {/* Document Generation Bar */}
-      {guildData?.guildLevel >= 2 && (
-        <div className="bg-gradient-to-r from-amber-900/30 to-orange-900/30 border-b border-yellow-700">
-          <div className="max-w-7xl mx-auto px-4 py-3">
-            <div className="flex items-center justify-between flex-wrap gap-3">
-              <div className="flex items-center space-x-2">
-                <Scroll className="w-5 h-5 text-yellow-400" />
-                <span className="text-sm font-medium text-yellow-100">Document Creation</span>
-              </div>
-              <div className="flex items-center space-x-2 flex-wrap">
-                {DOCUMENT_TEMPLATES.map(template => (
-                  <button
-                    key={template.id}
-                    onClick={() => handleGenerateDocument(template)}
-                    disabled={generatingDoc}
-                    className="px-3 py-1 parchment rounded-lg text-sm hover:transform hover:scale-105 transition-all disabled:opacity-50"
-                    title={`Create ${template.name} (+${template.xp} XP, ${ENERGY_COSTS.DOCUMENT_GENERATION} energy)`}
-                    onMouseEnter={() => { if (userInteracted) soundManager.play('swordDraw'); }}
-                  >
-                    {typeof template.icon === 'string' ? <span>{template.icon}</span> : null} {template.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-            {generatingDoc && (
-              <div className="mt-2 text-center text-sm text-purple-400 animate-pulse">
-                Generating document...
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Main Quest Map */}
-      <main className="max-w-7xl mx-auto px-4 py-8">
-        <div className="text-center mb-12">
-          <h2 className="text-4xl font-bold text-yellow-200 tracking-wider">Quest Map</h2>
-          <p className="text-lg text-gray-400 mt-2">Your startup journey unfolds here. Complete all quests in a stage to unlock the next.</p>
-        </div>
-
-        <div className="relative flex flex-col items-center space-y-8">
-          {Object.values(QUEST_STAGES).map((stage, index, stages) => {
-            const isLocked = stage.id !== 'fundamentals' && guildData?.guildLevel <
-              (stage.id === 'kickoff' ? 2 : stage.id === 'gtm' ? 3 : stage.id === 'growth' ? 4 : 5);
-            const StageIcon = stage.icon;
-
-            return (
-              <React.Fragment key={stage.id}>
-                <div
-                  className={`w-full max-w-4xl parchment rounded-lg p-6 shadow-xl transition-all duration-500 ${isLocked ? 'opacity-50 grayscale' : 'hover:shadow-2xl'
-                    } hero-3d`}
-                >
-                  <div className="flex items-center mb-4">
-                    <div className={`p-3 rounded-lg ${stage.color} bg-opacity-20 mr-4`}>
-                      {typeof StageIcon === 'string' ? (
-                        <span className={`w-8 h-8 ${stage.color.replace('bg-', 'text-')}`} style={{ fontSize: '2rem' }}>{StageIcon}</span>
-                      ) : null}
-                    </div>
-                    <div>
-                      <h3 className="text-2xl font-bold text-yellow-100">{stage.name}</h3>
-                      <p className="text-sm text-gray-300">{stage.description}</p>
-                      {isLocked && (
-                        <p className="text-xs text-orange-400 mt-1">⚠️ Complete previous stages to unlock</p>
-                      )}
-                    </div>
+        <div className="flex-1 overflow-y-auto">
+          {selectedQuest ? (
+            <FourPanelQuestInterface
+              quest={selectedQuest}
+              guildData={guildData}
+              ceoAvatar={ceoAvatar}
+              onComplete={completeQuest}
+              onClose={() => setSelectedQuest(null)}
+              saveConversation={saveConversation}
+              updateGold={updateGold}
+              soundManager={soundManager}
+              bedrockClient={bedrockClient}
+              consumeEnergy={energyManagement.consumeEnergy}
+              setGuildData={setGuildData}
+              vision={guildData?.vision}
+              savePersonalizedQuestDetails={savePersonalizedQuestDetails}
+              currentUserRole={currentUserRole}
+              user={user}
+            />
+          ) : showArmory ? (
+            <ArmoryInterface
+              guildData={guildData}
+              onPurchase={handleArmoryPurchase}
+              soundManager={soundManager}
+              onClose={() => setShowArmory(false)}
+            />
+          ) : showGuildManagement ? (
+            <GuildManagement
+              guildData={guildData}
+              setGuildData={setGuildData}
+              onClose={() => setShowGuildManagement(false)}
+            />
+          ) : showBeastiary ? (
+            <Beastiary />
+          ) : (
+            /* Main Dashboard */
+            <div className="flex-1 flex flex-col md:flex-row overflow-hidden h-full">
+              <div className="flex-1 flex flex-col p-4 md:p-6 lg:p-8 overflow-y-auto">
+                {/* Header inside Dashboard */}
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h2 className="text-3xl font-bold text-yellow-100">Quests</h2>
+                    <p className="text-gray-400">Your startup journey unfolds here.</p>
                   </div>
+                  <DailyBonus guildData={guildData} onClaim={claimDailyBonus} soundManager={soundManager} />
+                </div>
 
-                  <div className="space-y-3">
-                    {stage.quests.map((quest) => {
-                      const questKey = `${stage.id}_${quest.id}`;
-                      const questProgress = guildData?.questProgress?.[questKey];
-                      const isCompleted = questProgress?.completed;
-                      const xpEarned = questProgress?.xpReward;
-                      const assignedTo = questProgress?.assignedTo;
+                {/* Main Quest Map */}
+                <div className="relative flex flex-col items-center space-y-8">
+                  {Object.values(QUEST_STAGES).map((stage, index, stages) => {
+                    const isLocked = stage.id !== 'fundamentals' && guildData?.guildLevel <
+                      (stage.id === 'kickoff' ? 2 : stage.id === 'gtm' ? 3 : stage.id === 'growth' ? 4 : 5);
+                    const StageIcon = stage.icon;
 
-                      return (
+                    return (
+                      <React.Fragment key={stage.id}>
                         <div
-                          key={quest.id}
-                          onClick={() => {
-                            if (!isLocked) {
-                              setSelectedQuest({ ...quest, stageId: stage.id });
-                              if (userInteracted) soundManager.play('swordDraw');
-                            }
-                          }}
-                          onMouseEnter={() => { if (!isLocked && userInteracted) soundManager.play('swordDraw'); }}
-                          className={`p-4 rounded-lg cursor-pointer transition-all duration-300 ${isLocked
-                            ? 'bg-gray-700/50 cursor-not-allowed'
-                            : isCompleted
-                              ? 'parchment border-2 border-green-700 bg-green-900/30 relative hover:transform hover:scale-102 hover:shadow-lg'
-                              : 'parchment hover:transform hover:scale-102 hover:shadow-lg'
-                            }`}
+                          className={`w-full max-w-4xl parchment rounded-lg p-6 shadow-xl transition-all duration-500 ${isLocked ? 'opacity-50 grayscale' : 'hover:shadow-2xl'
+                            } hero-3d`}
                         >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-4">
-                              {isCompleted ? (
-                                <Trophy className="w-6 h-6 text-green-400" />
-                              ) : (
-                                <Target className="w-6 h-6 text-gray-400" />
-                              )}
-                              <div>
-                                <p className="font-semibold text-yellow-100 flex items-center">
-                                  {quest.name}
-                                  {isCompleted && (
-                                    <span className="ml-3 px-2 py-0.5 bg-green-700/80 text-xs text-green-100 rounded-full font-semibold">Completed</span>
-                                  )}
-                                </p>
-                                <div className="flex items-center space-x-3 text-sm mt-1">
-                                  <span className="text-gray-300">{quest.xp} XP</span>
-                                  <span className="text-gray-500">•</span>
-                                  <span className={CORE_ATTRIBUTES[quest.attribute as keyof typeof CORE_ATTRIBUTES]?.color || 'text-gray-400'}>
-                                    {CORE_ATTRIBUTES[quest.attribute as keyof typeof CORE_ATTRIBUTES]?.name || 'General'}
-                                  </span>
-                                  {assignedTo && (
-                                    <>
-                                      <span className="text-gray-500">•</span>
-                                      <span className="text-sm text-cyan-300">Assigned to: {assignedTo.name}</span>
-                                    </>
-                                  )}
-                                </div>
-                              </div>
+                          <div className="flex items-center mb-4">
+                            <div className={`p-3 rounded-lg ${stage.color} bg-opacity-20 mr-4`}>
+                              {typeof StageIcon === 'string' ? (
+                                <span className={`w-8 h-8 ${stage.color.replace('bg-', 'text-')}`} style={{ fontSize: '2rem' }}>{StageIcon}</span>
+                              ) : null}
                             </div>
-                            <div className="flex items-center space-x-2">
-                              {isCompleted && xpEarned && (
-                                <span className="px-2 py-0.5 bg-gradient-to-r from-green-600 to-emerald-600 text-xs text-white rounded-full font-semibold border border-green-400">
-                                  +{xpEarned} XP
-                                </span>
+                            <div>
+                              <h3 className="text-2xl font-bold text-yellow-100">{stage.name}</h3>
+                              <p className="text-sm text-gray-300">{stage.description}</p>
+                              {isLocked && (
+                                <p className="text-xs text-orange-400 mt-1">⚠️ Complete previous stages to unlock</p>
                               )}
-                              <ChevronRight className="w-5 h-5 text-gray-400" />
                             </div>
                           </div>
+
+                          <div className="space-y-3">
+                            {stage.quests.map((quest) => {
+                              const questKey = `${stage.id}_${quest.id}`;
+                              const questProgress = guildData?.questProgress?.[questKey];
+                              const isCompleted = questProgress?.completed;
+                              const xpEarned = questProgress?.xpReward;
+                              const assignedTo = questProgress?.assignedTo;
+
+                              return (
+                                <div
+                                  key={quest.id}
+                                  onClick={() => {
+                                    if (!isLocked) {
+                                      handleOpenQuest({ ...quest, stageId: stage.id });
+                                    }
+                                  }}
+                                  onMouseEnter={() => { if (!isLocked && userInteracted) soundManager.play('swordDraw'); }}
+                                  className={`p-4 rounded-lg cursor-pointer transition-all duration-300 ${isLocked
+                                    ? 'bg-gray-700/50 cursor-not-allowed'
+                                    : isCompleted
+                                      ? 'parchment border-2 border-green-700 bg-green-900/30 relative hover:transform hover:scale-102 hover:shadow-lg'
+                                      : 'parchment hover:transform hover:scale-102 hover:shadow-lg'
+                                    }`}
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center space-x-4">
+                                      {isCompleted ? (
+                                        <Trophy className="w-6 h-6 text-green-400" />
+                                      ) : (
+                                        <Target className="w-6 h-6 text-gray-400" />
+                                      )}
+                                      <div>
+                                        <p className="font-semibold text-yellow-100 flex items-center">
+                                          {quest.name}
+                                          {isCompleted && (
+                                            <span className="ml-3 px-2 py-0.5 bg-green-700/80 text-xs text-green-100 rounded-full font-semibold">Completed</span>
+                                          )}
+                                        </p>
+                                        <div className="flex items-center space-x-3 text-sm mt-1">
+                                          <span className="text-gray-300">{quest.xp} XP</span>
+                                          <span className="text-gray-500">•</span>
+                                          <span className={CORE_ATTRIBUTES[quest.attribute as keyof typeof CORE_ATTRIBUTES]?.color || 'text-gray-400'}>
+                                            {CORE_ATTRIBUTES[quest.attribute as keyof typeof CORE_ATTRIBUTES]?.name || 'General'}
+                                          </span>
+                                          {assignedTo && (
+                                            <>
+                                              <span className="text-gray-500">•</span>
+                                              <span className="text-sm text-cyan-300">Assigned to: {assignedTo.name}</span>
+                                            </>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                      {isCompleted && xpEarned && (
+                                        <span className="px-2 py-0.5 bg-gradient-to-r from-green-600 to-emerald-600 text-xs text-white rounded-full font-semibold border border-green-400">
+                                          +{xpEarned} XP
+                                        </span>
+                                      )}
+                                      <ChevronRight className="w-5 h-5 text-gray-400" />
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
-                      );
-                    })}
+                        {index < stages.length - 1 && (
+                          <div className="h-16 w-1 bg-gradient-to-b from-yellow-700/50 via-yellow-600/30 to-yellow-700/50 border-l border-r border-dashed border-yellow-800/80"></div>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Right sidebar for stats/info inside dashboard */}
+              <div className="w-full md:w-80 lg:w-96 bg-gray-800/50 p-6 border-l border-yellow-700/30 overflow-y-auto">
+                <h3 className="text-xl font-bold text-yellow-100 mb-4">Guild Stats</h3>
+                <div className="grid grid-cols-2 gap-4 mb-6">
+                  <div className="parchment rounded-lg p-3 text-center">
+                    <p className="text-sm text-gray-300 mb-1">Total XP</p>
+                    <p className="text-xl font-bold text-purple-400">{guildData?.xp || 0}</p>
+                  </div>
+                  <div className="parchment rounded-lg p-3 text-center">
+                    <p className="text-sm text-gray-300 mb-1">Gold Coins</p>
+                    <p className="text-xl font-bold text-yellow-400">{guildData?.gold || 0}</p>
+                  </div>
+                  <div className="parchment rounded-lg p-3 text-center">
+                    <p className="text-sm text-gray-300 mb-1">Level</p>
+                    <p className="text-xl font-bold text-blue-400">{levelInfo.level}</p>
+                  </div>
+                  <div className="parchment rounded-lg p-3 text-center">
+                    <p className="text-sm text-gray-300 mb-1">Quests Done</p>
+                    <p className="text-xl font-bold text-green-400">{stats.completedQuests}</p>
                   </div>
                 </div>
-                {index < stages.length - 1 && (
-                  <div className="h-16 w-1 bg-gradient-to-b from-yellow-700/50 via-yellow-600/30 to-yellow-700/50 border-l border-r border-dashed border-yellow-800/80"></div>
+
+                <h3 className="text-xl font-bold text-yellow-100 mb-4">Achievements</h3>
+                <div className="grid grid-cols-4 gap-2 mb-6">
+                  {ACHIEVEMENTS.slice(0, 8).map((achievement) => {
+                    const earned = guildData?.achievements?.includes(achievement.id);
+                    return (
+                      <div
+                        key={achievement.id}
+                        className={`parchment rounded-lg p-2 text-center transition-all ${earned ? 'magic-border' : 'opacity-40 grayscale'}`}
+                        title={`${achievement.name}: ${achievement.description}${!earned ? ' (Locked)' : ''}`}
+                      >
+                        <div className="text-3xl mb-1">{typeof achievement.icon === 'string' ? achievement.icon : null}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <h3 className="text-xl font-bold text-yellow-100 mb-4">Document Creation</h3>
+                <div className="flex flex-col space-y-2">
+                  {DOCUMENT_TEMPLATES.map(template => (
+                    <button
+                      key={template.id}
+                      onClick={() => handleGenerateDocument(template)}
+                      disabled={generatingDoc}
+                      className="px-3 py-2 parchment rounded-lg text-sm hover:transform hover:scale-105 transition-all disabled:opacity-50 flex items-center gap-2"
+                      title={`Create ${template.name} (+${template.xp} XP, ${ENERGY_COSTS.DOCUMENT_GENERATION} energy)`}
+                      onMouseEnter={() => { if (userInteracted) soundManager.play('swordDraw'); }}
+                    >
+                      {typeof template.icon === 'string' ? <span>{template.icon}</span> : null} {template.name}
+                    </button>
+                  ))}
+                </div>
+                {generatingDoc && (
+                  <div className="mt-2 text-center text-sm text-purple-400 animate-pulse">
+                    Generating document...
+                  </div>
                 )}
-              </React.Fragment>
-            );
-          })}
+
+              </div>
+            </div>
+          )}
         </div>
 
+
+        {/* Modals will float over the main content */}
         {assignmentModal && (
           <Modal open={!!assignmentModal} onClose={() => setAssignmentModal(null)}>
             <div className="p-6 max-w-md w-full">
