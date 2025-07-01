@@ -13,6 +13,7 @@ import "./FourPanelQuestInterface.css";
 import { addDoc, collection, onSnapshot, orderBy, query, serverTimestamp } from "firebase/firestore";
 import { db } from "../config/config";
 import ShareAchievementModal from "./ShareAchievementModal";
+import QuestCompletionModal from "./QuestCompletionModal";
 
 
 export const FourPanelQuestInterface = ({
@@ -73,6 +74,8 @@ export const FourPanelQuestInterface = ({
     const [personalizedDetails, setPersonalizedDetails] = useState<any>(questProgress?.personalizedData || null);
     const [isPersonalizing, setIsPersonalizing] = useState(false);
     const [showShareModal, setShowShareModal] = useState(false);
+    const [showCompletionModal, setShowCompletionModal] = useState(false);
+    const [completionData, setCompletionData] = useState<any>(null);
 
     // War Room: Fetch Comments
     useEffect(() => {
@@ -92,7 +95,6 @@ export const FourPanelQuestInterface = ({
             console.log("Comments fetched: ", fetchedComments);
         }, (error) => {
             console.error("Error fetching comments: ", error);
-            alert("Error: Could not load War Room messages. Check console for details.");
             setCommentsLoading(false);
         });
 
@@ -224,39 +226,51 @@ export const FourPanelQuestInterface = ({
             return;
         }
 
-        const questData = {
+        const calculatedXpReward = calculateXPWithBonuses(quest.xp, questRating.rating, quest.attribute || 'general', guildData);
+        const calculatedGoldReward = calculateGoldReward(quest.xp / 2, questRating.rating, guildData);
+
+        const data = {
             inputs: userInputs,
             sageConversation: sageMessages,
             completedAt: new Date().toISOString(),
             rating: questRating.rating,
             feedback: questRating.feedback,
-            xpReward: calculateXPWithBonuses(quest.xp, questRating.rating, quest.attribute || 'general', guildData),
-            goldReward: calculateGoldReward(quest.xp / 2, questRating.rating, guildData)
+            xpReward: calculatedXpReward,
+            goldReward: calculatedGoldReward,
         };
 
-        await onComplete({ ...questData });
-        await updateGold(questData.goldReward);
+        setCompletionData(data);
+        setShowCompletionModal(true);
+        // The rest of the logic is moved to handleModalClose
+    };
+
+    const handleModalClose = async () => {
+        if (!completionData) return;
+
+        await onComplete({ ...completionData });
+        await updateGold(completionData.goldReward);
         setGuildData((prev: any) => {
             if (!prev) return null;
             const updatedQuestProgress = {
                 ...prev.questProgress,
                 [questKey]: {
                     ...prev.questProgress?.[questKey],
-                    ...questData,
+                    ...completionData,
                     completed: true,
                 },
             };
 
             return {
                 ...prev,
-                gold: (prev.gold || 0) + questData.goldReward,
-                xp: (prev.xp || 0) + questData.xpReward,
+                gold: (prev.gold || 0) + completionData.goldReward,
+                xp: (prev.xp || 0) + completionData.xpReward,
                 questProgress: updatedQuestProgress,
             };
         });
         soundManager.play('questComplete');
         triggerConfetti();
         setIsSaving(false);
+        setShowCompletionModal(false);
     };
 
     const sageInputRef = useRef<HTMLInputElement>(null);
@@ -765,6 +779,17 @@ export const FourPanelQuestInterface = ({
                         linkedIn: `https://www.linkedin.com/shareArticle?mini=true&url=${encodeURIComponent(window.location.href)}&title=${encodeURIComponent(`Achievement Unlocked: ${quest.name}`)}&summary=${encodeURIComponent(`I just completed the "${quest.name}" quest and earned valuable rewards!`)}&source=${encodeURIComponent(window.location.origin)}`,
                         twitter: `https://twitter.com/intent/tweet?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(`I just unlocked the "${quest.name}" achievement in my founder journey! #gamification #startup`)}`
                     }}
+                />
+            )}
+            {completionData && (
+                <QuestCompletionModal
+                    isOpen={showCompletionModal}
+                    onClose={handleModalClose}
+                    questName={quest.name}
+                    rating={completionData.rating}
+                    feedback={completionData.feedback}
+                    xpReward={completionData.xpReward}
+                    goldReward={completionData.goldReward}
                 />
             )}
         </div>
