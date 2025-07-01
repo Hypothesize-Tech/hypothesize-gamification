@@ -1,6 +1,39 @@
-import React from 'react';
+import React, { useRef } from 'react';
 
 const LandingPage: React.FC = () => {
+    // Refs for form fields
+    const nameRef = useRef<HTMLInputElement>(null);
+    const emailRef = useRef<HTMLInputElement>(null);
+    const companyRef = useRef<HTMLInputElement>(null);
+    const messageRef = useRef<HTMLTextAreaElement>(null);
+
+    // Handler to open Gmail compose with prefilled fields
+    const handleSendCrow = (e: React.MouseEvent<HTMLButtonElement>) => {
+        e.preventDefault();
+
+        const name = nameRef.current?.value.trim() || '';
+        const email = emailRef.current?.value.trim() || '';
+        const company = companyRef.current?.value.trim() || '';
+        const message = messageRef.current?.value.trim() || '';
+
+        // Compose subject and body
+        const subject = encodeURIComponent(
+            `Contact from The Startup Quest: ${company ? company : name ? name : 'New Inquiry'}`
+        );
+
+        let body = '';
+        if (name) body += `Name: ${name}\n`;
+        if (email) body += `Email: ${email}\n`;
+        if (company) body += `Company: ${company}\n`;
+        if (message) body += `\nMessage:\n${message}\n`;
+
+        // Gmail compose URL
+        const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=hello@hypothesize.tech&su=${subject}&body=${encodeURIComponent(body)}`;
+
+        // Open Gmail compose in a new tab
+        window.open(gmailUrl, '_blank', 'noopener,noreferrer');
+    };
+
     return (
         <div className="scroll-smooth">
             {/* Header */}
@@ -341,27 +374,54 @@ const LandingPage: React.FC = () => {
                                 <div className="flex flex-wrap -mx-3 mb-6">
                                     <div className="w-full md:w-1/2 px-3 mb-6 md:mb-0">
                                         <label className="block uppercase tracking-wide text-[#5c3d2e] text-xs font-bold mb-2" htmlFor="grid-first-name">Name</label>
-                                        <input className="appearance-none block w-full bg-[#fdf6e3]/50 text-[#4a2c2a] border border-amber-800/30 rounded py-3 px-4 mb-3 leading-tight focus:outline-none focus:bg-white focus:border-amber-600" id="grid-first-name" type="text" placeholder="Elara of Highgarden" />
+                                        <input
+                                            className="appearance-none block w-full bg-[#fdf6e3]/50 text-[#4a2c2a] border border-amber-800/30 rounded py-3 px-4 mb-3 leading-tight focus:outline-none focus:bg-white focus:border-amber-600"
+                                            id="grid-first-name"
+                                            type="text"
+                                            placeholder="Elara of Highgarden"
+                                            ref={nameRef}
+                                        />
                                     </div>
                                     <div className="w-full md:w-1/2 px-3">
                                         <label className="block uppercase tracking-wide text-[#5c3d2e] text-xs font-bold mb-2" htmlFor="grid-email">Email</label>
-                                        <input className="appearance-none block w-full bg-[#fdf6e3]/50 text-[#4a2c2a] border border-amber-800/30 rounded py-3 px-4 leading-tight focus:outline-none focus:bg-white focus:border-amber-600" id="grid-email" type="email" placeholder="founder@yourguild.com" />
+                                        <input
+                                            className="appearance-none block w-full bg-[#fdf6e3]/50 text-[#4a2c2a] border border-amber-800/30 rounded py-3 px-4 leading-tight focus:outline-none focus:bg-white focus:border-amber-600"
+                                            id="grid-email"
+                                            type="email"
+                                            placeholder="founder@yourguild.com"
+                                            ref={emailRef}
+                                        />
                                     </div>
                                 </div>
                                 <div className="flex flex-wrap -mx-3 mb-6">
                                     <div className="w-full px-3">
                                         <label className="block uppercase tracking-wide text-[#5c3d2e] text-xs font-bold mb-2" htmlFor="grid-company">Company Name</label>
-                                        <input className="appearance-none block w-full bg-[#fdf6e3]/50 text-[#4a2c2a] border border-amber-800/30 rounded py-3 px-4 mb-3 leading-tight focus:outline-none focus:bg-white focus:border-amber-600" id="grid-company" type="text" placeholder="Your Awesome Startup" />
+                                        <input
+                                            className="appearance-none block w-full bg-[#fdf6e3]/50 text-[#4a2c2a] border border-amber-800/30 rounded py-3 px-4 mb-3 leading-tight focus:outline-none focus:bg-white focus:border-amber-600"
+                                            id="grid-company"
+                                            type="text"
+                                            placeholder="Your Awesome Startup"
+                                            ref={companyRef}
+                                        />
                                     </div>
                                 </div>
                                 <div className="flex flex-wrap -mx-3 mb-6">
                                     <div className="w-full px-3">
                                         <label className="block uppercase tracking-wide text-[#5c3d2e] text-xs font-bold mb-2" htmlFor="grid-message">Message</label>
-                                        <textarea className="appearance-none block w-full bg-[#fdf6e3]/50 text-[#4a2c2a] border border-amber-800/30 rounded py-3 px-4 mb-3 leading-tight focus:outline-none focus:bg-white focus:border-amber-600 h-32" id="grid-message" placeholder="Tell us of your quest..."></textarea>
+                                        <textarea
+                                            className="appearance-none block w-full bg-[#fdf6e3]/50 text-[#4a2c2a] border border-amber-800/30 rounded py-3 px-4 mb-3 leading-tight focus:outline-none focus:bg-white focus:border-amber-600 h-32"
+                                            id="grid-message"
+                                            placeholder="Tell us of your quest..."
+                                            ref={messageRef}
+                                        ></textarea>
                                     </div>
                                 </div>
                                 <div className="flex justify-center">
-                                    <button className="fantasy-btn font-cinzel font-bold py-3 px-8 rounded-lg" type="button">
+                                    <button
+                                        className="fantasy-btn font-cinzel font-bold py-3 px-8 rounded-lg"
+                                        type="button"
+                                        onClick={handleSendCrow}
+                                    >
                                         Send a Crow
                                     </button>
                                 </div>
