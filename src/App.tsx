@@ -90,6 +90,7 @@ import { createInviteLink, generateGuildInviteEmail, sendEmail } from './utils/e
 import { FounderOnboarding, MemberOnboarding } from './components/OnboardingFlows';
 import AchievementPopup from './components/AchievementPopup';
 import { UserProfile } from './components/UserProfile';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 class Canvas3DErrorBoundary extends React.Component<
   { children: React.ReactNode },
@@ -229,6 +230,9 @@ export default function App() {
     user?.uid || '',
     setGuildData
   );
+
+  const navigate = useNavigate();
+  const location = useLocation();
 
   // CHECK FOR INVITE TOKEN ON APP LOAD
   useEffect(() => {
@@ -493,6 +497,13 @@ export default function App() {
       return () => unsubscribe();
     }
   }, [user, guildData?.isFounder]);
+
+  useEffect(() => {
+    if (location.pathname === '/' && !localStorage.getItem('hasVisited')) {
+      localStorage.setItem('hasVisited', 'true');
+      navigate('/landing-page', { replace: true });
+    }
+  }, []);
 
   const handleSignIn = async () => {
     try {

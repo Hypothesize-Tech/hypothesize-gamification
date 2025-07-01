@@ -489,7 +489,6 @@ Ensure the JSON is well-formed. Do not include any text outside of the JSON obje
         };
     }
 };
-
 export const checkAndAwardAchievements = (
     userRole: string,
     completedQuests: { [key: string]: any },
