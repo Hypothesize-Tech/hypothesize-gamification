@@ -1,15 +1,9 @@
-import React from 'react';
-import {
-    doc,
-    updateDoc,
-    serverTimestamp,
-    increment,
-    arrayUnion,
-} from 'firebase/firestore';
-import { Zap, AlertTriangle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Zap, AlertTriangle, Coins } from 'lucide-react';
 import Modal from '../components/Modal';
-import { db } from '../config/config';
 import { ENERGY_CONFIG, ENERGY_COSTS } from '../config/energy';
+
+type EnergyAction = keyof typeof ENERGY_COSTS;
 
 // Energy Management Functions
 export const energyUtils = {
@@ -132,39 +126,24 @@ export interface GuildDataWithEnergy {
 export const useEnergyManagement = (
     guildData: GuildDataWithEnergy | null,
     userId: string,
-    setGuildData: React.Dispatch<React.SetStateAction<GuildDataWithEnergy | null>>
+    setGuildData: (data?: any) => void,
+    consumeEnergyApi: (action: EnergyAction) => Promise<any>,
+    purchaseEnergyApi: (amount: number, goldCost: number) => Promise<any>
 ) => {
-    const [showEnergyPurchase, setShowEnergyPurchase] = React.useState(false);
-    const [purchasingEnergy, setPurchasingEnergy] = React.useState(false);
-
-    // Check and perform daily energy reset
-    const checkEnergyReset = async () => {
-        if (!guildData || !userId) return;
-
-        const { lastEnergyReset } = guildData;
-
-        if (!lastEnergyReset || typeof lastEnergyReset.toDate !== 'function') {
-            return;
-        }
-
-        const needsReset = energyUtils.needsEnergyReset(
-            lastEnergyReset.toDate()
-        );
-
-        if (needsReset) {
-            await updateDoc(doc(db, 'guilds', userId), {
-                currentEnergy: ENERGY_CONFIG.MAX_DAILY_ENERGY,
-                lastEnergyReset: serverTimestamp()
-            });
-        }
-    };
+    const [showEnergyPurchase, setShowEnergyPurchase] = useState(false);
+    const [purchasingEnergy, setPurchasingEnergy] = useState(false);
 
     // Consume energy for action
     const consumeEnergy = async (
-        action: keyof typeof ENERGY_COSTS,
+        action: EnergyAction,
         onEnergyConsumed?: () => void
     ): Promise<boolean> => {
         if (!guildData || !userId) return false;
+
+        if (action === 'SUBMIT_QUEST') {
+            onEnergyConsumed?.();
+            return true;
+        }
 
         // Premium users have unlimited energy
         if (guildData.isPremium) {
@@ -179,28 +158,34 @@ export const useEnergyManagement = (
             return false;
         }
 
-        // Deduct energy
-        await updateDoc(doc(db, 'guilds', userId), {
-            currentEnergy: increment(-energyCost)
-        });
-
-        // Manually update local state to reflect energy change immediately
-        setGuildData(prevData => {
-            if (!prevData) return null;
-            return {
-                ...prevData,
-                currentEnergy: prevData.currentEnergy - energyCost
-            };
-        });
-
-        onEnergyConsumed?.();
-        return true;
+        try {
+            const { data: updatedGuild } = await consumeEnergyApi(action);
+            setGuildData(updatedGuild);
+            onEnergyConsumed?.();
+            return true;
+        } catch (error) {
+            console.error('Failed to consume energy', error);
+            setShowEnergyPurchase(true);
+            return false;
+        }
     };
 
     // Purchase energy with gold
     const purchaseEnergy = async (energyAmount: number): Promise<boolean> => {
         if (!guildData || !userId) return false;
 
+        const availableSpace = guildData.maxEnergy - guildData.currentEnergy;
+        if (energyAmount > availableSpace) {
+            console.warn(`Attempted to purchase ${energyAmount} energy, but only ${availableSpace} space is available. Capping at ${availableSpace}.`);
+            energyAmount = availableSpace;
+        }
+
+        if (energyAmount <= 0) {
+            // This can happen if the user's energy is already full or near full.
+            // We can consider this a "successful" operation in the sense that no purchase is needed.
+            setShowEnergyPurchase(false);
+            return true;
+        }
         const goldCost = energyAmount * ENERGY_CONFIG.GOLD_TO_ENERGY_RATE;
 
         if (guildData.gold < goldCost) {
@@ -211,26 +196,8 @@ export const useEnergyManagement = (
         setPurchasingEnergy(true);
 
         try {
-            await updateDoc(doc(db, 'guilds', userId), {
-                currentEnergy: increment(energyAmount),
-                gold: increment(-goldCost),
-                energyPurchaseHistory: arrayUnion({
-                    amount: energyAmount,
-                    goldSpent: goldCost,
-                    timestamp: new Date()
-                })
-            });
-
-            // Manually update local state
-            setGuildData(prevData => {
-                if (!prevData) return null;
-                return {
-                    ...prevData,
-                    currentEnergy: prevData.currentEnergy + energyAmount,
-                    gold: prevData.gold - goldCost,
-                };
-            });
-
+            const { data: updatedGuild } = await purchaseEnergyApi(energyAmount, goldCost);
+            setGuildData(updatedGuild);
             setShowEnergyPurchase(false);
             return true;
         } catch (error) {
@@ -245,7 +212,6 @@ export const useEnergyManagement = (
         showEnergyPurchase,
         setShowEnergyPurchase,
         purchasingEnergy,
-        checkEnergyReset,
         consumeEnergy,
         purchaseEnergy
     };
@@ -312,98 +278,87 @@ export const EnergyPurchaseModal: React.FC<{
     isOpen: boolean;
     onClose: () => void;
     currentGold: number;
-    onPurchase: (amount: number) => Promise<boolean>;
+    onPurchase: (amount: number) => Promise<void>;
     purchasing: boolean;
-}> = ({ isOpen, onClose, currentGold, onPurchase, purchasing }) => {
-    const [selectedAmount, setSelectedAmount] = React.useState(10);
+    currentEnergy: number;
+    maxEnergy: number;
+}> = ({ isOpen, onClose, currentGold, onPurchase, purchasing, currentEnergy, maxEnergy }) => {
+    const minPurchaseAmount = 5;
+    const maxPurchaseableAmount = Math.max(0, maxEnergy - currentEnergy);
 
-    const energyPackages = [
-        { amount: 10, gold: 10, popular: false },
-        { amount: 25, gold: 25, popular: true },
-        { amount: 50, gold: 50, popular: false },
-        { amount: 100, gold: 100, popular: false },
-    ];
+    const [energyAmount, setEnergyAmount] = useState(minPurchaseAmount);
 
-    const handlePurchase = async () => {
-        const success = await onPurchase(selectedAmount);
-        if (success) {
-            onClose();
+    useEffect(() => {
+        if (isOpen) {
+            const maxValidAmount = Math.floor(maxPurchaseableAmount / minPurchaseAmount) * minPurchaseAmount;
+            const initialAmount = Math.min(25, maxValidAmount);
+            setEnergyAmount(initialAmount);
         }
-    };
+    }, [isOpen, maxPurchaseableAmount]);
+
+    const goldCost = energyAmount * ENERGY_CONFIG.GOLD_TO_ENERGY_RATE;
+    const maxValidPurchase = Math.floor(maxPurchaseableAmount / minPurchaseAmount) * minPurchaseAmount;
 
     if (!isOpen) return null;
 
+    if (maxPurchaseableAmount < minPurchaseAmount) {
+        return (
+            <Modal open={isOpen} size='md' onClose={onClose}>
+                <div className="parchment p-6 w-full overflow-hidden">
+                    <h3 className="text-xl font-bold text-yellow-100 mb-4">Energy Nearing Full</h3>
+                    <p className="text-sm text-gray-300 mb-4">
+                        {maxPurchaseableAmount === 0
+                            ? "Your energy is already at maximum capacity!"
+                            : `You can't purchase less than ${minPurchaseAmount} energy.`}
+                    </p>
+                    <button onClick={onClose} className="w-full bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-500 transition-all mt-4">
+                        Close
+                    </button>
+                </div>
+            </Modal>
+        );
+    }
+
     return (
-        <Modal open={isOpen} size='xl' onClose={onClose}>
-            <div className="p-6 w-full">
-                <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-2xl font-bold">Purchase Energy</h3>
-                    <button onClick={onClose} className="text-gray-400 hover:text-white text-2xl">×</button>
+        <Modal open={isOpen} size='md' onClose={onClose}>
+            <div className="parchment p-6  w-full overflow-hidden">
+                <h3 className="text-xl font-bold text-yellow-100 mb-4">Refill Energy</h3>
+                <p className="text-sm text-gray-300 mb-4">
+                    Your energy is low. Refill it with your gold coins to continue your quests.
+                </p>
+
+                <div className="my-6">
+                    <label className="block text-sm font-medium text-gray-400 mb-2" htmlFor="energy-slider">
+                        Energy to purchase: <span className="text-yellow-200 font-bold">{energyAmount}</span>
+                    </label>
+                    <input
+                        id="energy-slider"
+                        type="range"
+                        min={minPurchaseAmount}
+                        max={maxValidPurchase}
+                        step={minPurchaseAmount}
+                        value={energyAmount}
+                        onChange={(e) => setEnergyAmount(Number(e.target.value))}
+                        className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                        disabled={maxPurchaseableAmount < minPurchaseAmount}
+                    />
                 </div>
 
-                <div className="mb-4 p-3 bg-blue-900/30 border border-blue-700 rounded-lg">
+                <div className="flex items-center justify-between parchment p-3 mb-6">
+                    <span className="text-gray-300">Cost:</span>
                     <div className="flex items-center space-x-2">
-                        <Zap className="w-5 h-5 text-blue-400" />
-                        <p className="text-sm">
-                            <span className="font-medium">Your Gold:</span> {currentGold}
-                        </p>
+                        <Coins className="w-5 h-5 text-yellow-500" />
+                        <span className="font-bold text-yellow-100">{goldCost}</span>
                     </div>
                 </div>
 
-                <div className="space-y-3 mb-6">
-                    {energyPackages.map((pkg) => {
-                        const canAfford = currentGold >= pkg.gold;
-                        const isSelected = selectedAmount === pkg.amount;
-
-                        return (
-                            <button
-                                key={pkg.amount}
-                                onClick={() => setSelectedAmount(pkg.amount)}
-                                disabled={!canAfford}
-                                className={`w-full p-3 rounded-lg border transition-all ${isSelected
-                                    ? 'border-purple-500 bg-purple-900/30'
-                                    : 'border-gray-600 bg-gray-700'
-                                    } ${!canAfford ? 'opacity-50 cursor-not-allowed' : 'hover:border-purple-400'}`}
-                            >
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center space-x-2">
-                                        <Zap className="w-4 h-4 text-blue-400" />
-                                        <span className="font-medium">{pkg.amount} Energy</span>
-                                        {pkg.popular && (
-                                            <span className="px-2 py-1 bg-purple-600 text-xs rounded">POPULAR</span>
-                                        )}
-                                    </div>
-                                    <div className="flex items-center space-x-1">
-                                        <span className="text-yellow-400">{pkg.gold}</span>
-                                        <span className="text-xs text-gray-400">gold</span>
-                                    </div>
-                                </div>
-                            </button>
-                        );
-                    })}
-                </div>
-
-                <div className="flex space-x-3">
-                    <button
-                        onClick={onClose}
-                        className="flex-1 px-4 py-2 bg-gray-700 rounded-lg hover:bg-gray-600"
-                    >
-                        Cancel
-                    </button>
-                    <button
-                        onClick={handlePurchase}
-                        disabled={purchasing || currentGold < selectedAmount}
-                        className="flex-1 px-4 py-2 bg-purple-600 rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {purchasing ? 'Purchasing...' : (currentGold < selectedAmount ? 'Not enough gold!' : `Buy ${selectedAmount} Energy`)}
-                    </button>
-                </div>
-
-                <div className="mt-4 text-center">
-                    <p className="text-xs text-gray-400">
-                        Energy resets daily at midnight UTC
-                    </p>
-                </div>
+                <button
+                    onClick={() => onPurchase(energyAmount)}
+                    disabled={purchasing || currentGold < goldCost || energyAmount === 0}
+                    className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-3 rounded-lg hover:from-green-500 hover:to-emerald-500 transition-all magic-border disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    {purchasing ? 'Purchasing...' : 'Purchase Energy'}
+                </button>
             </div>
         </Modal>
     );

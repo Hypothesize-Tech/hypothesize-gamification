@@ -17,20 +17,41 @@ export const ArmoryInterface = ({
     soundManager: any;
 }) => {
     const [selectedCategory, setSelectedCategory] = useState<'items' | 'supplies' | 'specials'>('items');
-    const userLevel = calculateLevel(guildData.xp || 0).level;
 
-    const canAfford = (price: number) => (guildData.gold || 0) >= price;
+    const userLevel = calculateLevel(guildData?.xp ?? 0).level;
+    const userGold = guildData?.gold ?? 0;
+
+    const canAfford = (price: number) => userGold >= price;
     const canEquip = (levelRequired: number) => userLevel >= levelRequired;
     const isOwned = (itemId: string) => {
-        return guildData.inventory?.includes(itemId) ||
-            guildData.equippedGear?.includes(itemId) ||
-            guildData.treasures?.includes(itemId);
+        if (!guildData) return false;
+        const inventory = guildData.inventory || { items: [], weapons: [], specials: [] };
+        const treasures = guildData.treasures || [];
+        const equippedGear = guildData.equippedGear || [];
+
+        return (
+            inventory.items?.includes(itemId) ||
+            inventory.weapons?.includes(itemId) ||
+            inventory.specials?.includes(itemId) ||
+            treasures.includes(itemId) ||
+            equippedGear.includes(itemId)
+        );
     };
 
     const handlePurchase = async (item: any, category: string) => {
-        if (!canAfford(item.price) || isOwned(item.id)) return;
+        if (!guildData || !canAfford(item.price) || isOwned(item.id)) return;
 
-        await onPurchase(item, category);
+        let backendCategory = '';
+        if (category === 'items') backendCategory = 'gear';
+        else if (category === 'supplies') backendCategory = 'consumables';
+        else if (category === 'specials') backendCategory = 'treasures';
+
+        if (!backendCategory) {
+            console.error("Invalid purchase category:", category);
+            return;
+        }
+
+        await onPurchase(item, backendCategory);
         soundManager.play('purchase');
         triggerConfetti({
             particleCount: 50,
@@ -60,7 +81,7 @@ export const ArmoryInterface = ({
                         <h2 className="text-2xl font-bold text-yellow-100">Store</h2>
                         <div className="flex items-center space-x-2 ml-6">
                             <Coins className="w-5 h-5 text-yellow-500" />
-                            <span className="font-bold text-yellow-100">{guildData.gold || 0}</span>
+                            <span className="font-bold text-yellow-100">{userGold}</span>
                         </div>
                     </div>
                     <button onClick={() => { onClose(); soundManager.play('swordDraw'); }} className="text-gray-400 hover:text-white">
@@ -115,7 +136,7 @@ export const ArmoryInterface = ({
                             const owned = isOwned(item.id);
                             const affordable = canAfford(item.price);
                             const levelMet = canEquip(item.levelRequired || 1);
-                            const canPurchase = !owned && affordable && levelMet;
+                            const canPurchase = !!guildData && !owned && affordable && levelMet;
 
                             return (
                                 <div
@@ -169,7 +190,7 @@ export const ArmoryInterface = ({
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center space-x-2">
                                             <Coins className="w-4 h-4 text-yellow-500" />
-                                            <span className={`${affordable || owned ? 'text-yellow-100' : 'text-red-400'}`}>
+                                            <span className={`${!guildData || affordable || owned ? 'text-yellow-100' : 'text-red-400'}`}>
                                                 {item.price}
                                             </span>
                                         </div>
@@ -183,9 +204,10 @@ export const ArmoryInterface = ({
                                                 }`}
                                         >
                                             {owned ? 'Owned' :
-                                                !levelMet ? `Level ${item.levelRequired}` :
-                                                    !affordable ? 'Insufficient Gold' :
-                                                        'Buy'}
+                                                !guildData ? 'Loading...' :
+                                                    !levelMet ? `Level ${item.levelRequired}` :
+                                                        !affordable ? 'Insufficient Gold' :
+                                                            'Buy'}
                                         </button>
                                     </div>
                                 </div>

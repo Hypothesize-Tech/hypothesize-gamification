@@ -1,7 +1,8 @@
-import { Shield, Award, X } from 'lucide-react';
+import { Shield, Award, X, Mail, User as UserIcon, Calendar, Hash, Users } from 'lucide-react';
 import { CORE_ATTRIBUTES, ARMORY_ITEMS } from '../utils/constant';
 import { calculateLevel } from '../utils/helper';
 import './UserProfile.css';
+import { useAuth } from '../context/AuthContext';
 
 // Mock role tiers for demonstration
 const ROLE_TIERS: Record<string, Record<number, string>> = {
@@ -49,7 +50,33 @@ const getLevelTitle = (level: number): string => {
     return currentTitle;
 };
 
-export const UserProfile = ({ guildData, ceoAvatar, onClose, user }: { guildData: any, ceoAvatar: any, onClose: () => void, user: any }) => {
+function safeToArray(val: any): any[] {
+    // Only return the value if it's an array, otherwise return an empty array
+    return Array.isArray(val) ? val : [];
+}
+
+function formatDate(dateString: string | undefined): string {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+    });
+}
+
+export const UserProfile = ({
+    guildData,
+    ceoAvatar,
+    onClose,
+}: {
+    guildData: any,
+    ceoAvatar: any,
+    onClose: () => void,
+}) => {
+
+    const { user } = useAuth();
+    // console.log("user", user)
     if (!guildData) {
         return (
             <div className="user-profile-backdrop">
@@ -65,17 +92,44 @@ export const UserProfile = ({ guildData, ceoAvatar, onClose, user }: { guildData
     const roleTier = getRoleTier(userRole, levelInfo.level);
     const levelTitle = getLevelTitle(levelInfo.level);
 
+    // Defensive: ensure all are arrays before spreading
+    const inventoryArr = safeToArray(guildData.inventory);
+    const equippedGearArr = safeToArray(guildData.equippedGear);
+    const treasuresArr = safeToArray(guildData.treasures);
+
     const activeTreasures = [
-        ...(guildData.inventory || []),
-        ...(guildData.equippedGear || []),
-        ...(guildData.treasures || [])
+        ...inventoryArr,
+        ...equippedGearArr,
+        ...treasuresArr
     ]
         .map(itemId => {
-            const allItems = [...ARMORY_ITEMS.items, ...ARMORY_ITEMS.supplies, ...ARMORY_ITEMS.specials];
-            return allItems.find(item => item.id === itemId);
+            const allItems = [
+                ...safeToArray(ARMORY_ITEMS.items),
+                ...safeToArray(ARMORY_ITEMS.supplies),
+                ...safeToArray(ARMORY_ITEMS.specials)
+            ];
+            return allItems.find(item => item && item.id === itemId);
         })
         .filter(item => item);
 
+    // User info fields
+    const userInfoFields = [
+        {
+            icon: <UserIcon className="user-info-icon" size={16} />,
+            label: "Name",
+            value: user?.name || 'Adventurer'
+        },
+        {
+            icon: <Mail className="user-info-icon" size={16} />,
+            label: "Email",
+            value: user?.email || 'N/A'
+        },
+        {
+            icon: <Calendar className="user-info-icon" size={16} />,
+            label: "Joined",
+            value: (user as any)?.createdAt ? formatDate((user as any).createdAt) : 'N/A'
+        }
+    ];
 
     return (
         <div className="user-profile-backdrop" onClick={onClose}>
@@ -87,12 +141,34 @@ export const UserProfile = ({ guildData, ceoAvatar, onClose, user }: { guildData
                 {/* Profile Header */}
                 <div className="profile-header">
                     <div className="avatar-container">
-                        <span className="avatar-icon">{ceoAvatar?.avatar || '👤'}</span>
+                        {user?.picture ? (
+                            <img
+                                src={user.picture}
+                                alt={user.name || "User Avatar"}
+                                style={{ width: '74px', height: '74px', borderRadius: '50%', objectFit: 'cover' }}
+                            />
+                        ) : (
+                            <span className="avatar-icon">{ceoAvatar?.avatar || '👤'}</span>
+                        )}
                     </div>
                     <div className="user-info">
-                        <h2 className="user-name">{user?.displayName || 'Adventurer'}</h2>
+                        <h2 className="user-name">{user?.name || 'Adventurer'}</h2>
                         <p className="user-level">Level {levelInfo.level} - {levelTitle}</p>
                         <p className="user-role">{userRole} - <span className="role-tier">{roleTier}</span></p>
+                    </div>
+                </div>
+
+                {/* User Details Section */}
+                <div className="profile-section user-details-section">
+                    <h3 className="section-title">User Details</h3>
+                    <div className="user-details-list">
+                        {userInfoFields.map((field, idx) => (
+                            <div className="user-detail-row" key={field.label + idx}>
+                                {field.icon}
+                                <span className="user-detail-label">{field.label}:</span>
+                                <span className="user-detail-value">{field.value}</span>
+                            </div>
+                        ))}
                     </div>
                 </div>
 
@@ -146,4 +222,4 @@ export const UserProfile = ({ guildData, ceoAvatar, onClose, user }: { guildData
             </div>
         </div>
     );
-}; 
+};

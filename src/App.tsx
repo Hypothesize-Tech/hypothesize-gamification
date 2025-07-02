@@ -1,24 +1,24 @@
 import React, { useState, useEffect, Suspense } from 'react';
+import { useGoogleLogin } from '@react-oauth/google';
 import {
-  signInWithPopup,
-  onAuthStateChanged,
-  signOut,
-} from 'firebase/auth';
-import {
-  doc,
-  setDoc,
-  updateDoc,
-  serverTimestamp,
-  arrayUnion,
-  collection,
-  addDoc,
-  query,
-  where,
-  orderBy,
-  onSnapshot,
-  increment,
-  deleteDoc,
-} from 'firebase/firestore';
+  createGuild,
+  joinGuild,
+  getConversations,
+  saveConversation as saveConversationApi,
+  getDocuments,
+  generateDocument as generateDocumentApi,
+  saveDocument as saveDocumentApi,
+  updateGold as updateGoldApi,
+  claimDailyBonus as claimDailyBonusApi,
+  completeQuest as completeQuestApi,
+  savePersonalizedQuestDetails as savePersonalizedQuestDetailsApi,
+  purchaseArmoryItem as purchaseArmoryItemApi,
+  assignQuest as assignQuestApi,
+  checkEnergyReset as checkEnergyResetApi,
+  consumeEnergy as consumeEnergyApi,
+  purchaseEnergy as purchaseEnergyApi,
+} from './services/api';
+
 import { BedrockRuntimeClient } from '@aws-sdk/client-bedrock-runtime';
 import {
   Crown,
@@ -46,6 +46,7 @@ import {
   Castle,
   Trophy,
   AlertTriangle,
+  X,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import Modal from './components/Modal';
@@ -63,7 +64,6 @@ import {
   CORE_ATTRIBUTES
 } from './utils/constant';
 import {
-  generateAIDocument,
   QUEST_STAGES,
   triggerConfetti,
   calculateLevel,
@@ -73,7 +73,6 @@ import { ArmoryInterface } from './components/ArmoryInterface';
 import { FourPanelQuestInterface } from './components/FourPanelQuestInterface';
 import { GuildManagement } from './components/GuildManagement';
 import { DailyBonus } from './components/DailyBonus';
-import { auth, db, googleProvider } from './config/config';
 import { EpicMedievalLoader } from './components/EpicMedievalLoader';
 import { GoldPurchase } from './components/GoldPurchase';
 import type { GuildDataWithEnergy } from './components/EnergySystem';
@@ -83,8 +82,7 @@ import {
   EnergyBar,
 } from './components/EnergySystem';
 import { ENERGY_CONFIG, ENERGY_COSTS } from './config/energy';
-import { v4 as uuidv4 } from 'uuid';
-import { createInviteLink, generateGuildInviteEmail, sendEmail } from './utils/email';
+
 
 // IMPORT THE ONBOARDING FLOWS
 import { FounderOnboarding, MemberOnboarding } from './components/OnboardingFlows';
@@ -92,6 +90,7 @@ import AchievementPopup from './components/AchievementPopup';
 import { UserProfile } from './components/UserProfile';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Beastiary } from './components/Beastiary';
+import { useAuth } from './context/AuthContext';
 
 class Canvas3DErrorBoundary extends React.Component<
   { children: React.ReactNode },
@@ -193,9 +192,7 @@ const bedrockClient = new BedrockRuntimeClient({
 });
 
 export default function App() {
-  const [user, setUser] = useState<any | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [guildData, setGuildData] = useState<any | null>(null);
+  const { user, guildData, loading, signIn, signOut, refetch, setGuildData } = useAuth();
   const [selectedQuest, setSelectedQuest] = useState<any | null>(null);
 
   // ONBOARDING STATE
@@ -226,11 +223,14 @@ export default function App() {
   const [assignmentModal, setAssignmentModal] = useState<{ quest: any; questKey: string } | null>(null);
   const [newlyAwardedAchievements, setNewlyAwardedAchievements] = useState<any[]>([]);
   const [showUserProfile, setShowUserProfile] = useState(false);
+  const [hasCheckedEnergy, setHasCheckedEnergy] = useState(false);
 
   const energyManagement = useEnergyManagement(
     guildData as GuildDataWithEnergy,
-    user?.uid || '',
-    setGuildData
+    user?._id || '',
+    () => refetch(), // Simplification: just refetch all data on change
+    consumeEnergyApi,
+    purchaseEnergyApi
   );
 
   const navigate = useNavigate();
@@ -240,15 +240,15 @@ export default function App() {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const inviteToken = urlParams.get('invite');
-    const guildId = urlParams.get('guildId');
-    const founderName = urlParams.get('founderName');
-    const guildName = urlParams.get('guildName');
-    const ventureIdea = urlParams.get('ventureIdea');
-    const founderRole = urlParams.get('founderRole');
-    const currentStage = urlParams.get('currentStage');
-    const currentTask = urlParams.get('currentTask');
+    if (inviteToken) {
+      const guildId = urlParams.get('guildId');
+      const founderName = urlParams.get('founderName');
+      const guildName = urlParams.get('guildName');
+      const ventureIdea = urlParams.get('ventureIdea');
+      const founderRole = urlParams.get('founderRole');
+      const currentStage = urlParams.get('currentStage');
+      const currentTask = urlParams.get('currentTask');
 
-    if (inviteToken && guildId) {
       setOnboardingType('member');
       setInviteData({
         inviteToken,
@@ -317,189 +317,73 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, setUser);
-    return unsubscribe;
-  }, []);
+    if (loading) return;
 
-  useEffect(() => {
-    if (!user) {
-      setGuildData(null);
-      setLoading(false);
-      return;
+    if (user && !guildData) {
+      setShowOnboarding(true);
+    } else {
+      setShowOnboarding(false);
     }
 
-    setLoading(true);
+    if (guildData?.ceoAvatarId) {
+      const avatar = CEO_AVATARS.find(
+        (ceo) => ceo.id === guildData.ceoAvatarId
+      );
+      setCeoAvatar(avatar);
+    } else {
+      setCeoAvatar(null);
+    }
+  }, [user, guildData, loading]);
 
-    const userProfileRef = doc(db, 'guilds', user.uid);
+  useEffect(() => {
+    if (!user) return;
 
-    const unsubscribe = onSnapshot(userProfileRef, (userDoc) => {
-      if (!userDoc.exists()) {
-        if (navigator.onLine) {
-          setShowOnboarding(true);
-        }
-        setLoading(false);
-        return;
+    const fetchConversations = async () => {
+      try {
+        const { data } = await getConversations();
+        setConversations(data);
+      } catch (error) {
+        console.error('Error fetching conversations', error);
       }
+    };
 
-      setShowOnboarding(false);
-      const userProfileData = userDoc.data() as GuildDataWithEnergy;
-
-      if (userProfileData.isFounder) {
-        setGuildData(userProfileData);
-        if (userProfileData.ceoAvatarId) {
-          const avatar = CEO_AVATARS.find(
-            (ceo) => ceo.id === userProfileData.ceoAvatarId
-          );
-          setCeoAvatar(avatar);
-        }
-        setLoading(false);
-      } else {
-        // --- MEMBER LOGIC ---
-        if (userProfileData.joinRequestStatus === 'pending') {
-          setGuildData(userProfileData); // Store their partial profile
-          setLoading(false);
-          return;
-        }
-        const mainGuildRef = doc(db, 'guilds', userProfileData.guildId);
-        const unsubMainGuild = onSnapshot(mainGuildRef, (mainGuildDoc) => {
-          if (mainGuildDoc.exists()) {
-            const mainGuildData = mainGuildDoc.data() as GuildDataWithEnergy;
-            const mergedData = {
-              ...userProfileData,
-              members: mainGuildData.members,
-              guildLevel: mainGuildData.guildLevel,
-              guildName: mainGuildData.guildName,
-              vision: mainGuildData.vision,
-              ceoAvatarId: mainGuildData.ceoAvatarId,
-            };
-            setGuildData(mergedData);
-            if (mainGuildData.ceoAvatarId) {
-              const avatar = CEO_AVATARS.find(
-                (ceo) => ceo.id === mainGuildData.ceoAvatarId
-              );
-              setCeoAvatar(avatar);
-            }
-          } else {
-            setGuildData(userProfileData);
-            setGuildDataError(
-              "The guild you are a member of could not be found."
-            );
-          }
-          setLoading(false);
-        }, (error) => {
-          console.error("Error listening to main guild data:", error);
-          setGuildDataError("Failed to load your guild's data.");
-          setLoading(false);
-        });
-        return () => unsubMainGuild();
-      }
-    }, (error) => {
-      console.error("Error listening to user profile data:", error);
-      setGuildDataError("Failed to load your profile data.");
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
+    fetchConversations();
   }, [user, fetchTrigger]);
 
   useEffect(() => {
     if (!user) return;
 
-    const q = query(
-      collection(db, 'conversations'),
-      where('userId', '==', user.uid),
-      orderBy('createdAt', 'desc')
-    );
+    const fetchDocuments = async () => {
+      try {
+        const { data } = await getDocuments();
+        setSavedDocuments(data);
+      } catch (error) {
+        console.error('Error fetching documents', error);
+      }
+    };
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const convs = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setConversations(convs);
-    });
-
-    return unsubscribe;
-  }, [user]);
+    fetchDocuments();
+  }, [user, fetchTrigger]);
 
   useEffect(() => {
-    if (!user) return;
-
-    const q = query(
-      collection(db, 'documents'),
-      where('userId', '==', user.uid),
-      orderBy('createdAt', 'desc')
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const docs = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setSavedDocuments(docs);
-    });
-
-    return unsubscribe;
-  }, [user]);
-
-  useEffect(() => {
-    if (user && guildData) {
-      energyManagement.checkEnergyReset();
+    if (user && guildData && !hasCheckedEnergy) {
+      const checkReset = async () => {
+        try {
+          await checkEnergyResetApi();
+          setHasCheckedEnergy(true);
+          await refetch();
+        } catch (error) {
+          console.error("Failed to check energy reset", error);
+        }
+      }
+      checkReset();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, guildData]);
+  }, [user, guildData, hasCheckedEnergy, refetch]);
 
   // Listen for and process guild join requests from the subcollection
-  useEffect(() => {
-    if (user && guildData?.isFounder) {
-      const requestsRef = collection(db, 'guilds', user.uid, 'joinRequests');
-      const unsubscribe = onSnapshot(requestsRef, (snapshot) => {
-        if (snapshot.empty) {
-          return;
-        }
-
-        snapshot.docs.forEach(async (requestDoc) => {
-          const requestData = requestDoc.data();
-          const memberId = requestDoc.id;
-
-          // Use a transaction or careful ordering to ensure atomicity
-          try {
-            const memberProfileRef = doc(db, 'guilds', memberId);
-            const founderGuildRef = doc(db, 'guilds', user.uid);
-
-            // 1. Add member to the founder's guild document
-            await updateDoc(founderGuildRef, {
-              members: arrayUnion({
-                uid: memberId,
-                name: requestData.memberName,
-                email: requestData.memberEmail,
-                role: requestData.memberRole, // Core Role
-                permissionRole: 'knight', // Default Permission Role
-                joinedAt: new Date().toISOString()
-              }),
-              gold: increment(50) // Guild gets bonus
-            });
-
-            // 2. Update the member's document to mark as approved
-            await updateDoc(memberProfileRef, {
-              joinRequestStatus: 'approved'
-            });
-
-            // 3. Delete the processed join request
-            await deleteDoc(requestDoc.ref);
-
-            console.log(`Approved and added member: ${memberId}`);
-
-          } catch (error) {
-            console.error(`Failed to approve member ${memberId}:`, error);
-          }
-        });
-      });
-
-      return () => unsubscribe();
-    }
-  }, [user, guildData?.isFounder]);
-
+  // This logic is now handled by the backend. A user's guildId will be updated upon approval.
+  // The frontend will then fetch the correct guild data.
+  // We might need a notification system in the future to inform the founder about join requests.
   useEffect(() => {
     if (location.pathname === '/' && !localStorage.getItem('hasVisited')) {
       localStorage.setItem('hasVisited', 'true');
@@ -507,38 +391,33 @@ export default function App() {
     }
   }, []);
 
-  const handleSignIn = async () => {
-    try {
-      // Add these settings to avoid CORS issues
-      googleProvider.setCustomParameters({
-        prompt: 'select_account'
-      });
-
-      await signInWithPopup(auth, googleProvider);
-      if (userInteracted) soundManager.play('levelUp');
-    } catch (error: any) {
-      console.error('Sign in error:', error);
-
-      // Handle specific auth errors
-      if (error.code === 'auth/popup-closed-by-user') {
-        console.log('User closed the popup');
-      } else if (error.code === 'auth/popup-blocked') {
-        setModalContent({
-          title: "Popup Blocked",
-          message: "Please allow popups for this site to sign in with Google."
-        });
+  const handleSignIn = useGoogleLogin({
+    flow: 'auth-code',
+    onSuccess: async (codeResponse: any) => {
+      try {
+        await signIn(codeResponse.code);
+        if (userInteracted) soundManager.play('levelUp');
+      } catch (error) {
+        console.error('Sign in error:', error);
+        if (userInteracted) soundManager.play('error');
       }
-
+    },
+    onError: () => {
+      console.error('Login Failed');
+      setModalContent({
+        title: "Login Failed",
+        message: "Google login failed. Please try again."
+      });
       if (userInteracted) soundManager.play('error');
     }
-  };
+  });
 
   const handleSignOut = async () => {
     try {
-      await signOut(auth);
-      setGuildData(null);
+      signOut();
       setCeoAvatar(null);
       setShowOnboarding(false);
+      setHasCheckedEnergy(false);
       if (userInteracted) soundManager.play('swordDraw');
     } catch (error) {
       console.error('Sign out error:', error);
@@ -547,283 +426,46 @@ export default function App() {
 
   // FOUNDER ONBOARDING COMPLETION
   const handleFounderOnboardingComplete = async (data: any) => {
-    if (!user) return;
-
-    if (!navigator.onLine) {
-      setModalContent({
-        title: "Offline",
-        message: "You are offline. Connect to the internet to create your guild."
-      });
-      return;
-    }
-
-    setLoading(true);
-
-    // Destructure to remove the non-serializable user object from the data
-    const { user: _firebaseUser, ...onboardingData } = data;
-
     try {
-      // Get the role from onboarding data
-      const selectedRole = onboardingData.role;
-
-      // Create initial guild data based on onboarding
-      const initialGuildData: GuildDataWithEnergy = {
-        guildId: user.uid,
-        guildName: onboardingData.guildName || `${onboardingData.name}'s Guild`,
-        vision: onboardingData.vision,
-        xp: 150, // Bonus XP for completing onboarding
-        gold: 50, // Founder's Grant
-        level: 1,
-        guildLevel: 1,
-        achievements: ['onboarding_complete', 'guild_founded', 'role_chosen'],
-        questProgress: {},
-        onboardingData: onboardingData,
-
-        // Role and Attributes
-        role: selectedRole,
-        attributes: {
-          Tech: selectedRole === 'engineer' ? 2 : 1,
-          Marketing: selectedRole === 'herald' ? 2 : 1,
-          Sales: selectedRole === 'vanguard' ? 2 : 1,
-          Legal: selectedRole === 'loremaster' ? 2 : 1,
-          Operations: selectedRole === 'quartermaster' ? 2 : 1,
-          Finance: selectedRole === 'treasurer' ? 2 : 1,
-        },
-        permissionRole: 'knight', // Default permission role for members
-
-        // Fix for missing properties
-        coreAttribute: selectedRole,
-        avatar: null,
-        ceoAvatarId: '',
-        inventory: [],
-        equippedGear: [],
-        treasures: [],
-        activeEffects: [],
-
-        // Energy System
-        currentEnergy: ENERGY_CONFIG.MAX_DAILY_ENERGY,
-        maxEnergy: ENERGY_CONFIG.MAX_DAILY_ENERGY,
-        lastEnergyReset: serverTimestamp(),
-        isPremium: false,
-        premiumExpiryDate: null,
-        energyPurchaseHistory: [],
-
-        // Guild Management
-        isFounder: true,
-        founderId: user.uid,
-        members: [{
-          uid: user.uid,
-          name: onboardingData.name || user.displayName,
-          email: user.email,
-          role: selectedRole, // Core Role
-          founderRole: selectedRole, //This seems redundant, but leaving for now
-          permissionRole: 'leader', // Permission Role
-          joinedAt: new Date().toISOString()
-        }],
-
-        // Invites sent
-        invitesSent: [],
-
-        // Timestamps
-        lastCheckIn: serverTimestamp(),
-        checkInStreak: 1,
-        dailyStreak: 0,
-        lastDailyBonus: null,
-        createdAt: serverTimestamp()
-      };
-
-      // Save to Firestore
-      await setDoc(doc(db, 'guilds', user.uid), initialGuildData);
-      setGuildData(initialGuildData);
+      const newGuild = await createGuild(data.vision, data);
+      setGuildData(newGuild);
       setShowOnboarding(false);
-
-      if (userInteracted) soundManager.play('levelUp');
-      triggerConfetti();
-
-      // Send invites to invited members
-      if (onboardingData.invites && onboardingData.invites.length > 0) {
-        const guildRef = doc(db, 'guilds', user.uid);
-        const newInvites: { email: string; token: string; status: string; sentAt: string; }[] = [];
-
-        for (const email of onboardingData.invites) {
-          if (email) {
-            try {
-              const inviteToken = uuidv4();
-              const inviteLink = createInviteLink({ ...initialGuildData, invitesSent: [] }, inviteToken);
-              const { subject, body } = generateGuildInviteEmail({
-                guildName: initialGuildData.guildName,
-                founderName: onboardingData.name || 'the Founder',
-                ventureIdea: initialGuildData.vision,
-                inviteLink,
-              });
-
-              newInvites.push({ email, token: inviteToken, status: 'pending', sentAt: new Date().toISOString() });
-              sendEmail(email, subject, body);
-            } catch (error) {
-              console.error(`Failed to send invite to ${email}:`, error);
-            }
-          }
-        }
-
-        if (newInvites.length > 0) {
-          await updateDoc(guildRef, {
-            invitesSent: arrayUnion(...newInvites)
-          });
-          setGuildData((prev: GuildDataWithEnergy | null) => prev ? { ...prev, invitesSent: [...(prev.invitesSent || []), ...newInvites] } : null);
-        }
-
-        setModalContent({
-          title: "Invitations Sent",
-          message: "Invitations have been sent to your team members!"
-        });
-      }
-
-      // Automatically open the first quest for the user
-      const fundamentalsStage = Object.values(QUEST_STAGES).find((s: any) => s.id === 'fundamentals');
-      if (fundamentalsStage) {
-        const visionQuest = fundamentalsStage.quests.find((q: any) => q.id === 'vision');
-        if (visionQuest) {
-          setSelectedQuest(visionQuest);
-        }
-      }
-
-    } catch (error: any) {
-      console.error('Error creating guild:', error);
+      setModalContent({
+        title: "Your Quest Begins!",
+        message: "Your guild has been founded! You've received 50 gold to start your journey. Don't forget to collect your first daily bonus!"
+      });
+      if (userInteracted) soundManager.play('questComplete');
+    } catch (error) {
+      console.error('Failed to create guild:', error);
+      setModalContent({
+        title: "Error",
+        message: "Failed to create your guild. Please try again."
+      });
       if (userInteracted) soundManager.play('error');
-
-      if (error?.code === 'unavailable' || error?.message?.includes('offline')) {
-        setModalContent({
-          title: "Connection Error",
-          message: "Unable to create your guild. Check your internet connection."
-        });
-      } else {
-        setModalContent({
-          title: "Error",
-          message: "Guild creation failed. Please try again."
-        });
-      }
     }
-
-    setLoading(false);
   };
 
   // MEMBER ONBOARDING COMPLETION
   const handleMemberOnboardingComplete = async (data: any) => {
-    if (!user || !inviteData) return;
-
-    if (!navigator.onLine) {
-      setModalContent({
-        title: "Offline",
-        message: "You are offline. Connect to the internet to join the guild."
-      });
-      return;
-    }
-
-    setLoading(true);
-
-    // Destructure to remove the non-serializable user object from the data
-    const { user: _firebaseUser, ...onboardingData } = data;
-
     try {
-      // Get the role from onboarding data
-      const selectedRole = onboardingData.role;
+      if (!inviteData?.guildId) throw new Error("No guild ID found for invite.");
 
-      // Create member profile
-      const memberData: GuildDataWithEnergy = {
-        guildId: inviteData.guildId, // Join the existing guild
-        guildName: inviteData.guildName,
-        vision: inviteData.ventureIdea,
-        isFounder: false,
-        founderId: inviteData.guildId, // Reference to founder's ID
-
-        // Member-specific data
-        xp: 100, // Starting XP for members
-        gold: 0, // Members start with 0 personal gold
-        level: 1, // Will be synced with main guild
-        guildLevel: 1,
-        achievements: ['onboarding_complete', 'role_chosen'],
-        questProgress: {},
-        onboardingData: {
-          ...onboardingData,
-          email: user.email,
-          name: onboardingData.name || user.displayName,
-        },
-        joinRequestStatus: 'pending',
-
-        // Role and Attributes
-        role: selectedRole,
-        attributes: {
-          Tech: selectedRole === 'engineer' ? 2 : 1,
-          Marketing: selectedRole === 'herald' ? 2 : 1,
-          Sales: selectedRole === 'vanguard' ? 2 : 1,
-          Legal: selectedRole === 'loremaster' ? 2 : 1,
-          Operations: selectedRole === 'quartermaster' ? 2 : 1,
-          Finance: selectedRole === 'treasurer' ? 2 : 1,
-        },
-        permissionRole: 'knight', // Default permission role for members
-
-        // Fix for missing properties
-        coreAttribute: selectedRole,
-        avatar: null,
-        ceoAvatarId: '',
-        inventory: [],
-        equippedGear: [],
-        treasures: [],
-        activeEffects: [],
-
-        // Energy System
-        currentEnergy: ENERGY_CONFIG.MAX_DAILY_ENERGY,
-        maxEnergy: ENERGY_CONFIG.MAX_DAILY_ENERGY,
-        lastEnergyReset: serverTimestamp(),
-        isPremium: false,
-        premiumExpiryDate: null,
-        energyPurchaseHistory: [],
-
-        // Member info
-        members: [], // Will be populated from main guild
-
-        // Timestamps
-        lastCheckIn: serverTimestamp(),
-        checkInStreak: 1,
-        dailyStreak: 0,
-        lastDailyBonus: null,
-        createdAt: serverTimestamp()
-      };
-
-      // Save member profile
-      await setDoc(doc(db, 'guilds', user.uid), memberData);
-
-      // Create a join request in the founder's subcollection
-      const joinRequestRef = doc(db, 'guilds', inviteData.guildId, 'joinRequests', user.uid);
-      await setDoc(joinRequestRef, {
-        memberName: onboardingData.name || user.displayName,
-        memberEmail: user.email,
-        memberRole: selectedRole,
-        requestedAt: serverTimestamp()
-      });
-
-      // Remove the direct update to the founder's guild
-      setGuildData(memberData);
+      await joinGuild(inviteData.guildId, data.role);
+      await refetch();
       setShowOnboarding(false);
-
-      if (userInteracted) soundManager.play('levelUp');
-      triggerConfetti();
-
       setModalContent({
-        title: "Request Sent",
-        message: "Your request to join the guild has been sent to the founder for approval!"
+        title: "Welcome to the Guild!",
+        message: "You have successfully joined the guild. The guild has been awarded 50 gold! Any available daily bonuses have also been collected."
       });
-
-    } catch (error: any) {
-      console.error('Error joining guild:', error);
-      if (userInteracted) soundManager.play('error');
+      if (userInteracted) soundManager.play('questComplete');
+    } catch (error) {
+      console.error('Failed to join guild:', error);
       setModalContent({
         title: "Error",
-        message: "Error joining guild. Please try again."
+        message: "Failed to join the guild. Please try again."
       });
+      if (userInteracted) soundManager.play('error');
     }
-
-    setLoading(false);
   };
 
   // MEMBER ONBOARDING DECLINE
@@ -836,20 +478,17 @@ export default function App() {
     if (!user) return;
 
     try {
-      await addDoc(collection(db, 'conversations'), {
-        userId: user.uid,
+      await saveConversationApi({
         questId: quest?.id || 'general',
         questName: quest?.name || 'General Conversation',
         question: question,
         response: response,
-        createdAt: serverTimestamp()
       });
 
+      setFetchTrigger(t => t + 1); // Refetch conversations
+
       if (conversations.length + 1 >= 20 && !guildData?.achievements?.includes('conversation_pro')) {
-        await updateDoc(doc(db, 'guilds', user.uid), {
-          achievements: arrayUnion('conversation_pro'),
-          xp: increment(50)
-        });
+        await refetch();
         if (userInteracted) soundManager.play('levelUp');
       }
     } catch (error) {
@@ -861,28 +500,17 @@ export default function App() {
     if (!user || !guildData) return;
 
     try {
-      await addDoc(collection(db, 'documents'), {
-        userId: user.uid,
-        templateId: template.id,
-        templateName: template.name,
-        content: content,
-        version: 1,
-        createdAt: serverTimestamp()
+      await saveDocumentApi({
+        template,
+        content,
       });
 
-      await updateDoc(doc(db, 'guilds', user.uid), {
-        xp: increment(template.xp)
-      });
+      setFetchTrigger(t => t + 1); // Refetch guild data and documents
 
-      const newXP = (guildData.xp || 0) + template.xp;
-      setGuildData({ ...guildData, xp: newXP });
       if (userInteracted) soundManager.play('questComplete');
 
       if (savedDocuments.length + 1 >= 5 && !guildData.achievements?.includes('document_master')) {
-        await updateDoc(doc(db, 'guilds', user.uid), {
-          achievements: arrayUnion('document_master'),
-          xp: increment(50)
-        });
+        await refetch();
         if (userInteracted) soundManager.play('levelUp');
       }
     } catch (error) {
@@ -892,22 +520,13 @@ export default function App() {
 
   const updateGold = async (amount: number) => {
     if (!user || !guildData) return;
-
-    const newGold = Math.max(0, (guildData.gold || 0) + amount);
-
     try {
-      await updateDoc(doc(db, 'guilds', user.uid), {
-        gold: newGold
-      });
-
-      setGuildData({ ...guildData, gold: newGold });
-
-      if (newGold >= 10000 && !guildData.achievements?.includes('gold_hoarder')) {
-        await updateDoc(doc(db, 'guilds', user.uid), {
-          achievements: arrayUnion('gold_hoarder'),
-          xp: increment(100)
-        });
+      const { data: updatedGuild } = await updateGoldApi(amount);
+      if (updatedGuild.gold >= 10000 && !updatedGuild.achievements?.includes('gold_hoarder')) {
+        await refetch();
         if (userInteracted) soundManager.play('levelUp');
+      } else {
+        await refetch();
       }
     } catch (error) {
       console.error('Error updating gold:', error);
@@ -917,53 +536,31 @@ export default function App() {
   const claimDailyBonus = async () => {
     if (!user || !guildData) return;
 
-    const now = new Date();
-    const lastClaim = guildData.lastDailyBonus;
-    const lastClaimDate = lastClaim ? new Date(lastClaim) : null;
-
-    if (lastClaimDate && now.toDateString() === lastClaimDate.toDateString()) {
-      setModalContent({ title: "Already Claimed", message: "You have already claimed your daily bonus today. Come back tomorrow!" });
-      return;
-    }
-
-    let newStreak = 1;
-    if (lastClaimDate) {
-      const daysDiff = Math.floor((now.getTime() - lastClaimDate.getTime()) / (1000 * 60 * 60 * 24));
-      if (daysDiff === 1) {
-        newStreak = (guildData.dailyStreak || 0) + 1;
-      }
-    }
+    // --- Optimistic Update ---
+    const originalGuildData = guildData;
+    const optimisticGuildData = {
+      ...guildData,
+      gold: (guildData.gold || 0) + ENERGY_CONFIG.DAILY_BONUS_GOLD,
+      dailyStreak: (guildData.dailyStreak || 0) + 1,
+      lastDailyBonus: new Date().toISOString(),
+    };
+    setGuildData(optimisticGuildData);
+    if (userInteracted) soundManager.play('coinCollect');
+    triggerConfetti({
+      particleCount: 30,
+      spread: 45,
+      origin: { y: 0.3 }
+    });
+    // --- End Optimistic Update ---
 
     try {
-      await updateDoc(doc(db, 'guilds', user.uid), {
-        gold: increment(5),
-        lastDailyBonus: now.toISOString(),
-        dailyStreak: newStreak
-      });
-
-      setGuildData({
-        ...guildData,
-        gold: (guildData.gold || 0) + 5,
-        lastDailyBonus: now.toISOString(),
-        dailyStreak: newStreak
-      });
-
-      if (userInteracted) soundManager.play('coinCollect');
-      triggerConfetti({
-        particleCount: 30,
-        spread: 45,
-        origin: { y: 0.3 }
-      });
-
-      if (newStreak >= 30 && !guildData.achievements?.includes('daily_champion')) {
-        await updateDoc(doc(db, 'guilds', user.uid), {
-          achievements: arrayUnion('daily_champion'),
-          xp: increment(200)
-        });
-        if (userInteracted) soundManager.play('levelUp');
-      }
+      await claimDailyBonusApi();
+      await refetch();
     } catch (error) {
       console.error('Error claiming daily bonus:', error);
+      await refetch(); // Revert on error by refetching
+      const err = error as any;
+      setModalContent({ title: "Already Claimed", message: err.response?.data?.message || "You have already claimed your daily bonus today. Come back tomorrow!" });
     }
   };
 
@@ -974,17 +571,6 @@ export default function App() {
     triggerConfetti();
 
     const questKey = `${selectedQuest.stageId}_${selectedQuest.id}`;
-    const guildRef = doc(db, 'guilds', guildData.guildId);
-
-    const updates: { [key: string]: any } = {
-      [`questProgress.${questKey}`]: {
-        ...questData,
-        completed: true,
-      },
-      xp: increment(questData.xpReward),
-      gold: increment(questData.goldReward),
-      lastQuestCompletedAt: serverTimestamp(),
-    };
 
     // --- Achievement Logic ---
     const updatedQuestProgress = {
@@ -992,35 +578,26 @@ export default function App() {
       [questKey]: { completed: true }
     };
 
-    const currentUserMember = guildData.members.find((m: any) => m.uid === user.uid);
-    const currentUserRole = currentUserMember?.role;
+    const tempGuildDataForAchievements = {
+      ...guildData,
+      questProgress: updatedQuestProgress,
+    };
 
-    if (currentUserRole) {
-      const existingAchievements = guildData.achievements || {};
-      const newAchievements = checkAndAwardAchievements(
-        currentUserRole,
-        updatedQuestProgress,
-        existingAchievements
-      );
+    const newAchievements = checkAndAwardAchievements(tempGuildDataForAchievements);
 
-      if (newAchievements.length > 0) {
-        setNewlyAwardedAchievements(newAchievements);
-        const achievementsUpdate: { [key: string]: any } = {};
-        newAchievements.forEach((ach: any) => {
-          achievementsUpdate[`achievements.${ach.name}`] = {
-            unlockedAt: serverTimestamp(),
-            description: ach.description,
-            icon: ach.icon
-          };
-        });
-        Object.assign(updates, achievementsUpdate);
-      }
+    if (newAchievements.length > 0) {
+      setNewlyAwardedAchievements(newAchievements);
     }
     // --- End Achievement Logic ---
 
     try {
-      await updateDoc(guildRef, updates);
+      await completeQuestApi({
+        questKey,
+        ...questData,
+        achievements: newAchievements,
+      });
       setSelectedQuest(null);
+      await refetch();
     } catch (error) {
       console.error('Error completing quest:', error);
       alert('There was an error completing the quest. Please try again.');
@@ -1030,20 +607,8 @@ export default function App() {
   const savePersonalizedQuestDetails = async (questKey: string, personalizedData: any) => {
     if (!user || !guildData) return;
     try {
-      await updateDoc(doc(db, 'guilds', user.uid), {
-        [`questProgress.${questKey}.personalizedData`]: personalizedData
-      });
-      // Optionally update local state to avoid re-fetch
-      setGuildData((prev: any) => ({
-        ...prev,
-        questProgress: {
-          ...prev.questProgress,
-          [questKey]: {
-            ...prev.questProgress?.[questKey],
-            personalizedData
-          }
-        }
-      }));
+      await savePersonalizedQuestDetailsApi({ questKey, personalizedData });
+      await refetch();
     } catch (error) {
       console.error('Error saving personalized quest details:', error);
     }
@@ -1052,46 +617,25 @@ export default function App() {
   const handleArmoryPurchase = async (item: any, category: string) => {
     if (!user || !guildData) return;
 
-    const newGold = (guildData.gold || 0) - item.price;
-
-    if (newGold < 0) {
+    if (guildData.gold < item.price) {
       setModalContent({ title: "Not Enough Gold", message: "You do not have enough gold coins for this purchase." });
       if (userInteracted) soundManager.play('error');
       return;
     }
 
     try {
-      const updateData: any = {
-        gold: newGold
-      };
+      const { data: updatedGuild } = await purchaseArmoryItemApi({ item, category });
+      if (userInteracted) soundManager.play('purchase');
 
-      if (category === 'gear') {
-        updateData.inventory = arrayUnion(item.id);
-        updateData.equippedGear = arrayUnion(item.id);
-      } else if (category === 'consumables') {
-        updateData.inventory = arrayUnion(item.id);
-      } else if (category === 'treasures') {
-        updateData.treasures = arrayUnion(item.id);
+      const totalPurchases = (updatedGuild.inventory?.weapons.length || 0) +
+        (updatedGuild.inventory?.items.length || 0) +
+        (updatedGuild.treasures?.length || 0);
+
+      if (totalPurchases >= 5 && !updatedGuild.achievements?.includes('gear_collector')) {
+        await refetch();
+      } else {
+        await refetch();
       }
-
-      const totalPurchases = (guildData.inventory?.length || 0) +
-        (guildData.equippedGear?.length || 0) +
-        (guildData.treasures?.length || 0) + 1;
-
-      if (totalPurchases >= 5 && !guildData.achievements?.includes('gear_collector')) {
-        updateData.achievements = arrayUnion('gear_collector');
-        updateData.xp = increment(100);
-      }
-
-      await updateDoc(doc(db, 'guilds', user.uid), updateData);
-
-      setGuildData({
-        ...guildData,
-        gold: newGold,
-        inventory: [...(guildData.inventory || []), item.id],
-        ...(category === 'gear' ? { equippedGear: [...(guildData.equippedGear || []), item.id] } : {}),
-        ...(category === 'treasures' ? { treasures: [...(guildData.treasures || []), item.id] } : {})
-      });
 
       setModalContent({ title: "Purchase Successful", message: `You have purchased ${item.name} for ${item.price} gold coins.` });
     } catch (error) {
@@ -1111,8 +655,8 @@ export default function App() {
       return;
     }
 
-    const content = await generateAIDocument(template, { ...guildData, ceoAvatar }, bedrockClient);
-    await saveDocument(template, content);
+    const { data } = await generateDocumentApi(template);
+    await saveDocument(template, data.content);
     setGeneratingDoc(false);
   };
 
@@ -1137,24 +681,9 @@ export default function App() {
     if (!user || !guildData || !guildData.isFounder) return;
 
     try {
-      await updateDoc(doc(db, 'guilds', user.uid), {
-        [`questProgress.${questKey}.assignedTo`]: {
-          uid: member.uid,
-          name: member.name,
-        }
-      });
-
-      setGuildData((prev: any) => ({
-        ...prev,
-        questProgress: {
-          ...prev.questProgress,
-          [questKey]: {
-            ...prev.questProgress?.[questKey],
-            assignedTo: { uid: member.uid, name: member.name }
-          }
-        }
-      }));
+      await assignQuestApi({ questKey, member });
       setAssignmentModal(null);
+      await refetch();
     } catch (error) {
       console.error('Error assigning quest:', error);
       alert('Failed to assign quest.');
@@ -1198,20 +727,6 @@ export default function App() {
   };
 
   const handleOpenQuest = (quest: any) => {
-    if (
-      !guildData?.guildLevel ||
-      (quest.stageId === 'fundamentals' && guildData.guildLevel < 1) ||
-      (quest.stageId === 'kickoff' && guildData.guildLevel < 2) ||
-      (quest.stageId === 'gtm' && guildData.guildLevel < 3) ||
-      (quest.stageId === 'growth' && guildData.guildLevel < 4) ||
-      (quest.stageId === 'launch' && guildData.guildLevel < 5)
-    ) {
-      setModalContent({
-        title: "Quest Unlocked",
-        message: "You need to complete previous stages to unlock this quest."
-      });
-      return;
-    }
     setSelectedQuest(quest);
     soundManager.play('swordDraw');
   };
@@ -1271,7 +786,7 @@ export default function App() {
           <h1 className="text-3xl font-bold text-yellow-100 mb-2">The Startup Quest</h1>
           <p className="text-gray-300 mb-6">Start your journey to building your company</p>
           <button
-            onClick={handleSignIn}
+            onClick={() => handleSignIn()}
             className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-8 py-4 rounded-lg hover:from-purple-500 hover:to-pink-500 transition-all transform hover:scale-105 magic-border"
           >
             <span className="flex items-center space-x-3">
@@ -1322,10 +837,13 @@ export default function App() {
   const levelInfo = calculateLevel(guildData?.xp || 0);
   const stats = calculateStats();
   const guildLevel = GUILD_LEVELS[guildData?.guildLevel as keyof typeof GUILD_LEVELS] || GUILD_LEVELS[1];
-  const currentUserRole = guildData?.members?.find((m: any) => m.uid === user.uid)?.permissionRole;
+  const currentUserRole = guildData?.members?.find((m: any) => m.uid === user._id)?.permissionRole;
+  const allQuests = Object.values(QUEST_STAGES).flatMap(stage =>
+    stage.quests.map(quest => ({ ...quest, stageId: stage.id }))
+  );
 
   return (
-    <div className="flex h-screen bg-gray-900 text-white font-sans">
+    <div key={user?._id} className="flex h-screen bg-gray-900 text-white font-sans">
       {/* Sidebar */}
       <div className="w-64 bg-gray-800 flex flex-col p-4 border-r border-yellow-700/50">
         <div className="flex items-center space-x-3 mb-8">
@@ -1456,7 +974,7 @@ export default function App() {
               soundManager={soundManager}
               bedrockClient={bedrockClient}
               consumeEnergy={energyManagement.consumeEnergy}
-              setGuildData={setGuildData}
+              setGuildData={() => refetch()}
               vision={guildData?.vision}
               savePersonalizedQuestDetails={savePersonalizedQuestDetails}
               currentUserRole={currentUserRole}
@@ -1466,13 +984,13 @@ export default function App() {
             <ArmoryInterface
               guildData={guildData}
               onPurchase={handleArmoryPurchase}
+              onClose={() => { setShowArmory(false); if (userInteracted) soundManager.play('swordDraw'); }}
               soundManager={soundManager}
-              onClose={() => setShowArmory(false)}
             />
           ) : showGuildManagement ? (
             <GuildManagement
               guildData={guildData}
-              setGuildData={setGuildData}
+              setGuildData={() => refetch()}
               onClose={() => setShowGuildManagement(false)}
             />
           ) : showBeastiary ? (
@@ -1493,14 +1011,20 @@ export default function App() {
                 {/* Main Quest Map */}
                 <div className="relative flex flex-col items-center space-y-8">
                   {Object.values(QUEST_STAGES).map((stage, index, stages) => {
-                    const isLocked = stage.id !== 'fundamentals' && guildData?.guildLevel <
-                      (stage.id === 'kickoff' ? 2 : stage.id === 'gtm' ? 3 : stage.id === 'growth' ? 4 : 5);
+                    const firstQuestOfStage = stage.quests[0];
+                    const firstQuestIndex = allQuests.findIndex(q => q.id === firstQuestOfStage.id && q.stageId === stage.id);
+                    const isFirstQuestOfAll = firstQuestIndex === 0;
+                    const prevQuestForStage = isFirstQuestOfAll ? null : allQuests[firstQuestIndex - 1];
+                    const prevQuestKeyForStage = prevQuestForStage ? `${prevQuestForStage.stageId}_${prevQuestForStage.id}` : null;
+                    const prevQuestCompletedForStage = prevQuestKeyForStage ? guildData?.questProgress?.[prevQuestKeyForStage]?.completed : true;
+                    const isStageLocked = !isFirstQuestOfAll && !prevQuestCompletedForStage;
+
                     const StageIcon = stage.icon;
 
                     return (
                       <React.Fragment key={stage.id}>
                         <div
-                          className={`w-full max-w-4xl parchment rounded-lg p-6 shadow-xl transition-all duration-500 ${isLocked ? 'opacity-50 grayscale' : 'hover:shadow-2xl'
+                          className={`w-full max-w-4xl parchment rounded-lg p-6 shadow-xl transition-all duration-500 ${isStageLocked ? 'opacity-50 grayscale' : 'hover:shadow-2xl'
                             } hero-3d`}
                         >
                           <div className="flex items-center mb-4">
@@ -1512,8 +1036,8 @@ export default function App() {
                             <div>
                               <h3 className="text-2xl font-bold text-yellow-100">{stage.name}</h3>
                               <p className="text-sm text-gray-300">{stage.description}</p>
-                              {isLocked && (
-                                <p className="text-xs text-orange-400 mt-1">⚠️ Complete previous stages to unlock</p>
+                              {isStageLocked && (
+                                <p className="text-xs text-orange-400 mt-1">⚠️ Complete previous quests to unlock</p>
                               )}
                             </div>
                           </div>
@@ -1526,16 +1050,24 @@ export default function App() {
                               const xpEarned = questProgress?.xpReward;
                               const assignedTo = questProgress?.assignedTo;
 
+                              const questIndex = allQuests.findIndex(q => q.id === quest.id && q.stageId === stage.id);
+                              const isFirstQuest = questIndex === 0;
+                              const previousQuest = isFirstQuest ? null : allQuests[questIndex - 1];
+                              const previousQuestKey = previousQuest ? `${previousQuest.stageId}_${previousQuest.id}` : null;
+                              const previousQuestCompleted = previousQuestKey ? guildData?.questProgress?.[previousQuestKey]?.completed : true;
+
+                              const isQuestLocked = !isFirstQuest && !previousQuestCompleted;
+
                               return (
                                 <div
                                   key={quest.id}
                                   onClick={() => {
-                                    if (!isLocked) {
+                                    if (!isQuestLocked) {
                                       handleOpenQuest({ ...quest, stageId: stage.id });
                                     }
                                   }}
-                                  onMouseEnter={() => { if (!isLocked && userInteracted) soundManager.play('swordDraw'); }}
-                                  className={`p-4 rounded-lg cursor-pointer transition-all duration-300 ${isLocked
+                                  onMouseEnter={() => { if (!isQuestLocked && userInteracted) soundManager.play('swordDraw'); }}
+                                  className={`p-4 rounded-lg cursor-pointer transition-all duration-300 ${isQuestLocked
                                     ? 'bg-gray-700/50 cursor-not-allowed'
                                     : isCompleted
                                       ? 'parchment border-2 border-green-700 bg-green-900/30 relative hover:transform hover:scale-102 hover:shadow-lg'
@@ -1694,7 +1226,7 @@ export default function App() {
             soundManager={soundManager}
             bedrockClient={bedrockClient}
             consumeEnergy={energyManagement.consumeEnergy}
-            setGuildData={setGuildData}
+            setGuildData={() => refetch()}
             vision={guildData?.vision}
             savePersonalizedQuestDetails={savePersonalizedQuestDetails}
             currentUserRole={currentUserRole}
@@ -1705,7 +1237,7 @@ export default function App() {
           <GuildManagement
             guildData={guildData}
             onClose={() => { setShowGuildManagement(false); if (userInteracted) soundManager.play('swordDraw'); }}
-            setGuildData={setGuildData}
+            setGuildData={() => refetch()}
           />
         )}
         {showArmory && (
@@ -1716,361 +1248,69 @@ export default function App() {
             soundManager={soundManager}
           />
         )}
-        <Modal open={showDashboard} size='full' onClose={() => { setShowDashboard(false); if (userInteracted) soundManager.play('swordDraw'); }}>
-          <div className="p-6 w-full">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-2xl font-bold text-yellow-100">Progress</h3>
-              <button
-                onClick={() => { setShowDashboard(false); if (userInteracted) soundManager.play('swordDraw'); }}
-                className="text-gray-400 hover:text-white text-2xl"
-              >
-                ×
-              </button>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-              <div className="parchment rounded-lg p-4">
-                <p className="text-sm text-gray-300 mb-1">Total XP</p>
-                <p className="text-2xl font-bold text-purple-400">{guildData?.xp || 0}</p>
-              </div>
-              <div className="parchment rounded-lg p-4">
-                <p className="text-sm text-gray-300 mb-1">Gold Coins</p>
-                <p className="text-2xl font-bold text-yellow-400">{guildData?.gold || 0}</p>
-              </div>
-              <div className="parchment rounded-lg p-4">
-                <p className="text-sm text-gray-300 mb-1">Quests Completed</p>
-                <p className="text-2xl font-bold text-green-400">{stats.completedQuests}/{stats.totalQuests}</p>
-              </div>
-              <div className="parchment rounded-lg p-4">
-                <p className="text-sm text-gray-300 mb-1">Guild Level</p>
-                <p className="text-2xl font-bold text-blue-400">{guildLevel.name}</p>
-              </div>
-            </div>
-            <div className="mb-6">
-              <h4 className="text-lg font-bold mb-3 text-yellow-100">Your Progress</h4>
-              <div className="space-y-3">
-                <div>
-                  <p className="text-sm text-gray-300 mb-1">Documents Created</p>
-                  <div className="w-full bg-gray-700 rounded-full h-2">
-                    <div className="bg-yellow-500 h-2 rounded-full" style={{ width: `${Math.min(savedDocuments.length * 20, 100)}%` }}></div>
-                  </div>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-300 mb-1">Conversations</p>
-                  <div className="w-full bg-gray-700 rounded-full h-2">
-                    <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${Math.min(conversations.length * 5, 100)}%` }}></div>
-                  </div>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-300 mb-1">Daily Streak</p>
-                  <div className="w-full bg-gray-700 rounded-full h-2">
-                    <div className="bg-orange-500 h-2 rounded-full" style={{ width: `${Math.min((guildData?.dailyStreak || 0) * 3.33, 100)}%` }}></div>
-                  </div>
-                  <p className="text-xs text-gray-400 mt-1">{guildData?.dailyStreak || 0} days</p>
-                </div>
-              </div>
-            </div>
-            <div className="mb-6">
-              <h4 className="text-lg font-bold mb-3 text-yellow-100">Skills</h4>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                {Object.entries(CORE_ATTRIBUTES).map(([key, attr]) => {
-                  const AttributeIcon = attr.icon;
-                  const attrXP = Object.entries(guildData?.questProgress || {})
-                    .filter(([, data]: any) => data.completed)
-                    .reduce((sum, [questKey]: any) => {
-                      const quest = Object.values(QUEST_STAGES)
-                        .flatMap(stage => stage.quests)
-                        .find(q => questKey.includes(q.id));
-                      return quest?.attribute === key ? sum + (quest.xp ?? 0) : sum;
-                    }, 0);
-                  return (
-                    <div key={key} className="parchment rounded-lg p-3">
-                      <div className="flex items-center space-x-2 mb-1">
-                        {typeof AttributeIcon === 'string' ? (
-                          <span style={{ fontSize: '1.5rem' }}>{AttributeIcon}</span>
-                        ) : null}
-                        <span className="text-sm font-medium text-yellow-100">{attr.name}</span>
-                      </div>
-                      <p className="text-lg font-bold text-yellow-100">{attrXP} XP</p>
-                      {guildData?.coreAttribute === key && (
-                        <span className="text-xs text-purple-400">Primary Skill (+50% XP)</span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-            <div>
-              <h4 className="text-lg font-bold mb-3 text-yellow-100">Achievements</h4>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {ACHIEVEMENTS.map((achievement) => {
-                  const earned = guildData?.achievements?.includes(achievement.id);
-                  return (
-                    <div
-                      key={achievement.id}
-                      className={`parchment rounded-lg p-3 text-center ${earned ? 'magic-border' : 'opacity-50'
-                        }`}
-                    >
-                      <div className="text-3xl mb-1">{typeof achievement.icon === 'string' ? achievement.icon : null}</div>
-                      <p className="text-xs font-medium text-yellow-100">{achievement.name}</p>
-                      <p className="text-xs text-gray-400 mt-1">{achievement.description}</p>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+        <Modal open={!!modalContent} onClose={() => setModalContent(null)}>
+          <div className="p-6 max-w-sm w-full">
+            <h3 className="text-xl font-bold text-yellow-100">{modalContent?.title}</h3>
+            <p className="text-gray-300 mt-2 mb-4">{modalContent?.message}</p>
           </div>
         </Modal>
-        <Modal open={showResources} onClose={() => { setShowResources(false); if (userInteracted) soundManager.play('swordDraw'); }}>
-          <div className="p-6 max-w-4xl w-full">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-2xl font-bold text-yellow-100">Resources</h3>
-              <button
-                onClick={() => { setShowResources(false); if (userInteracted) soundManager.play('swordDraw'); }}
-                className="text-gray-400 hover:text-white text-2xl"
-              >
-                ×
-              </button>
-            </div>
-            <div className="parchment p-4 mb-6 magic-border">
-              <div className="flex items-start space-x-3">
-                <Lightbulb className="w-5 h-5 text-yellow-500 mt-0.5" />
-                <div>
-                  <p className="font-medium text-yellow-400">Based on your profile:</p>
-                  <p className="text-sm text-gray-300">
-                    Primary Skill: {guildData?.coreAttribute} •
-                    Level: {levelInfo.level}
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <h4 className="font-bold mb-3 flex items-center text-yellow-100">
-                  <BookOpen className="w-5 h-5 mr-2 text-blue-500" />
-                  Recommended Reading
-                </h4>
-                <div className="space-y-2">
-                  <a href="https://www.ycombinator.com/library" target="_blank" rel="noopener noreferrer"
-                    className="block parchment rounded p-3 hover:transform hover:scale-105 transition-all"
-                    onMouseEnter={() => { if (userInteracted) soundManager.play('swordDraw'); }}>
-                    <p className="font-medium text-yellow-100">YC Library</p>
-                    <p className="text-xs text-gray-300">Startup resources</p>
-                  </a>
-                  <a href="https://firstround.com/review/" target="_blank" rel="noopener noreferrer"
-                    className="block parchment rounded p-3 hover:transform hover:scale-105 transition-all"
-                    onMouseEnter={() => { if (userInteracted) soundManager.play('swordDraw'); }}>
-                    <p className="font-medium text-yellow-100">First Round Review</p>
-                    <p className="text-xs text-gray-300">Founder stories</p>
-                  </a>
-                </div>
-              </div>
-              <div>
-                <h4 className="font-bold mb-3 flex items-center text-yellow-100">
-                  <Zap className="w-5 h-5 mr-2 text-yellow-500" />
-                  Tools
-                </h4>
-                <div className="space-y-2">
-                  <a href="https://stripe.com/atlas" target="_blank" rel="noopener noreferrer"
-                    className="block parchment rounded p-3 hover:transform hover:scale-105 transition-all"
-                    onMouseEnter={() => { if (userInteracted) soundManager.play('swordDraw'); }}>
-                    <p className="font-medium text-yellow-100">Stripe Atlas</p>
-                    <p className="text-xs text-gray-300">Company formation</p>
-                  </a>
-                  <a href="https://www.notion.so/templates" target="_blank" rel="noopener noreferrer"
-                    className="block parchment rounded p-3 hover:transform hover:scale-105 transition-all"
-                    onMouseEnter={() => { if (userInteracted) soundManager.play('swordDraw'); }}>
-                    <p className="font-medium text-yellow-100">Notion Templates</p>
-                    <p className="text-xs text-gray-300">Productivity templates</p>
-                  </a>
-                </div>
-              </div>
-              <div>
-                <h4 className="font-bold mb-3 flex items-center text-yellow-100">
-                  <Users className="w-5 h-5 mr-2 text-green-500" />
-                  Communities
-                </h4>
-                <div className="space-y-2">
-                  <a href="https://www.indiehackers.com/" target="_blank" rel="noopener noreferrer"
-                    className="block parchment rounded p-3 hover:transform hover:scale-105 transition-all"
-                    onMouseEnter={() => { if (userInteracted) soundManager.play('swordDraw'); }}>
-                    <p className="font-medium text-yellow-100">Indie Hackers</p>
-                    <p className="text-xs text-gray-300">Founder community</p>
-                  </a>
-                  <a href="https://news.ycombinator.com/" target="_blank" rel="noopener noreferrer"
-                    className="block parchment rounded p-3 hover:transform hover:scale-105 transition-all"
-                    onMouseEnter={() => { if (userInteracted) soundManager.play('swordDraw'); }}>
-                    <p className="font-medium text-yellow-100">Hacker News</p>
-                    <p className="text-xs text-gray-300">Startup news</p>
-                  </a>
-                </div>
-              </div>
-              <div>
-                <h4 className="font-bold mb-3 flex items-center text-yellow-100">
-                  <Video className="w-5 h-5 mr-2 text-purple-500" />
-                  Learning
-                </h4>
-                <div className="space-y-2">
-                  <a href="https://www.startupschool.org/" target="_blank" rel="noopener noreferrer"
-                    className="block parchment rounded p-3 hover:transform hover:scale-105 transition-all"
-                    onMouseEnter={() => { if (userInteracted) soundManager.play('swordDraw'); }}>
-                    <p className="font-medium text-yellow-100">Startup School</p>
-                    <p className="text-xs text-gray-300">Free YC training</p>
-                  </a>
-                  <a href="https://www.coursera.org/browse/business/entrepreneurship" target="_blank" rel="noopener noreferrer"
-                    className="block parchment rounded p-3 hover:transform hover:scale-105 transition-all"
-                    onMouseEnter={() => { if (userInteracted) soundManager.play('swordDraw'); }}>
-                    <p className="font-medium text-yellow-100">Coursera</p>
-                    <p className="text-xs text-gray-300">Entrepreneurship courses</p>
-                  </a>
-                </div>
-              </div>
-            </div>
-          </div>
-        </Modal>
-        <Modal open={showCEOProfile && ceoAvatar} onClose={() => { setShowCEOProfile(false); if (userInteracted) soundManager.play('swordDraw'); }}>
-          <div className="p-6 w-full">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-2xl font-bold text-yellow-100">Your CEO Guide</h3>
-              <button
-                onClick={() => { setShowCEOProfile(false); if (userInteracted) soundManager.play('swordDraw'); }}
-                className="text-gray-400 hover:text-white text-2xl"
-              >
-                ×
-              </button>
-            </div>
-            <div className={`text-center mb-6 p-6 rounded-lg bg-gradient-to-r ${ceoAvatar?.color} bg-opacity-20 parchment`}>
-              <div className="text-6xl mb-2">{ceoAvatar?.avatar}</div>
-              <h4 className="text-xl font-bold text-yellow-100">{ceoAvatar?.name}</h4>
-              <p className="text-sm text-gray-300">{ceoAvatar?.title}</p>
-            </div>
-            <div className="space-y-3">
-              <div>
-                <p className="text-sm text-gray-400 mb-1">Industries</p>
-                <div className="flex flex-wrap gap-2">
-                  {ceoAvatar?.industries.map((ind: string) => (
-                    <span key={ind} className="px-2 py-1 parchment rounded text-sm">
-                      {ind}
-                    </span>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <p className="text-sm text-gray-400 mb-1">Traits</p>
-                <div className="flex flex-wrap gap-2">
-                  {ceoAvatar?.traits.map((trait: string) => (
-                    <span key={trait} className="px-2 py-1 parchment rounded text-sm">
-                      {trait}
-                    </span>
-                  ))}
-                </div>
-              </div>
-              <div className="pt-3 border-t border-gray-700">
-                <p className="text-sm text-gray-400 mb-1">Advice</p>
-                <p className="italic text-yellow-100">"{ceoAvatar?.advice}"</p>
-              </div>
-            </div>
-          </div>
-        </Modal>
-        <Modal open={showHistory} onClose={() => { setShowHistory(false); if (userInteracted) soundManager.play('swordDraw'); }}>
-          <div className="p-6 max-w-4xl w-full">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-2xl font-bold text-yellow-100">Conversations</h3>
-              <button
-                onClick={() => { setShowHistory(false); if (userInteracted) soundManager.play('swordDraw'); }}
-                className="text-gray-400 hover:text-white text-2xl"
-              >
-                ×
-              </button>
-            </div>
-            {conversations.length === 0 ? (
-              <p className="text-gray-400 text-center py-8">No conversations recorded yet</p>
-            ) : (
-              <div className="space-y-4">
-                {conversations.map((conv) => (
-                  <div key={conv.id} className="parchment rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="font-medium text-purple-400">{conv.questName}</p>
-                      <p className="text-sm text-gray-400">
-                        {new Date(conv.createdAt?.toDate()).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex items-start space-x-2">
-                        <User className="w-4 h-4 text-blue-400 mt-1" />
-                        <p className="text-sm text-gray-300">{conv.question}</p>
-                      </div>
-                      <div className="flex items-start space-x-2">
-                        <Sparkles className="w-4 h-4 text-purple-400 mt-1" />
-                        <ReactMarkdown>
-                          {conv.response}
-                        </ReactMarkdown>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </Modal>
-        <Modal size="full" open={showDocuments} onClose={() => { setShowDocuments(false); if (userInteracted) soundManager.play('swordDraw'); }}>
-          <div className="flex flex-col h-full w-full">
-            <div className="flex items-center justify-between p-6 border-b border-yellow-700 bg-gradient-to-r from-purple-900 to-indigo-900">
-              <h3 className="text-2xl font-bold text-yellow-100">Documents</h3>
-              <button
-                onClick={() => { setShowDocuments(false); if (userInteracted) soundManager.play('swordDraw'); }}
-                className="text-gray-400 hover:text-white text-2xl"
-              >
-                ×
-              </button>
-            </div>
-            <div className="flex-1 overflow-auto">
-              <DocumentRAG userId={user.uid} ceoAvatar={ceoAvatar} />
-            </div>
-          </div>
-        </Modal>
-        <Modal open={!!selectedDocument} onClose={() => { setSelectedDocument(null); if (userInteracted) soundManager.play('swordDraw'); }}>
-          <div className="p-6 max-w-4xl w-full">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-2xl font-bold text-yellow-100">{selectedDocument?.templateName}</h3>
-              <div className="flex items-center space-x-2">
+        {showDocuments && (
+          <Modal size="full" open={showDocuments} onClose={() => { setShowDocuments(false); if (userInteracted) soundManager.play('swordDraw'); }}>
+            <div className="flex flex-col h-full w-full">
+              <div className="flex items-center justify-between p-6 border-b border-yellow-700 bg-gradient-to-r from-purple-900 to-indigo-900">
+                <h3 className="text-2xl font-bold text-yellow-100">Documents</h3>
                 <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(selectedDocument?.content || '');
-                    setModalContent({ title: "Copied!", message: "Document content copied to clipboard." });
-                  }}
-                  className="text-gray-400 hover:text-white"
-                >
-                  <Copy className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={() => { setSelectedDocument(null); if (userInteracted) soundManager.play('swordDraw'); }}
+                  onClick={() => { setShowDocuments(false); if (userInteracted) soundManager.play('swordDraw'); }}
                   className="text-gray-400 hover:text-white text-2xl"
                 >
                   ×
                 </button>
               </div>
+              <div className="flex-1 overflow-auto">
+                <DocumentRAG userId={user._id} ceoAvatar={ceoAvatar} />
+              </div>
             </div>
-            <div className="parchment rounded-lg p-6">
-              <ReactMarkdown >
-                {selectedDocument?.content}
-              </ReactMarkdown>
+          </Modal>
+        )}
+        {selectedDocument && (
+          <Modal open={!!selectedDocument} onClose={() => { setSelectedDocument(null); if (userInteracted) soundManager.play('swordDraw'); }}>
+            <div className="p-6 max-w-4xl w-full">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-2xl font-bold text-yellow-100">{selectedDocument?.templateName}</h3>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(selectedDocument?.content || '');
+                      setModalContent({ title: "Copied!", message: "Document content copied to clipboard." });
+                    }}
+                    className="text-gray-400 hover:text-white"
+                  >
+                    <Copy className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={() => { setSelectedDocument(null); if (userInteracted) soundManager.play('swordDraw'); }}
+                    className="text-gray-400 hover:text-white text-2xl"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+              <div className="parchment rounded-lg p-6">
+                <ReactMarkdown >
+                  {selectedDocument?.content}
+                </ReactMarkdown>
+              </div>
             </div>
-          </div>
-        </Modal>
+          </Modal>
+        )}
         {showGoldPurchase && (
           <GoldPurchase
             user={user}
             guildData={guildData}
             onClose={() => { setShowGoldPurchase(false); if (userInteracted) soundManager.play('swordDraw'); }}
             soundManager={soundManager}
-            onPurchaseSuccess={(newGold, purchaseData) => {
-              setGuildData((prev: any) => ({
-                ...prev,
-                gold: newGold,
-                purchaseHistory: [...(prev.purchaseHistory || []), purchaseData],
-                totalSpent: (prev.totalSpent || 0) + purchaseData.amount,
-                lastPurchase: purchaseData.timestamp
-              }));
+            onPurchaseSuccess={() => {
+              refetch();
             }}
           />
         )}
@@ -2080,8 +1320,11 @@ export default function App() {
           <EnergyPurchaseModal
             isOpen={energyManagement.showEnergyPurchase}
             onClose={() => energyManagement.setShowEnergyPurchase(false)}
-            currentGold={guildData.gold}
-            onPurchase={energyManagement.purchaseEnergy}
+            currentGold={guildData?.gold ?? 0}
+            onPurchase={async (amount) => {
+              await purchaseEnergyApi(amount);
+              await refetch();
+            }}
             purchasing={energyManagement.purchasingEnergy}
           />
         )}
@@ -2137,7 +1380,6 @@ export default function App() {
           guildData={guildData}
           ceoAvatar={ceoAvatar}
           onClose={() => setShowUserProfile(false)}
-          user={user}
         />
       )}
     </div>

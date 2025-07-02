@@ -17,15 +17,18 @@ export const GuildManagement = ({
 }) => {
     const [inviteEmail, setInviteEmail] = useState('');
     const [isInviting, setIsInviting] = useState(false);
-    const filledRoles = new Set(guildData.members?.map((m: any) => m.role) || []);
 
+    const members = guildData?.members ?? [];
+    const isFounder = guildData?.isFounder ?? false;
+    const filledRoles = new Set(members.map((m: any) => m.role));
+    console.log("members", members)
     const handleRoleChange = async (memberUid: string, newRole: string) => {
-        if (!guildData.isFounder) {
+        if (!guildData || !isFounder) {
             alert("Only the Guild Leader can change roles.");
             return;
         }
 
-        const updatedMembers = guildData.members.map((m: any) => {
+        const updatedMembers = members.map((m: any) => {
             if (m.uid === memberUid) {
                 return { ...m, permissionRole: newRole };
             }
@@ -44,7 +47,7 @@ export const GuildManagement = ({
     };
 
     const handleInvite = async () => {
-        if (!inviteEmail || !guildData.isFounder) {
+        if (!inviteEmail || !guildData || !isFounder) {
             alert("Please enter a valid email address.");
             return;
         }
@@ -94,7 +97,7 @@ export const GuildManagement = ({
                         <h3 className="text-lg font-bold mb-4 text-yellow-100">Core Roles</h3>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                             {Object.entries(CORE_ROLES).map(([key, role]) => {
-                                const member = guildData.members?.find((m: any) => m.role === key);
+                                const member = members.find((m: any) => m.role === key);
 
                                 return (
                                     <div
@@ -120,7 +123,7 @@ export const GuildManagement = ({
                                 );
                             })}
                         </div>
-                        {filledRoles.size >= 6 && (
+                        {guildData && filledRoles.size >= 6 && (
                             <div className="mt-4 parchment p-3 magic-border">
                                 <p className="text-green-400 font-medium">All core roles filled! +30% XP on all quests</p>
                             </div>
@@ -130,15 +133,26 @@ export const GuildManagement = ({
                     <div className="mb-8">
                         <h3 className="text-lg font-bold mb-4 text-yellow-100">Current Members</h3>
                         <div className="space-y-3">
-                            {guildData.members?.map((member: any) => {
+                            {members.map((member: any) => {
+                                // member: { user: { _id, name, picture }, role, _id, ... }
                                 const coreRole = CORE_ROLES[member.role as keyof typeof CORE_ROLES];
                                 const permissionRole = PERMISSION_ROLES[member.permissionRole as keyof typeof PERMISSION_ROLES];
+                                const isFounderMember = member.user?._id === guildData?.founderId;
 
                                 return (
-                                    <div key={member.uid} className="parchment p-3 flex items-center justify-between">
-                                        <div>
-                                            <p className="font-medium text-yellow-100">{member.name}</p>
-                                            <p className="text-sm text-gray-300">{member.email}</p>
+                                    <div key={member._id} className="parchment p-3 flex items-center justify-between">
+                                        <div className="flex items-center space-x-3">
+                                            {member.user?.picture && (
+                                                <img
+                                                    src={member.user.picture}
+                                                    alt={member.user.name}
+                                                    className="w-10 h-10 rounded-full object-cover border-2 border-yellow-400"
+                                                />
+                                            )}
+                                            <div>
+                                                <p className="font-medium text-yellow-100">{member.user?.name || "Unknown"}</p>
+                                                <p className="text-sm text-gray-300">{member.user?.email}</p>
+                                            </div>
                                         </div>
                                         <div className="flex items-center space-x-4">
                                             {coreRole && (
@@ -149,7 +163,7 @@ export const GuildManagement = ({
                                             )}
                                             {permissionRole && (
                                                 <div className="flex items-center space-x-2">
-                                                    {member.uid === guildData.founderId ? (
+                                                    {isFounderMember ? (
                                                         <div className="flex items-center space-x-2" title={`Permission Role: ${permissionRole.name}`}>
                                                             <span className="text-xl">{permissionRole.icon}</span>
                                                             <span className="text-sm text-gray-300">{permissionRole.name}</span>
@@ -157,9 +171,10 @@ export const GuildManagement = ({
                                                     ) : (
                                                         <select
                                                             value={member.permissionRole}
-                                                            onChange={(e) => handleRoleChange(member.uid, e.target.value)}
-                                                            className="bg-gray-700/50 text-white p-1 rounded-md text-sm cursor-pointer"
-                                                            title={`Permission Role: ${permissionRole.name}`}
+                                                            onChange={(e) => handleRoleChange(member.user._id, e.target.value)}
+                                                            disabled={!isFounder}
+                                                            className="bg-gray-700/50 text-white p-1 rounded-md text-sm cursor-pointer disabled:cursor-not-allowed"
+                                                            title={`Permission Role: ${permissionRole?.name || ''}`}
                                                         >
                                                             <option value="knight">{PERMISSION_ROLES.knight.name}</option>
                                                             <option value="scout">{PERMISSION_ROLES.scout.name}</option>
@@ -174,7 +189,7 @@ export const GuildManagement = ({
                         </div>
                     </div>
 
-                    {guildData.isFounder && (
+                    {isFounder && (
                         <div className="mb-8">
                             <h3 className="text-lg font-bold mb-4 text-yellow-100">Invite New Members</h3>
                             <div className="flex space-x-2">
@@ -184,10 +199,11 @@ export const GuildManagement = ({
                                     onChange={(e) => setInviteEmail(e.target.value)}
                                     placeholder="Enter email to invite"
                                     className="flex-1 p-3 bg-gray-700 rounded-lg text-white"
+                                    disabled={!guildData}
                                 />
                                 <button
                                     onClick={handleInvite}
-                                    disabled={isInviting}
+                                    disabled={isInviting || !guildData}
                                     className="px-4 py-3 bg-purple-800 rounded-lg hover:bg-purple-700 disabled:opacity-50"
                                 >
                                     {isInviting ? 'Sending...' : <Send className="w-5 h-5" />}

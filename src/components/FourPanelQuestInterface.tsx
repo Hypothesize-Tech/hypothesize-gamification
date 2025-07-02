@@ -43,7 +43,7 @@ export const FourPanelQuestInterface = ({
     soundManager: any;
     bedrockClient: BedrockRuntimeClient;
     consumeEnergy: (
-        action: "QUEST_COMPLETION" | "DOCUMENT_GENERATION" | "AI_SAGE_CONSULTATION",
+        action: "QUEST_COMPLETION" | "DOCUMENT_GENERATION" | "AI_SAGE_CONSULTATION" | "SUBMIT_QUEST",
         onEnergyConsumed?: () => void
     ) => Promise<boolean>;
     setGuildData: React.Dispatch<React.SetStateAction<any | null>>;
@@ -220,7 +220,7 @@ export const FourPanelQuestInterface = ({
 
         setRating(questRating);
 
-        const hasEnergy = await consumeEnergy('QUEST_COMPLETION');
+        const hasEnergy = await consumeEnergy('SUBMIT_QUEST');
         if (!hasEnergy) {
             setIsSaving(false);
             return;
