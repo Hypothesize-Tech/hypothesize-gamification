@@ -344,17 +344,6 @@ export const GuildManagement = ({
                             </div>
                         </div>
                     )}
-                    {/* Add Reset Guild Button Here */}
-                    {isFounder && (
-                        <div className="mt-6 flex justify-center">
-                            <button
-                                onClick={() => setShowResetConfirmation(true)}
-                                className="px-6 py-3 bg-red-700 rounded-lg hover:bg-red-800 text-white font-bold border-2 border-red-900"
-                            >
-                                Reset Guild
-                            </button>
-                        </div>
-                    )}
                 </div>
             </div>
             {showLeaveConfirmation && (

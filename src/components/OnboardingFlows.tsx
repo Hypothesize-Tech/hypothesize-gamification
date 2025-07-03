@@ -504,69 +504,11 @@ const FounderOnboarding: React.FC<{
                         </div>
 
                         <button
-                            onClick={() => setStep(7)}
+                            onClick={() => { onComplete({ ...onboardingData, vision }); }}
                             className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:from-purple-600 hover:to-pink-600 transition-all"
                         >
-                            I Understand My Resources
+                            I Understand My Resources and am ready to join the Guild
                         </button>
-                    </>
-                )}
-
-                {/* Step 8: The First Step */}
-                {step === 7 && (
-                    <>
-                        <div className="text-center mb-8">
-                            <div className="text-6xl mb-4">🚀</div>
-                            <h3 className="text-2xl font-bold text-white mb-4">The First Step</h3>
-                        </div>
-
-                        <div className="bg-gray-700/50 rounded-lg p-8 mb-8 border-4 border-purple-500 border-dashed">
-                            <div className="text-center">
-                                <p className="text-white mb-4">(The main dashboard appears, slightly blurred out. The very first task on the "Fundamentals" roadmap is highlighted.)</p>
-                                <div className="bg-green-900/30 border border-green-700 rounded-lg p-6">
-                                    <div className="flex items-center justify-center space-x-3 mb-3">
-                                        <div className="text-3xl">📊</div>
-                                        <h4 className="text-xl font-bold text-green-400">Supply and Demand</h4>
-                                    </div>
-                                    <p className="text-gray-200">Understanding the market is the foundation upon which all great companies are built.</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="space-y-6 mb-8">
-                            <div className="bg-gray-700 rounded-lg p-6">
-                                <div className="flex items-center mb-3">
-                                    <div className="text-3xl mr-3">🧙‍♂️</div>
-                                    <p className="text-purple-400 font-semibold">Tenzing speaks:</p>
-                                </div>
-                                <div className="text-gray-200 space-y-3">
-                                    <p>"Your journey begins now. Your first task is <span className="text-green-400 font-semibold">'Supply and Demand'</span>. Understanding the market is the foundation upon which all great companies are built. Click here to begin."</p>
-                                </div>
-                            </div>
-
-                            <div className="bg-blue-900/30 border border-blue-700 rounded-lg p-6">
-                                <div className="text-blue-300 space-y-3">
-                                    <p>"Remember, you are not alone. Your Guild will be your source of strength. Together, you can pool your resources, learn from each other's victories and mistakes, and build something far greater than you could alone."</p>
-                                </div>
-                            </div>
-
-                            <div className="bg-purple-900/30 border border-purple-700 rounded-lg p-6">
-                                <div className="text-purple-300 space-y-3">
-                                    <p>"Your every action is now being chronicled in your venture's private journey log. It will become your story, your case study."</p>
-                                </div>
-                            </div>
-
-                            <div className="bg-gray-700 rounded-lg p-6">
-                                <div className="flex items-center mb-3">
-                                    <div className="text-3xl mr-3">🧙‍♂️</div>
-                                    <p className="text-purple-400 font-semibold">Final words:</p>
-                                </div>
-                                <div className="text-gray-200">
-                                    <p>"The road is long, but it starts with this single step. I will be here if you need guidance. Good luck, <span className="text-white font-semibold">{onboardingData.name || (user && user.name)}</span>."</p>
-                                    <p className="text-white text-sm mt-3">(The Sage avatar fades away, leaving the user on their main dashboard, ready to engage with their first task. The onboarding is complete.)</p>
-                                </div>
-                            </div>
-                        </div>
                     </>
                 )}
             </div>

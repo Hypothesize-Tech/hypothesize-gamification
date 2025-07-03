@@ -1,5 +1,5 @@
 import Modal from './Modal';
-import { X, Star, Coins, Sparkles, Info } from 'lucide-react';
+import { X, Star, Coins, Sparkles } from 'lucide-react';
 
 interface QuestCompletionModalProps {
     isOpen: boolean;
@@ -50,24 +50,24 @@ const QuestCompletionModal: React.FC<QuestCompletionModalProps> = ({
                             />
                         ))}
                     </div>
-                    <div className="parchment p-4 rounded-md bg-gray-800/50 border border-yellow-800/50">
-                        <p className="text-gray-300 italic text-center">"{feedback}"</p>
-                    </div>
+                    <p className="text-4xl font-bold text-yellow-400 text-center">{rating}</p>
                 </div>
 
-                {rating <= 3 && improvementFeedback && (
-                    <div className="mt-6">
-                        <h3 className="text-xl font-semibold text-amber-200 mb-3 text-center">Path to Improvement</h3>
-                        <div className="parchment p-4 rounded-md bg-amber-900/30 border border-amber-700/50">
-                            <div className="flex items-start space-x-3">
-                                <Info className="w-6 h-6 text-amber-400 flex-shrink-0 mt-1" />
-                                <p className="text-amber-100">{improvementFeedback}</p>
-                            </div>
-                        </div>
+                {feedback && (
+                    <div className="mt-6 text-center">
+                        <h4 className="text-xl font-semibold text-gray-300">Rating Breakdown</h4>
+                        <p className="text-gray-400 mt-2">{feedback}</p>
                     </div>
                 )}
 
-                <div className="mt-6">
+                {improvementFeedback && (
+                    <div className="mt-6 text-center">
+                        <h4 className="text-xl font-semibold text-gray-300">How to Improve</h4>
+                        <p className="text-gray-400 mt-2">{improvementFeedback}</p>
+                    </div>
+                )}
+
+                <div className="mt-8 text-center">
                     <h3 className="text-xl font-semibold text-yellow-200 mb-3 text-center">Your Spoils</h3>
                     <div className="flex justify-around items-center text-lg">
                         <div className="flex items-center space-x-3">
