@@ -1,4 +1,5 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
+import { sendEmail } from '../services/api';
 
 const LandingPage: React.FC = () => {
     // Refs for form fields
@@ -6,10 +7,14 @@ const LandingPage: React.FC = () => {
     const emailRef = useRef<HTMLInputElement>(null);
     const companyRef = useRef<HTMLInputElement>(null);
     const messageRef = useRef<HTMLTextAreaElement>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [submitMessage, setSubmitMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
-    // Handler to open Gmail compose with prefilled fields
-    const handleSendCrow = (e: React.MouseEvent<HTMLButtonElement>) => {
+    // Handler to send contact form through backend API
+    const handleSendCrow = async (e: React.MouseEvent<HTMLButtonElement>) => {
         e.preventDefault();
+        setIsSubmitting(true);
+        setSubmitMessage(null);
 
         const name = nameRef.current?.value.trim() || '';
         const email = emailRef.current?.value.trim() || '';
@@ -17,9 +22,7 @@ const LandingPage: React.FC = () => {
         const message = messageRef.current?.value.trim() || '';
 
         // Compose subject and body
-        const subject = encodeURIComponent(
-            `Contact from The Startup Quest: ${company ? company : name ? name : 'New Inquiry'}`
-        );
+        const subject = `Contact from The Startup Quest: ${company ? company : name ? name : 'New Inquiry'}`;
 
         let body = '';
         if (name) body += `Name: ${name}\n`;
@@ -27,11 +30,29 @@ const LandingPage: React.FC = () => {
         if (company) body += `Company: ${company}\n`;
         if (message) body += `\nMessage:\n${message}\n`;
 
-        // Gmail compose URL
-        const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=hello@hypothesize.tech&su=${subject}&body=${encodeURIComponent(body)}`;
+        try {
+            // Send email through backend API
+            await sendEmail('hello@hypothesize.tech', subject, body);
 
-        // Open Gmail compose in a new tab
-        window.open(gmailUrl, '_blank', 'noopener,noreferrer');
+            // Clear form fields
+            if (nameRef.current) nameRef.current.value = '';
+            if (emailRef.current) emailRef.current.value = '';
+            if (companyRef.current) companyRef.current.value = '';
+            if (messageRef.current) messageRef.current.value = '';
+
+            setSubmitMessage({
+                type: 'success',
+                text: 'Your message has been sent successfully! We will get back to you soon.'
+            });
+        } catch (error) {
+            console.error('Error sending message:', error);
+            setSubmitMessage({
+                type: 'error',
+                text: 'Failed to send your message. Please try again later.'
+            });
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
@@ -128,19 +149,19 @@ const LandingPage: React.FC = () => {
                         <h2 className="text-4xl md:text-5xl font-cinzel font-bold text-[#5c3d2e] text-center mb-16">The Four Chapters of Your Saga</h2>
                         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 text-center">
                             <div className="p-6 rounded-lg">
-                                <h3 className="text-2xl font-cinzel font-bold mb-2">I. Hypothesize</h3>
+                                <h3 className="text-2xl font-cinzel font-bold">I. Hypothesize</h3>
                                 <p className="text-lg">Discover a need in the realm. Study the landscape, understand the market, and forge the core belief that will anchor your quest.</p>
                             </div>
                             <div className="p-6 rounded-lg">
-                                <h3 className="text-2xl font-cinzel font-bold mb-2">II. Conceptualize</h3>
+                                <h3 className="text-2xl font-cinzel font-bold">II. Conceptualize</h3>
                                 <p className="text-lg">Transform belief into a plan. Forge your solution, define your mission, and gather your fellowship to give your idea form and purpose.</p>
                             </div>
                             <div className="p-6 rounded-lg">
-                                <h3 className="text-2xl font-cinzel font-bold mb-2">III. Realize</h3>
+                                <h3 className="text-2xl font-cinzel font-bold">III. Realize</h3>
                                 <p className="text-lg">Bring your concept to life. Build your artifact, establish your stronghold's foundations, and prepare to unveil your creation to the world.</p>
                             </div>
                             <div className="p-6 rounded-lg">
-                                <h3 className="text-2xl font-cinzel font-bold mb-2">IV. Finalize</h3>
+                                <h3 className="text-2xl font-cinzel font-bold">IV. Finalize</h3>
                                 <p className="text-lg">Launch your venture. Grow your influence, optimize your operations, and expand your reach across the realm, securing your legacy.</p>
                             </div>
                         </div>
@@ -421,10 +442,16 @@ const LandingPage: React.FC = () => {
                                         className="fantasy-btn font-cinzel font-bold py-3 px-8 rounded-lg"
                                         type="button"
                                         onClick={handleSendCrow}
+                                        disabled={isSubmitting}
                                     >
-                                        Send a Crow
+                                        {isSubmitting ? 'Sending...' : 'Send a Crow'}
                                     </button>
                                 </div>
+                                {submitMessage && (
+                                    <div className={`mt-4 text-lg ${submitMessage.type === 'success' ? 'text-green-700' : 'text-red-700'}`}>
+                                        {submitMessage.text}
+                                    </div>
+                                )}
                             </form>
                         </div>
                     </div>

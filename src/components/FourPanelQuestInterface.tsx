@@ -1,8 +1,7 @@
-import { Suspense, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { QUEST_INPUT_TEMPLATES } from "../utils/constant";
 import { calculateGoldReward, calculateLevel, calculateXPWithBonuses, consultAISage, fetchDynamicResources, getPersonalizedQuestDetails, getSuggestedSageQuestions, rateQuestSubmission, triggerConfetti } from "../utils/helper";
-import { Canvas } from "@react-three/fiber";
-import DiamondSword3D from "./DiamondSword3D";
+import SwordIcon from "./DiamondSword3D";
 import { BookOpen, Coins, Edit3, ExternalLink, Loader2, RefreshCw, Save, Scroll, Send, Sparkles, Swords, Trophy, X, ChevronDown, ChevronUp, Zap, Wand2, MessageSquare, Users, Share2 } from "lucide-react";
 import ReactMarkdown from 'react-markdown';
 import { BedrockRuntimeClient } from '@aws-sdk/client-bedrock-runtime';
@@ -229,12 +228,19 @@ export const FourPanelQuestInterface = ({
         const calculatedXpReward = calculateXPWithBonuses(quest.xp, questRating.rating, quest.attribute || 'general', guildData);
         const calculatedGoldReward = calculateGoldReward(quest.xp / 2, questRating.rating, guildData);
 
+        // Format improvement feedback from suggestions
+        let improvementFeedback = '';
+        if (questRating.suggestions && questRating.suggestions.length > 0) {
+            improvementFeedback = questRating.suggestions.join('\n\n');
+        }
+
         const data = {
             inputs: userInputs,
             sageConversation: sageMessages,
             completedAt: new Date().toISOString(),
             rating: questRating.rating,
             feedback: questRating.feedback,
+            improvementFeedback: improvementFeedback,
             xpReward: calculatedXpReward,
             goldReward: calculatedGoldReward,
         };
@@ -318,13 +324,9 @@ export const FourPanelQuestInterface = ({
         <div className="fixed inset-0 bg-black/90 z-50 flex flex-col">
             {/* 3D Weapon Display */}
             <div className="absolute left-4 top-1/2 -translate-y-1/2 w-32 h-32 z-10">
-                <Canvas camera={{ position: [0, 0, 5], fov: 50 }}>
-                    <ambientLight intensity={0.5} />
-                    <pointLight position={[10, 10, 10]} />
-                    <Suspense fallback={null}>
-                        <DiamondSword3D standingRotation={{ x: 0, y: 0, z: Math.PI / 2 }} />
-                    </Suspense>
-                </Canvas>
+                <div className="w-full h-full flex items-center justify-center">
+                    <SwordIcon width={100} height={100} />
+                </div>
             </div>
 
             {/* Header */}
@@ -788,6 +790,7 @@ export const FourPanelQuestInterface = ({
                     questName={quest.name}
                     rating={completionData.rating}
                     feedback={completionData.feedback}
+                    improvementFeedback={completionData.improvementFeedback}
                     xpReward={completionData.xpReward}
                     goldReward={completionData.goldReward}
                 />

@@ -353,7 +353,7 @@ export const EnergyPurchaseModal: React.FC<{
                 </div>
 
                 <button
-                    onClick={() => onPurchase(energyAmount)}
+                    onClick={() => { onPurchase(energyAmount); onClose() }}
                     disabled={purchasing || currentGold < goldCost || energyAmount === 0}
                     className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-3 rounded-lg hover:from-green-500 hover:to-emerald-500 transition-all magic-border disabled:opacity-50 disabled:cursor-not-allowed"
                 >

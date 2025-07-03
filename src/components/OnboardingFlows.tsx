@@ -1,15 +1,32 @@
 // Complete Onboarding System with Exact Messaging
 
 import React, { useState, useEffect } from 'react';
-import { Upload, Mail, Zap, Coins, Users } from 'lucide-react';
+import { Mail, User, Users, Zap } from 'lucide-react';
 
+import icon1 from '../assets/icon_1.png';
+import icon2 from '../assets/icon_2.png';
+import icon3 from '../assets/icon_3.png';
+import icon4 from '../assets/icon_4.png';
+import icon5 from '../assets/icon_5.png';
+import icon6 from '../assets/icon_6.png';
 import aiSage from '../assets/ai_sage.png';
-import engineerAvatar from '../assets/avatar_1.png';
-import heraldAvatar from '../assets/avatar_2.png';
-import vanguardAvatar from '../assets/avatar_3.png';
-import loremasterAvatar from '../assets/avatar_4.png';
-import quartermasterAvatar from '../assets/avatar_5.png';
-import treasurerAvatar from '../assets/avatar_6.png';
+import wallpaper2 from '../assets/wallpaper_2.jpg';
+import wallpaper3 from '../assets/wallpaper_3.png';
+
+const parchmentBackground = {
+    backgroundImage: `url(${wallpaper2})`,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    border: '2px solid #a1887f',
+    boxShadow: '0 10px 30px rgba(0, 0, 0, 0.5)',
+};
+
+const pageBackground = {
+    backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), url(${wallpaper3})`,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    minHeight: '100vh',
+};
 
 // FOUNDER ONBOARDING COMPONENT
 const FounderOnboarding: React.FC<{
@@ -31,6 +48,7 @@ const FounderOnboarding: React.FC<{
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user]);
 
+
     const updateData = (key: string, value: any) => {
         setOnboardingData({ ...onboardingData, [key]: value });
     };
@@ -42,7 +60,7 @@ const FounderOnboarding: React.FC<{
             description: 'The builder of things, focused on product and technology.',
             attribute: 'Tech',
             sageResponse: "An Engineer. You see the world as a set of systems to be built and improved. Your path will be one of logic, creation, and technological excellence. Your 'Tech' attribute has received a bonus.",
-            avatar: engineerAvatar
+            avatar: icon1
         },
         {
             id: 'herald',
@@ -50,7 +68,7 @@ const FounderOnboarding: React.FC<{
             description: 'The storyteller, focused on marketing and brand.',
             attribute: 'Marketing',
             sageResponse: "A Herald. You believe that a great story can change the world. Your path will be one of communication, brand-building, and connecting with your future customers. Your 'Marketing' attribute has received a bonus.",
-            avatar: heraldAvatar
+            avatar: icon2
         },
         {
             id: 'vanguard',
@@ -58,7 +76,7 @@ const FounderOnboarding: React.FC<{
             description: 'The deal-maker, focused on sales and revenue.',
             attribute: 'Sales',
             sageResponse: "A Vanguard. You stand at the forefront, forging relationships and driving growth. Your path will be one of persuasion, negotiation, and building revenue. Your 'Sales' attribute has received a bonus.",
-            avatar: vanguardAvatar
+            avatar: icon3
         },
         {
             id: 'loremaster',
@@ -66,7 +84,7 @@ const FounderOnboarding: React.FC<{
             description: 'The strategist, focused on law and market knowledge.',
             attribute: 'Legal',
             sageResponse: "A Loremaster. You understand that knowledge is power and strategy is the key to victory. Your path will be one of careful planning, compliance, and strategic positioning. Your 'Legal' attribute has received a bonus.",
-            avatar: loremasterAvatar
+            avatar: icon4
         },
         {
             id: 'quartermaster',
@@ -74,21 +92,21 @@ const FounderOnboarding: React.FC<{
             description: 'The organizer, focused on operations and efficiency.',
             attribute: 'Operations',
             sageResponse: "A Quartermaster. You know that an idea is only as strong as its execution. Your path will be one of organization, efficiency, and flawless operations. Your 'Operations' attribute has received a bonus.",
-            avatar: quartermasterAvatar
+            avatar: icon5
         },
         {
             id: 'treasurer',
             name: 'The Treasurer',
             description: 'The financier, focused on capital and financial health.',
             attribute: 'Finance',
-            sageResponse: "A Treasurer. You see the numbers behind the vision, managing the lifeblood of the venture. Your path will be one of financial prudence, investment, and sustainable growth. Your 'Finance' attribute has received a bonus.",
-            avatar: treasurerAvatar
+            sageResponse: "A Treasurer. You are the guardian of the lifeblood of your venture. Your path is one of fiscal responsibility, strategic investment, and sustainable growth. Your 'Finance' attribute has received a bonus.",
+            avatar: icon6
         }
     ];
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center p-4">
-            <div className="bg-gray-800 p-8 rounded-lg shadow-2xl max-w-3xl w-full">
+        <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center p-4 font-serif" style={pageBackground}>
+            <div className="bg-gray-800 p-8 rounded-lg shadow-2xl max-w-3xl w-full" style={parchmentBackground}>
 
                 {/* Step 1: Welcome & Identity */}
                 {step === 0 && (
@@ -98,7 +116,7 @@ const FounderOnboarding: React.FC<{
                             <h2 className="text-3xl font-bold text-white mb-6">Welcome, Founder</h2>
                         </div>
 
-                        <div className="text-gray-300 mb-8 space-y-4 leading-relaxed">
+                        <div className="text-gray-200 mb-8 space-y-4 leading-relaxed">
                             <p>I am <span className="text-purple-400 font-semibold">Tenzing</span>, your guide on the path from idea to impact. The journey you are about to embark on is challenging, filled with uncertainty and difficult decisions. Many have walked it, but no two paths are the same.</p>
                             <p>My purpose is to help you navigate it. But first, let's get to know the person behind the vision.</p>
                         </div>
@@ -151,14 +169,14 @@ const FounderOnboarding: React.FC<{
                             <h3 className="text-2xl font-bold text-white mb-4">Your Journey So Far</h3>
                         </div>
 
-                        <p className="text-gray-300 mb-8 text-lg leading-relaxed">
+                        <p className="text-gray-200 mb-8 text-lg leading-relaxed">
                             Your past experiences are the foundation of your future success. Tell me a bit about your journey so far.
                         </p>
 
                         <div className="space-y-6">
                             <div>
                                 <label className="block text-lg font-medium text-white mb-3">Academics</label>
-                                <p className="text-gray-400 mb-3">Select your highest level of education</p>
+                                <p className="text-white mb-3">Select your highest level of education</p>
                                 <select
                                     value={onboardingData.education || (user && user.education) || ''}
                                     onChange={(e) => updateData('education', e.target.value)}
@@ -175,7 +193,7 @@ const FounderOnboarding: React.FC<{
 
                             <div>
                                 <label className="block text-lg font-medium text-white mb-3">Working Experience</label>
-                                <p className="text-gray-400 mb-3">Tell me about your job/work experience and what you can do</p>
+                                <p className="text-white mb-3">Tell me about your job/work experience and what you can do</p>
                                 <textarea
                                     value={onboardingData.experience || (user && user.experience) || ''}
                                     onChange={(e) => updateData('experience', e.target.value)}
@@ -186,7 +204,7 @@ const FounderOnboarding: React.FC<{
 
                             <div>
                                 <label className="block text-lg font-medium text-white mb-3">Bio</label>
-                                <p className="text-gray-400 mb-3">A short, one-to-two sentence bio</p>
+                                <p className="text-white mb-3">A short, one-to-two sentence bio</p>
                                 <textarea
                                     value={onboardingData.bio || (user && user.bio) || ''}
                                     onChange={(e) => updateData('bio', e.target.value)}
@@ -222,7 +240,7 @@ const FounderOnboarding: React.FC<{
                             <h3 className="text-2xl font-bold text-white mb-4">The Spark</h3>
                         </div>
 
-                        <div className="text-gray-300 mb-8 space-y-4 leading-relaxed">
+                        <div className="text-gray-200 mb-8 space-y-4 leading-relaxed">
                             <p>Thank you. Your experiences have shaped you into the founder you are today. Now, every great venture starts with a single spark. Let's define yours.</p>
                             <p className="text-white font-semibold">Tell me about your vision. Be concise. The best ideas can be described simply.</p>
                         </div>
@@ -241,9 +259,9 @@ const FounderOnboarding: React.FC<{
                             <div>
                                 <label className="block text-lg font-medium text-white mb-3">Create your Guild insignia (Logo)</label>
                                 <div className="border-2 border-dashed border-gray-600 rounded-lg p-12 text-center hover:border-purple-500 transition-colors cursor-pointer">
-                                    <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                                    <p className="text-gray-400 text-lg">Upload your logo</p>
-                                    <p className="text-gray-500 text-sm mt-2">Optional - you can add this later</p>
+                                    <User className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                                    <p className="text-white text-lg">Upload your logo</p>
+                                    <p className="text-gray-600 text-sm mt-2">Optional - you can add this later</p>
                                     <input type="file" accept="image/*" className="hidden" />
                                 </div>
                             </div>
@@ -276,7 +294,7 @@ const FounderOnboarding: React.FC<{
                         </div>
 
                         <div className="bg-purple-900/30 border border-purple-700 rounded-lg p-8 mb-8">
-                            <div className="text-gray-300 space-y-4 leading-relaxed text-lg">
+                            <div className="text-gray-200 space-y-4 leading-relaxed text-lg">
                                 <p><span className="text-white font-semibold">Excellent.</span> An idea is a seed. Now, let's give it fertile ground to grow in.</p>
                                 <p>Every contribution you make here, every challenge you overcome, helps us build a database of knowledge for all founders. You are not just building a company; you are <span className="text-purple-400 font-semibold">contributing to a legacy of innovation</span>.</p>
                             </div>
@@ -299,7 +317,7 @@ const FounderOnboarding: React.FC<{
                             <h3 className="text-2xl font-bold text-white mb-4">Choose Your Path</h3>
                         </div>
 
-                        <div className="text-gray-300 mb-8 space-y-4 leading-relaxed">
+                        <div className="text-gray-200 mb-8 space-y-4 leading-relaxed">
                             <p>Now, tell me about yourself. A founder wears many hats, but every great leader has a core strength. Your choice here will define your starting attributes and the kind of challenges you'll excel at.</p>
                         </div>
 
@@ -318,7 +336,7 @@ const FounderOnboarding: React.FC<{
                                     >
                                         <img src={role.avatar} alt={role.name} className="w-24 h-24 rounded-full mb-4 border-4 border-gray-600 group-hover:border-purple-400 transition-all" />
                                         <h4 className="font-bold text-white text-lg mb-2">{role.name}</h4>
-                                        <p className="text-sm text-gray-300 mb-3 text-center">{role.description}</p>
+                                        <p className="text-sm text-gray-200 mb-3 text-center">{role.description}</p>
                                         <p className="text-xs text-purple-400 font-semibold mt-auto">+{role.attribute} attribute bonus</p>
                                     </button>
                                 );
@@ -331,7 +349,7 @@ const FounderOnboarding: React.FC<{
                                     <img src={aiSage} alt="Tenzing" className="w-12 h-12 rounded-full mr-4 border-2 border-purple-500" />
                                     <p className="text-purple-400 font-semibold">Tenzing speaks:</p>
                                 </div>
-                                <p className="text-gray-300 leading-relaxed">
+                                <p className="text-gray-200 leading-relaxed">
                                     {FOUNDER_ROLES.find(r => r.id === onboardingData.role)?.sageResponse}
                                 </p>
                             </div>
@@ -374,7 +392,7 @@ const FounderOnboarding: React.FC<{
                             <h3 className="text-2xl font-bold text-white mb-4">Found Your Guild</h3>
                         </div>
 
-                        <div className="text-gray-300 mb-8 space-y-4 leading-relaxed">
+                        <div className="text-gray-200 mb-8 space-y-4 leading-relaxed">
                             <p>Now, no founder is an island. The greatest ventures are built by teams—a fellowship bound by a shared vision. In this world, we call this your <span className="text-blue-400 font-semibold">Guild</span>.</p>
                             <p>Your Guild is your founding team, your inner circle. Together, you will share resources, tackle challenges, and build your stronghold, from a simple Campfire to a mighty Citadel. Let's establish yours now.</p>
                         </div>
@@ -393,8 +411,8 @@ const FounderOnboarding: React.FC<{
 
                             <div>
                                 <label className="block text-lg font-medium text-white mb-3">Invite Members</label>
-                                <p className="text-gray-400 mb-4">An interface with email input fields appears below the Guild Name.</p>
-                                <p className="text-gray-300 mb-6">Invite the co-founders and team members who will join you on this quest. They will receive an email invitation to join your Guild. You can always add more members later.</p>
+                                <p className="text-white mb-4">An interface with email input fields appears below the Guild Name.</p>
+                                <p className="text-gray-200 mb-6">Invite the co-founders and team members who will join you on this quest. They will receive an email invitation to join your Guild. You can always add more members later.</p>
 
                                 <div className="space-y-3">
                                     {[0, 1, 2, 3, 4].map((index) => (
@@ -451,7 +469,7 @@ const FounderOnboarding: React.FC<{
                             <h3 className="text-2xl font-bold text-white mb-4">Your Resources</h3>
                         </div>
 
-                        <div className="text-gray-300 mb-8 space-y-4 leading-relaxed">
+                        <div className="text-gray-200 mb-8 space-y-4 leading-relaxed">
                             <p>Your Guild has been founded. The founder's path is not walked with passion alone; it requires resources. You have two primary resources to manage: <span className="text-blue-400 font-semibold">Energy</span> and <span className="text-yellow-400 font-semibold">Gold</span>.</p>
                         </div>
 
@@ -461,7 +479,7 @@ const FounderOnboarding: React.FC<{
                                     <Zap className="w-8 h-8 text-blue-400" />
                                     <h4 className="font-bold text-blue-400 text-xl">Energy</h4>
                                 </div>
-                                <p className="text-gray-300 leading-relaxed">
+                                <p className="text-gray-200 leading-relaxed">
                                     <span className="font-semibold">Energy is your capacity for action.</span> You will spend it to complete tasks and help the Guild advance. It replenishes daily.
                                 </p>
                             </div>
@@ -471,7 +489,7 @@ const FounderOnboarding: React.FC<{
                                     <Users className="w-8 h-8 text-yellow-400" />
                                     <h4 className="font-bold text-yellow-400 text-xl">Guild Vault</h4>
                                 </div>
-                                <p className="text-gray-300 leading-relaxed">
+                                <p className="text-gray-200 leading-relaxed">
                                     <span className="font-semibold">The Guild Vault holds all of the team's Gold.</span> This shared resource is used for major expenses, like upgrading your headquarters, paying monthly upkeep, or acquiring powerful Treasures that benefit the entire Guild.
                                 </p>
                             </div>
@@ -479,7 +497,7 @@ const FounderOnboarding: React.FC<{
                             <div className="bg-purple-900/30 border border-purple-700 rounded-lg p-8 text-center">
                                 <div className="text-6xl mb-4">🎁</div>
                                 <h4 className="font-bold text-purple-400 text-xl mb-3">Starting Grant</h4>
-                                <p className="text-gray-300 text-lg leading-relaxed">
+                                <p className="text-gray-200 text-lg leading-relaxed">
                                     To build this shared wealth, we are granting a <span className="text-yellow-400 font-bold text-xl">Starting Grant of 50 Gold</span> on your behalf, which will be deposited directly into your Guild's Vault.
                                 </p>
                             </div>
@@ -504,13 +522,13 @@ const FounderOnboarding: React.FC<{
 
                         <div className="bg-gray-700/50 rounded-lg p-8 mb-8 border-4 border-purple-500 border-dashed">
                             <div className="text-center">
-                                <p className="text-gray-400 mb-4">(The main dashboard appears, slightly blurred out. The very first task on the "Fundamentals" roadmap is highlighted.)</p>
+                                <p className="text-white mb-4">(The main dashboard appears, slightly blurred out. The very first task on the "Fundamentals" roadmap is highlighted.)</p>
                                 <div className="bg-green-900/30 border border-green-700 rounded-lg p-6">
                                     <div className="flex items-center justify-center space-x-3 mb-3">
                                         <div className="text-3xl">📊</div>
                                         <h4 className="text-xl font-bold text-green-400">Supply and Demand</h4>
                                     </div>
-                                    <p className="text-gray-300">Understanding the market is the foundation upon which all great companies are built.</p>
+                                    <p className="text-gray-200">Understanding the market is the foundation upon which all great companies are built.</p>
                                 </div>
                             </div>
                         </div>
@@ -521,7 +539,7 @@ const FounderOnboarding: React.FC<{
                                     <div className="text-3xl mr-3">🧙‍♂️</div>
                                     <p className="text-purple-400 font-semibold">Tenzing speaks:</p>
                                 </div>
-                                <div className="text-gray-300 space-y-3">
+                                <div className="text-gray-200 space-y-3">
                                     <p>"Your journey begins now. Your first task is <span className="text-green-400 font-semibold">'Supply and Demand'</span>. Understanding the market is the foundation upon which all great companies are built. Click here to begin."</p>
                                 </div>
                             </div>
@@ -543,25 +561,12 @@ const FounderOnboarding: React.FC<{
                                     <div className="text-3xl mr-3">🧙‍♂️</div>
                                     <p className="text-purple-400 font-semibold">Final words:</p>
                                 </div>
-                                <div className="text-gray-300">
+                                <div className="text-gray-200">
                                     <p>"The road is long, but it starts with this single step. I will be here if you need guidance. Good luck, <span className="text-white font-semibold">{onboardingData.name || (user && user.name)}</span>."</p>
-                                    <p className="text-gray-400 text-sm mt-3">(The Sage avatar fades away, leaving the user on their main dashboard, ready to engage with their first task. The onboarding is complete.)</p>
+                                    <p className="text-white text-sm mt-3">(The Sage avatar fades away, leaving the user on their main dashboard, ready to engage with their first task. The onboarding is complete.)</p>
                                 </div>
                             </div>
                         </div>
-
-                        <button
-                            onClick={() => onComplete({
-                                ...onboardingData,
-                                vision: vision || (user && user.vision),
-                                isFounder: true,
-                                type: 'founder',
-                                user
-                            })}
-                            className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white px-8 py-4 rounded-lg text-xl font-bold hover:from-green-600 hover:to-green-700 transition-all transform hover:scale-105"
-                        >
-                            Begin My Quest
-                        </button>
                     </>
                 )}
             </div>
@@ -604,48 +609,48 @@ const MemberOnboarding: React.FC<{
             name: 'The Engineer',
             description: 'The builder of things, focused on product and technology.',
             attribute: 'Tech',
-            avatar: engineerAvatar
+            avatar: icon1
         },
         {
             id: 'herald',
             name: 'The Herald',
             description: 'The storyteller, focused on marketing and brand.',
             attribute: 'Marketing',
-            avatar: heraldAvatar
+            avatar: icon2
         },
         {
             id: 'vanguard',
             name: 'The Vanguard',
             description: 'The deal-maker, focused on sales and revenue.',
             attribute: 'Sales',
-            avatar: vanguardAvatar
+            avatar: icon3
         },
         {
             id: 'loremaster',
             name: 'The Loremaster',
             description: 'The strategist, focused on law and market knowledge.',
             attribute: 'Legal',
-            avatar: loremasterAvatar
+            avatar: icon4
         },
         {
             id: 'quartermaster',
             name: 'The Quartermaster',
             description: 'The organizer, focused on operations and efficiency.',
             attribute: 'Operations',
-            avatar: quartermasterAvatar
+            avatar: icon5
         },
         {
             id: 'treasurer',
             name: 'The Treasurer',
             description: 'The financier, focused on capital and financial health.',
             attribute: 'Finance',
-            avatar: treasurerAvatar
+            avatar: icon6
         }
     ];
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center p-4">
-            <div className="bg-gray-800 p-8 rounded-lg shadow-2xl max-w-3xl w-full">
+        <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center p-4 font-serif" style={pageBackground}>
+            <div className="bg-gray-800 p-8 rounded-lg shadow-2xl max-w-3xl w-full" style={parchmentBackground}>
 
                 {/* Step 1: Invitation */}
                 {step === 0 && (
@@ -655,7 +660,7 @@ const MemberOnboarding: React.FC<{
                             <h2 className="text-3xl font-bold text-white mb-6">Welcome, traveler</h2>
                         </div>
 
-                        <div className="text-gray-300 mb-8 space-y-4 leading-relaxed text-lg">
+                        <div className="text-gray-200 mb-8 space-y-4 leading-relaxed text-lg">
                             <p>A quest is underway, and your presence has been requested. It is not a small thing to be called upon to help shape an idea into reality.</p>
                         </div>
 
@@ -666,16 +671,16 @@ const MemberOnboarding: React.FC<{
                                     <span className="text-blue-400 font-semibold"> '{inviteData.guildName}' </span>Guild.
                                 </p>
                                 <div className="bg-gray-700/50 rounded-lg p-4">
-                                    <p className="text-gray-300 mb-2">They have begun a venture to create:</p>
+                                    <p className="text-white mb-2">They have begun a venture to create:</p>
                                     <p className="text-green-400 font-semibold text-lg">"{inviteData.ventureIdea}"</p>
                                 </div>
-                                <p className="text-gray-300">
+                                <p className="text-gray-200">
                                     They believe your skills are vital to this quest. Do you accept the call?
                                 </p>
                             </div>
                         </div>
 
-                        <div className="flex space-x-4">
+                        <div className="flex justify-center space-x-4">
                             <button
                                 onClick={onDecline}
                                 className="flex-1 bg-gray-700 text-white px-6 py-4 rounded-lg text-lg hover:bg-gray-600 transition-all"
@@ -700,7 +705,7 @@ const MemberOnboarding: React.FC<{
                             <h3 className="text-2xl font-bold text-white mb-4">Create Your Profile</h3>
                         </div>
 
-                        <p className="text-gray-300 mb-8 text-lg leading-relaxed">
+                        <p className="text-gray-200 mb-8 text-lg leading-relaxed">
                             Excellent. Every member of a fellowship brings their own unique history. Let's create your profile so your Guild members know who you are.
                         </p>
 
@@ -770,7 +775,7 @@ const MemberOnboarding: React.FC<{
                             </div>
                         </div>
 
-                        <div className="flex space-x-4 mt-8">
+                        <div className="flex justify-center space-x-4 mt-8">
                             <button
                                 onClick={() => setStep(0)}
                                 className="flex-1 bg-gray-700 text-white px-6 py-4 rounded-lg text-lg hover:bg-gray-600 transition-all"
@@ -796,7 +801,7 @@ const MemberOnboarding: React.FC<{
                             <h3 className="text-2xl font-bold text-white mb-4">Your Unique Contribution</h3>
                         </div>
 
-                        <div className="text-gray-300 mb-8 space-y-4 leading-relaxed">
+                        <div className="text-gray-200 mb-8 space-y-4 leading-relaxed">
                             <p>Now for the most important question. Your founder, <span className="text-purple-400 font-semibold">{inviteData.founderName}</span>, leads this quest as a <span className="text-blue-400 font-semibold">{inviteData.founderRole}</span>. To succeed, they need a balanced team.</p>
                             <p className="text-white font-semibold">What unique skills and perspective do you bring to this idea?</p>
                             <p>Review these roles and choose the one that best represents your contribution to the '<span className="text-blue-400">{inviteData.guildName}</span>' Guild. Your choice will define your core proficiency and how you can best support the team.</p>
@@ -816,7 +821,7 @@ const MemberOnboarding: React.FC<{
                                     >
                                         <img src={r.avatar} alt={r.name} className="w-24 h-24 rounded-full mb-4 border-4 border-gray-600 group-hover:border-blue-400 transition-all" />
                                         <h4 className="font-bold text-white text-lg mb-2">{r.name}</h4>
-                                        <p className="text-sm text-gray-300 mb-3 text-center">{r.description}</p>
+                                        <p className="text-sm text-gray-200 mb-3 text-center">{r.description}</p>
                                         <p className="text-xs text-blue-400 font-semibold mt-auto">+{r.attribute} attribute bonus</p>
                                     </button>
                                 );
@@ -829,13 +834,13 @@ const MemberOnboarding: React.FC<{
                                     <img src={aiSage} alt="Tenzing" className="w-12 h-12 rounded-full mr-4 border-2 border-purple-500" />
                                     <p className="text-purple-400 font-semibold">Tenzing speaks:</p>
                                 </div>
-                                <p className="text-gray-300 leading-relaxed">
+                                <p className="text-gray-200 leading-relaxed">
                                     {MEMBER_ROLES.find(r => r.id === onboardingData.role)?.description}
                                 </p>
                             </div>
                         )}
 
-                        <div className="flex space-x-4 mt-8">
+                        <div className="flex justify-center space-x-4 mt-8">
                             <button
                                 onClick={() => setStep(1)}
                                 className="flex-1 bg-gray-700 text-white px-6 py-4 rounded-lg text-lg hover:bg-gray-600 transition-all"
@@ -861,7 +866,7 @@ const MemberOnboarding: React.FC<{
                             <h3 className="text-2xl font-bold text-white mb-4">Your Resources</h3>
                         </div>
 
-                        <div className="text-gray-300 mb-8 space-y-4 leading-relaxed">
+                        <div className="text-gray-200 mb-8 space-y-4 leading-relaxed">
                             <p>Though you join a quest in progress, your start is no less important. You will also need resources to make your mark.</p>
                         </div>
 
@@ -871,7 +876,7 @@ const MemberOnboarding: React.FC<{
                                     <Zap className="w-8 h-8 text-blue-400" />
                                     <h4 className="font-bold text-blue-400 text-xl">Energy</h4>
                                 </div>
-                                <p className="text-gray-300 leading-relaxed">
+                                <p className="text-gray-200 leading-relaxed">
                                     <span className="font-semibold">Energy is your capacity for action.</span> You will spend it to complete tasks and help the Guild advance. It replenishes daily.
                                 </p>
                             </div>
@@ -881,7 +886,7 @@ const MemberOnboarding: React.FC<{
                                     <Users className="w-8 h-8 text-yellow-400" />
                                     <h4 className="font-bold text-yellow-400 text-xl">Guild Vault</h4>
                                 </div>
-                                <p className="text-gray-300 leading-relaxed">
+                                <p className="text-gray-200 leading-relaxed">
                                     <span className="font-semibold">The Guild Vault holds all of the team's Gold.</span> This shared resource is used for major expenses, like upgrading your headquarters, paying monthly upkeep, or acquiring powerful Treasures that benefit the entire Guild.
                                 </p>
                             </div>
@@ -889,7 +894,7 @@ const MemberOnboarding: React.FC<{
                             <div className="bg-purple-900/30 border border-purple-700 rounded-lg p-8 text-center">
                                 <div className="text-6xl mb-4">🎁</div>
                                 <h4 className="font-bold text-purple-400 text-xl mb-3">Starting Grant</h4>
-                                <p className="text-gray-300 text-lg leading-relaxed">
+                                <p className="text-gray-200 text-lg leading-relaxed">
                                     To build this shared wealth, we are granting a <span className="text-yellow-400 font-bold text-xl">Starting Grant of 50 Gold</span> on your behalf, which will be deposited directly into your Guild's Vault.
                                 </p>
                             </div>
@@ -920,7 +925,7 @@ const MemberOnboarding: React.FC<{
                         </div>
 
                         <div className="bg-gray-700/50 rounded-lg p-8 mb-8 border-4 border-purple-500 border-dashed">
-                            <p className="text-gray-400 mb-4 text-center">(The main dashboard appears. It is not on the first task, but on the task the Guild is currently focused on. A welcome message is displayed.)</p>
+                            <p className="text-white mb-4 text-center">(The main dashboard appears. It is not on the first task, but on the task the Guild is currently focused on. A welcome message is displayed.)</p>
                         </div>
 
                         <div className="space-y-6 mb-8">
@@ -929,7 +934,7 @@ const MemberOnboarding: React.FC<{
                                     <div className="text-3xl mr-3">🧙‍♂️</div>
                                     <p className="text-purple-400 font-semibold">Tenzing speaks:</p>
                                 </div>
-                                <div className="text-gray-300 space-y-3">
+                                <div className="text-gray-200 space-y-3">
                                     <p>"Welcome to the '<span className="text-blue-400 font-semibold">{inviteData.guildName}</span>' Guild, <span className="text-white font-semibold">{MEMBER_ROLES.find(r => r.id === onboardingData.role)?.name || (user && user.role && MEMBER_ROLES.find(r => r.id === user.role)?.name)}</span>."</p>
                                 </div>
                             </div>
@@ -945,9 +950,9 @@ const MemberOnboarding: React.FC<{
                                     <div className="text-3xl mr-3">🧙‍♂️</div>
                                     <p className="text-purple-400 font-semibold">Final guidance:</p>
                                 </div>
-                                <div className="text-gray-300">
+                                <div className="text-gray-200">
                                     <p>"Review the progress your Guild has made, coordinate with your fellow members, and lend your strength to the mission. Your journey as part of this fellowship begins now."</p>
-                                    <p className="text-gray-400 text-sm mt-3">(The Alchemist avatar fades away, leaving the user on their Guild's shared dashboard, ready to collaborate. The onboarding is complete.)</p>
+                                    <p className="text-white text-sm mt-3">(The Alchemist avatar fades away, leaving the user on their Guild's shared dashboard, ready to collaborate. The onboarding is complete.)</p>
                                 </div>
                             </div>
                         </div>

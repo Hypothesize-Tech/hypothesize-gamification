@@ -10,14 +10,14 @@ import {
 } from '@aws-sdk/client-bedrock-runtime';
 import { v4 as uuidv4 } from 'uuid';
 import * as pdfjsLib from 'pdfjs-dist';
-// import workerUrl from 'pdfjs-dist/build/pdf.worker.mjs?url';
+// Fixed import - using legacy build for Vite compatibility
+import workerUrl from 'pdfjs-dist/legacy/build/pdf.worker.min.js?url';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
-// Set up PDF.js worker for Vite
-// pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
+pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
 
 // AWS Configuration
-const awsRegion = import.meta.env.VITE_AWS_REGION || 'us-west-2';
+const awsRegion = import.meta.env.VITE_AWS_REGION || 'us-east-1';
 const s3BucketName = import.meta.env.VITE_S3_BUCKET_NAME || 'ai-startup-quest-docs';
 
 // Initialize AWS Clients

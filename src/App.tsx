@@ -1,8 +1,9 @@
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useGoogleLogin } from '@react-oauth/google';
 import {
   createGuild,
   joinGuild,
+  resetGuild, // Import resetGuild
   getConversations,
   saveConversation as saveConversationApi,
   getDocuments,
@@ -17,43 +18,35 @@ import {
   checkEnergyReset as checkEnergyResetApi,
   consumeEnergy as consumeEnergyApi,
   purchaseEnergy as purchaseEnergyApi,
+  getGuildActivityLogs,
+  getRecentActivities,
 } from './services/api';
 
+import backgroundImage from './assets/wallpaper_7.png';
 import { BedrockRuntimeClient } from '@aws-sdk/client-bedrock-runtime';
+
 import {
   Crown,
-  Users,
-  Sparkles,
   ChevronRight,
   LogOut,
   Target,
   User,
-  History,
   Copy,
-  BarChart3,
-  Lightbulb,
   BookOpen,
   AlertCircle,
-  Video,
   Coins,
-  ShoppingBag,
-  Zap,
-  UserPlus,
   Volume2,
   VolumeX,
   Scroll,
   Swords,
   Castle,
   Trophy,
-  AlertTriangle,
-  X,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import Modal from './components/Modal';
 import DocumentRAG from './components/DocumentRAG';
-import * as THREE from 'three';
-import { Canvas, } from '@react-three/fiber';
-import DiamondSword3D from './components/DiamondSword3D';
+import SwordIcon from './components/DiamondSword3D';
+import GuildActivityLog from './components/GuildActivityLog';
 import { medievalStyles } from './utils/medievalStyles';
 import { goldPurchaseStyles } from './utils/goldPurchaseStyles';
 import {
@@ -75,6 +68,7 @@ import { GuildManagement } from './components/GuildManagement';
 import { DailyBonus } from './components/DailyBonus';
 import { EpicMedievalLoader } from './components/EpicMedievalLoader';
 import { GoldPurchase } from './components/GoldPurchase';
+import { GuildProgressIndicator } from './components/GuildProgressIndicator';
 import type { GuildDataWithEnergy } from './components/EnergySystem';
 import {
   EnergyPurchaseModal,
@@ -83,7 +77,6 @@ import {
 } from './components/EnergySystem';
 import { ENERGY_CONFIG, ENERGY_COSTS } from './config/energy';
 
-
 // IMPORT THE ONBOARDING FLOWS
 import { FounderOnboarding, MemberOnboarding } from './components/OnboardingFlows';
 import AchievementPopup from './components/AchievementPopup';
@@ -91,44 +84,6 @@ import { UserProfile } from './components/UserProfile';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Beastiary } from './components/Beastiary';
 import { useAuth } from './context/AuthContext';
-
-class Canvas3DErrorBoundary extends React.Component<
-  { children: React.ReactNode },
-  { hasError: boolean }
-> {
-  constructor(props: { children: React.ReactNode }) {
-    super(props);
-    this.state = { hasError: false };
-  }
-
-  static getDerivedStateFromError() {
-    return { hasError: true };
-  }
-
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('3D Canvas error:', error, errorInfo);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="w-full h-full flex items-center justify-center">
-          <div className="text-center">
-            <p className="text-yellow-400 mb-2">3D view unavailable</p>
-            <button
-              onClick={() => this.setState({ hasError: false })}
-              className="text-sm text-blue-400 hover:text-blue-300"
-            >
-              Try again
-            </button>
-          </div>
-        </div>
-      );
-    }
-
-    return this.props.children;
-  }
-}
 
 // SoundManager class (same as before)
 class SoundManager {
@@ -204,15 +159,12 @@ export default function App() {
   // OTHER STATES (same as before)
   const [conversations, setConversations] = useState<any[]>([]);
   const [savedDocuments, setSavedDocuments] = useState<any[]>([]);
-  const [showHistory, setShowHistory] = useState(false);
   const [showDocuments, setShowDocuments] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<any | null>(null);
   const [generatingDoc, setGeneratingDoc] = useState(false);
+  const [generatedDocForReview, setGeneratedDocForReview] = useState<{ template: any; content: string } | null>(null);
   const [ceoAvatar, setCeoAvatar] = useState<any | null>(null);
-  const [showCEOProfile, setShowCEOProfile] = useState(false);
   const [showDashboard, setShowDashboard] = useState(true);
-  const [showResources, setShowResources] = useState(false);
-  const [isOnline, setIsOnline] = useState(true);
   const [guildDataError, setGuildDataError] = useState<string | null>(null);
   const [showArmory, setShowArmory] = useState(false);
   const [showGuildManagement, setShowGuildManagement] = useState(false);
@@ -225,6 +177,9 @@ export default function App() {
   const [showUserProfile, setShowUserProfile] = useState(false);
   const [hasCheckedEnergy, setHasCheckedEnergy] = useState(false);
 
+  const fundamentalsQuests = QUEST_STAGES.FUNDAMENTALS.quests.map(q => `fundamentals_${q.id}`);
+  const allFundamentalsCompleted = fundamentalsQuests.every(questKey => guildData?.questProgress?.[questKey]?.completed);
+
   const energyManagement = useEnergyManagement(
     guildData as GuildDataWithEnergy,
     user?._id || '',
@@ -235,6 +190,16 @@ export default function App() {
 
   const navigate = useNavigate();
   const location = useLocation();
+  const handleResetGuild = async () => {
+    if (!guildData) return;
+    try {
+      await resetGuild(guildData._id);
+      refetch(); // Refetch data to get the updated guild state
+    } catch (error) {
+      console.error('Failed to reset guild', error);
+      // Optionally, show an error message to the user
+    }
+  };
 
   // CHECK FOR INVITE TOKEN ON APP LOAD
   useEffect(() => {
@@ -300,19 +265,6 @@ export default function App() {
         }
       });
       document.removeEventListener('click', playAmbient);
-    };
-  }, []);
-
-  useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
     };
   }, []);
 
@@ -645,9 +597,27 @@ export default function App() {
     }
   };
 
+  const handleSaveReviewedDocument = async () => {
+    if (!generatedDocForReview) return;
+
+    await saveDocument(generatedDocForReview.template, generatedDocForReview.content);
+    setGeneratedDocForReview(null); // Close modal after saving
+    soundManager.play('questComplete');
+    setModalContent({ title: "Scroll Archived", message: `Your document '${generatedDocForReview.template.name}' has been saved to the archives.` });
+  };
+
   const handleGenerateDocument = async (template: any) => {
     setGeneratingDoc(true);
-    if (userInteracted) soundManager.play('magicCast');
+    soundManager.play('magicCast');
+
+    if (!allFundamentalsCompleted) {
+      setModalContent({
+        title: 'Complete Fundamentals Quests',
+        message: 'You must complete all quests in the \'Fundamentals\' stage before you can generate documents.',
+      });
+      setGeneratingDoc(false);
+      return;
+    }
 
     const hasEnergy = await energyManagement.consumeEnergy('DOCUMENT_GENERATION');
     if (!hasEnergy) {
@@ -655,9 +625,18 @@ export default function App() {
       return;
     }
 
-    const { data } = await generateDocumentApi(template);
-    await saveDocument(template, data.content);
-    setGeneratingDoc(false);
+    try {
+      const { data } = await generateDocumentApi(template.prompt || template.name);
+      setGeneratedDocForReview({ template, content: data.content });
+      setGeneratingDoc(false);
+    } catch (error) {
+      console.error('Error generating document:', error);
+      setGeneratingDoc(false);
+      setModalContent({
+        title: 'Generation Failed',
+        message: 'The AI Advisor was unable to generate the document. Please try again.'
+      });
+    }
   };
 
   const calculateStats = () => {
@@ -731,6 +710,10 @@ export default function App() {
     soundManager.play('swordDraw');
   };
 
+  const showModal = (title: string, message: string) => {
+    setModalContent({ title, message });
+  };
+
   if (loading) {
     return <EpicMedievalLoader />;
   }
@@ -761,27 +744,7 @@ export default function App() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="parchment p-8 rounded-lg shadow-2xl text-center max-w-md hero-3d">
           <div className="w-full h-80 mx-auto mb-6 flex items-center justify-center">
-            <Canvas3DErrorBoundary>
-              <Canvas
-                camera={{ position: [0, 0, 7], fov: 50 }}
-                style={{ width: '100%', height: '100%' }}
-                gl={{
-                  antialias: true,
-                  preserveDrawingBuffer: true,
-                  powerPreference: "high-performance"
-                }}
-              >
-                {/* Use the Drei helpers for lights, as ambientLight and pointLight are not valid JSX elements */}
-                {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
-                {/* @ts-ignore */}
-                <primitive object={new THREE.AmbientLight(0xffffff, 0.5)} />
-                {/* @ts-ignore */}
-                <primitive object={new THREE.PointLight(0xffffff, 1)} position={[10, 10, 10]} />
-                <Suspense fallback={null}>
-                  <DiamondSword3D rotation={[0.3, 0, 0.3]} scale={[2, 2, 2]} standingRotation={{ x: 0, y: 0, z: Math.PI / 2 }} />
-                </Suspense>
-              </Canvas>
-            </Canvas3DErrorBoundary>
+            <SwordIcon width={300} height={300} />
           </div>
           <h1 className="text-3xl font-bold text-yellow-100 mb-2">The Startup Quest</h1>
           <p className="text-gray-300 mb-6">Start your journey to building your company</p>
@@ -886,7 +849,7 @@ export default function App() {
               }`}
           >
             <BookOpen className="w-5 h-5" />
-            <span>Beastiary</span>
+            <span>Side Quests</span>
           </button>
 
         </div>
@@ -911,9 +874,18 @@ export default function App() {
       </div>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col bg-black/50 overflow-hidden">
+      <main className="flex-1 flex flex-col overflow-hidden" style={{
+        backgroundImage: `url(${backgroundImage})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+        position: 'relative',
+      }}>
+        {/* Background overlay for opacity */}
+        <div className="absolute inset-0 bg-black/70" style={{ backdropFilter: 'blur(2px)' }}></div>
+
         {/* Top Header Bar */}
-        <header className="parchment shadow-md px-6 py-3 border-b-2 border-yellow-700 flex-shrink-0">
+        <header className="parchment shadow-md px-6 py-3 border-b-2 border-yellow-700 flex-shrink-0 relative z-10">
           <div className="flex items-center justify-between">
             {/* Left side: Guild Info */}
             <div className="flex items-center space-x-4">
@@ -961,7 +933,7 @@ export default function App() {
         </header>
 
 
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto relative z-10">
           {selectedQuest ? (
             <FourPanelQuestInterface
               quest={selectedQuest}
@@ -990,8 +962,10 @@ export default function App() {
           ) : showGuildManagement ? (
             <GuildManagement
               guildData={guildData}
-              setGuildData={() => refetch()}
               onClose={() => setShowGuildManagement(false)}
+              onResetGuild={handleResetGuild} // Pass down the handler
+              setGuildData={() => refetch()}
+              showModal={showModal}
             />
           ) : showBeastiary ? (
             <Beastiary />
@@ -1005,7 +979,14 @@ export default function App() {
                     <h2 className="text-3xl font-bold text-yellow-100">Quests</h2>
                     <p className="text-gray-400">Your startup journey unfolds here.</p>
                   </div>
-                  <DailyBonus guildData={guildData} onClaim={claimDailyBonus} soundManager={soundManager} />
+                  <div className="flex items-center space-x-4">
+                    <GuildProgressIndicator
+                      level={guildData?.guildLevel || 1}
+                      showDescription={true}
+                      className="parchment p-2 rounded-lg shadow-md"
+                    />
+                    <DailyBonus guildData={guildData} onClaim={claimDailyBonus} soundManager={soundManager} />
+                  </div>
                 </div>
 
                 {/* Main Quest Map */}
@@ -1164,6 +1145,17 @@ export default function App() {
                   })}
                 </div>
 
+                {/* Guild Activity Log Section */}
+                <div className="mb-6">
+                  <h3 className="text-xl font-bold text-yellow-100 mb-4">Guild Activity</h3>
+                  {guildData && (
+                    <GuildActivityLog
+                      guildId={guildData._id}
+                      className="max-h-80 overflow-y-auto"
+                    />
+                  )}
+                </div>
+
                 <h3 className="text-xl font-bold text-yellow-100 mb-4">Document Creation</h3>
                 <div className="flex flex-col space-y-2">
                   {DOCUMENT_TEMPLATES.map(template => (
@@ -1184,7 +1176,6 @@ export default function App() {
                     Generating document...
                   </div>
                 )}
-
               </div>
             </div>
           )}
@@ -1236,8 +1227,10 @@ export default function App() {
         {showGuildManagement && (
           <GuildManagement
             guildData={guildData}
-            onClose={() => { setShowGuildManagement(false); if (userInteracted) soundManager.play('swordDraw'); }}
+            onClose={() => setShowGuildManagement(false)}
+            onResetGuild={handleResetGuild} // Pass down the handler
             setGuildData={() => refetch()}
+            showModal={showModal}
           />
         )}
         {showArmory && (
@@ -1248,12 +1241,35 @@ export default function App() {
             soundManager={soundManager}
           />
         )}
-        <Modal open={!!modalContent} onClose={() => setModalContent(null)}>
-          <div className="p-6 max-w-sm w-full">
-            <h3 className="text-xl font-bold text-yellow-100">{modalContent?.title}</h3>
-            <p className="text-gray-300 mt-2 mb-4">{modalContent?.message}</p>
-          </div>
-        </Modal>
+        {generatedDocForReview && (
+          <Modal open={!!generatedDocForReview} onClose={() => setGeneratedDocForReview(null)} size="lg">
+            <div className="p-6 parchment-container">
+              <div className="paper-texture"></div>
+              <div className="relative z-10">
+                <h3 className="text-2xl font-bold old-paper-text mb-4">{generatedDocForReview.template.name}</h3>
+                <div className="my-4 p-4 parchment-inner rounded-lg max-h-96 overflow-y-auto bg-white/5 prose prose-sm max-w-none old-paper-text">
+                  <ReactMarkdown>
+                    {generatedDocForReview.content}
+                  </ReactMarkdown>
+                </div>
+                <div className="flex justify-end space-x-4 mt-4">
+                  <button
+                    onClick={() => setGeneratedDocForReview(null)}
+                    className="px-4 py-2 parchment rounded-lg hover:bg-gray-700/50 transition-all"
+                  >
+                    Discard
+                  </button>
+                  <button
+                    onClick={handleSaveReviewedDocument}
+                    className="px-4 py-2 bg-gradient-to-r from-green-600 to-teal-600 text-white rounded-lg hover:from-green-500 hover:to-teal-500 transition-all magic-border"
+                  >
+                    Save to Archives
+                  </button>
+                </div>
+              </div>
+            </div>
+          </Modal>
+        )}
         {showDocuments && (
           <Modal size="full" open={showDocuments} onClose={() => { setShowDocuments(false); if (userInteracted) soundManager.play('swordDraw'); }}>
             <div className="flex flex-col h-full w-full">
@@ -1267,7 +1283,12 @@ export default function App() {
                 </button>
               </div>
               <div className="flex-1 overflow-auto">
-                <DocumentRAG userId={user._id} ceoAvatar={ceoAvatar} />
+                <DocumentRAG
+                  userId={user._id}
+                  guildData={guildData}
+                  updateGold={updateGold}
+                  ceoAvatar={ceoAvatar}
+                />
               </div>
             </div>
           </Modal>
@@ -1318,6 +1339,8 @@ export default function App() {
         {/* Energy Purchase Modal */}
         {guildData && (
           <EnergyPurchaseModal
+            currentEnergy={guildData?.energy ?? 0}
+            maxEnergy={guildData?.maxEnergy ?? 0}
             isOpen={energyManagement.showEnergyPurchase}
             onClose={() => energyManagement.setShowEnergyPurchase(false)}
             currentGold={guildData?.gold ?? 0}

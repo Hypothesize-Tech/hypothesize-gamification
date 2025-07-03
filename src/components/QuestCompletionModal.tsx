@@ -1,5 +1,5 @@
 import Modal from './Modal';
-import { X, Star, Coins, Sparkles } from 'lucide-react';
+import { X, Star, Coins, Sparkles, Info } from 'lucide-react';
 
 interface QuestCompletionModalProps {
     isOpen: boolean;
@@ -7,6 +7,7 @@ interface QuestCompletionModalProps {
     questName: string;
     rating: number;
     feedback: string;
+    improvementFeedback?: string;
     xpReward: number;
     goldReward: number;
 }
@@ -17,6 +18,7 @@ const QuestCompletionModal: React.FC<QuestCompletionModalProps> = ({
     questName,
     rating,
     feedback,
+    improvementFeedback,
     xpReward,
     goldReward,
 }) => {
@@ -52,6 +54,18 @@ const QuestCompletionModal: React.FC<QuestCompletionModalProps> = ({
                         <p className="text-gray-300 italic text-center">"{feedback}"</p>
                     </div>
                 </div>
+
+                {rating <= 3 && improvementFeedback && (
+                    <div className="mt-6">
+                        <h3 className="text-xl font-semibold text-amber-200 mb-3 text-center">Path to Improvement</h3>
+                        <div className="parchment p-4 rounded-md bg-amber-900/30 border border-amber-700/50">
+                            <div className="flex items-start space-x-3">
+                                <Info className="w-6 h-6 text-amber-400 flex-shrink-0 mt-1" />
+                                <p className="text-amber-100">{improvementFeedback}</p>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 <div className="mt-6">
                     <h3 className="text-xl font-semibold text-yellow-200 mb-3 text-center">Your Spoils</h3>

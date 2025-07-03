@@ -35,12 +35,18 @@ The ${APP_NAME} Team
 };
 
 export const createInviteLink = (guildData: GuildDataWithEnergy, inviteToken: string): string => {
+    if (!guildData) {
+        console.error('Guild data is undefined when creating invite link');
+        return `${APP_URL}?invite=${inviteToken}`;
+    }
+
+    // Safely access properties with fallbacks for each value to prevent undefined errors
     const params = new URLSearchParams({
-        invite: inviteToken,
-        guildId: guildData.guildId,
-        guildName: guildData.guildName,
+        invite: inviteToken || '',
+        guildId: guildData.guildId || '',
+        guildName: guildData.guildName || 'Our Guild',
         founderName: guildData.onboardingData?.name || 'the Founder',
-        ventureIdea: guildData.vision,
+        ventureIdea: guildData.vision || 'Our venture',
         founderRole: guildData.onboardingData?.role || 'Founder',
         currentStage: 'Fundamentals',
         currentTask: 'Getting Started',

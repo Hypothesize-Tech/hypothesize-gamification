@@ -334,12 +334,48 @@ export const ACHIEVEMENTS = [
 
 // Document Templates - Standard business themed
 export const DOCUMENT_TEMPLATES = [
-    { id: 'elevator_pitch', name: 'Elevator Pitch', icon: '🗣️', xp: 100 },
-    { id: 'lean_canvas', name: 'Business Model Canvas', icon: '📊', xp: 150 },
-    { id: 'user_survey', name: 'User Survey', icon: '📝', xp: 100 },
-    { id: 'investor_deck', name: 'Investor Deck', icon: '📈', xp: 200 },
-    { id: 'marketing_plan', name: 'Marketing Plan', icon: '📢', xp: 150 },
-    { id: 'product_roadmap', name: 'Product Roadmap', icon: '🗺️', xp: 150 }
+    {
+        id: 'elevator_pitch',
+        name: 'Elevator Pitch',
+        icon: '🗣️',
+        xp: 100,
+        prompt: 'Craft a compelling 60-second elevator pitch. It should clearly state the problem, our unique solution, the target market, and the core value proposition. Make it concise, memorable, and persuasive.'
+    },
+    {
+        id: 'lean_canvas',
+        name: 'Business Model Canvas',
+        icon: '📊',
+        xp: 150,
+        prompt: 'Generate a complete Business Model Canvas. Fill out all nine sections: Customer Segments, Value Propositions, Channels, Customer Relationships, Revenue Streams, Key Activities, Key Resources, Key Partnerships, and Cost Structure. Be specific and realistic.'
+    },
+    {
+        id: 'user_survey',
+        name: 'User Survey',
+        icon: '📝',
+        xp: 100,
+        prompt: 'Create a user survey with 5-7 questions to validate the core problem and gauge interest in our proposed solution. Include a mix of multiple-choice and open-ended questions. Focus on uncovering pain points and user needs.'
+    },
+    {
+        id: 'investor_deck',
+        name: 'Investor Deck',
+        icon: '📈',
+        xp: 200,
+        prompt: 'Outline a 10-slide investor pitch deck. The slides should cover: 1. Problem, 2. Solution, 3. Market Size, 4. Product, 5. Business Model, 6. Go-to-Market Strategy, 7. Competitive Landscape, 8. Team, 9. Financial Projections, 10. The Ask.'
+    },
+    {
+        id: 'marketing_plan',
+        name: 'Marketing Plan',
+        icon: '📢',
+        xp: 150,
+        prompt: 'Develop a high-level marketing plan for the next 6 months. It should define the target audience, key marketing channels (e.g., content, social media, SEO), main campaign ideas, and key performance indicators (KPIs) to track success.'
+    },
+    {
+        id: 'product_roadmap',
+        name: 'Product Roadmap',
+        icon: '🗺️',
+        xp: 150,
+        prompt: 'Create a product roadmap for the next three quarters. Organize features into themes (e.g., Q1: Core Functionality, Q2: User Growth, Q3: Monetization). Prioritize features based on user impact and business value.'
+    }
 ];
 
 // Guild Level Structure - Standard business themed

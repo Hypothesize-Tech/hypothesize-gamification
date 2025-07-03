@@ -7,10 +7,13 @@ import {
     Database,
     Search,
     BookOpen,
-    Sparkles
+    Sparkles,
+    MessageCircle
 } from 'lucide-react';
 import DocumentUpload from './DocumentUpload';
 import { ragService } from '../services/awsRAGService';
+import { updateGold, consumeEnergy, generateDocument, saveDocumentConversation, getDocumentConversationById, getDocumentConversations, deleteDocumentConversation, type Message } from '../services/api';
+import { GOLD_COSTS, ENERGY_COSTS } from '../config/energy';
 import ReactMarkdown from 'react-markdown';
 import { Worker, Viewer, SpecialZoomLevel } from '@react-pdf-viewer/core';
 import '@react-pdf-viewer/core/lib/styles/index.css';
@@ -18,6 +21,8 @@ import '@react-pdf-viewer/default-layout/lib/styles/index.css';
 import Modal from './Modal';
 import confetti from 'canvas-confetti';
 import paperBg from '../assets/wallpaper_2.jpg';
+import DocumentConversationSidebar from './DocumentConversationSidebar';
+import { v4 as uuidv4 } from 'uuid';
 
 const parchmentStyles = `
   .parchment-container {
@@ -245,6 +250,8 @@ const parchmentStyles = `
 
 interface DocumentRAGProps {
     userId: string;
+    guildData: any;
+    updateGold: (gold: number) => void;
     userName?: string;
     ceoAvatar?: any;
     open?: boolean;
@@ -289,7 +296,7 @@ class SoundManager {
 }
 const soundManager = new SoundManager();
 
-export const DocumentRAG: React.FC<DocumentRAGProps> = ({ userId, ceoAvatar, open = true, onClose, deleteDocument }) => {
+export const DocumentRAG: React.FC<DocumentRAGProps> = ({ userId, guildData, updateGold, ceoAvatar, open = true, onClose, deleteDocument }) => {
     const [documents, setDocuments] = useState<UploadedDocument[]>([]);
     const [loading, setLoading] = useState(false);
     const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -298,14 +305,23 @@ export const DocumentRAG: React.FC<DocumentRAGProps> = ({ userId, ceoAvatar, ope
     const [error, setError] = useState<string | null>(null);
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
     const [selectedDocument, setSelectedDocument] = useState<UploadedDocument | null>(null);
+    const [documentToPreview, setDocumentToPreview] = useState<UploadedDocument | null>(null);
     const [documentContent, setDocumentContent] = useState<string | null>(null);
     const [previewLoading, setPreviewLoading] = useState(false);
     const [pdfUrl, setPdfUrl] = useState<string | null>(null);
     const [pdfError, setPdfError] = useState<string | null>(null);
 
+    // New state for conversation features
+    const [showSidebar, setShowSidebar] = useState(false);
+    const [conversations, setConversations] = useState<any[]>([]);
+    const [currentConversation, setCurrentConversation] = useState<any>(null);
+    const [savingConversation, setSavingConversation] = useState(false);
+    console.log("currentConversation", currentConversation)
+    console.log("chatMessages", chatMessages)
     // Load user documents on mount
     useEffect(() => {
         loadDocuments();
+        loadConversations();
     }, [userId]);
 
     useEffect(() => {
@@ -313,6 +329,19 @@ export const DocumentRAG: React.FC<DocumentRAGProps> = ({ userId, ceoAvatar, ope
             messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
         }
     }, [chatMessages, isProcessing]);
+
+    // Handle selected document change to reset chat when document changes
+    useEffect(() => {
+        if (selectedDocument) {
+            setChatMessages([{
+                id: Date.now().toString(),
+                type: 'assistant',
+                content: `I've loaded "${selectedDocument.name}". What would you like to know about this document?`,
+                timestamp: new Date()
+            }]);
+            setCurrentConversation(null);
+        }
+    }, [selectedDocument]);
 
     const loadDocuments = async () => {
         try {
@@ -327,21 +356,83 @@ export const DocumentRAG: React.FC<DocumentRAGProps> = ({ userId, ceoAvatar, ope
         }
     };
 
+    const loadConversations = async () => {
+        try {
+            setLoading(true);
+            const response = await getDocumentConversations();
+            // Sort conversations by lastUpdated in descending order (newest first)
+            const sortedConversations = response.data.sort((a: any, b: any) =>
+                new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime()
+            );
+            setConversations(sortedConversations);
+
+            // Only consider conversations for the selected document
+            const docConvos = selectedDocument
+                ? sortedConversations.filter((c: any) => c.documentId === selectedDocument.id)
+                : sortedConversations;
+
+            if (docConvos.length > 0) {
+                const mostRecent = docConvos[0];
+                setCurrentConversation(mostRecent);
+                setChatMessages(Array.isArray(mostRecent.messages) ? mostRecent.messages : []);
+            } else {
+                setCurrentConversation(null);
+                setChatMessages([{
+                    id: Date.now().toString(),
+                    type: 'assistant',
+                    content: selectedDocument
+                        ? `I've loaded "${selectedDocument.name}". What would you like to know about this document?`
+                        : 'Please select a document to start a conversation.',
+                    timestamp: new Date()
+                }]);
+            }
+        } catch (error) {
+            console.error('Error loading conversations:', error);
+            setError('Failed to load conversations.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Handle selected document change to load its conversations
+    useEffect(() => {
+        if (selectedDocument) {
+            loadConversations();
+        } else {
+            // Clear conversations when no document is selected
+            setConversations([]);
+            setCurrentConversation(null);
+            setChatMessages([{
+                id: Date.now().toString(),
+                type: 'assistant',
+                content: 'Please select a document to start a conversation.',
+                timestamp: new Date()
+            }]);
+        }
+    }, [selectedDocument]);
+
     const handleUpload = async (file: File) => {
         try {
             setError(null);
-            await ragService.uploadDocument(file, userId);
+            const documentId = await ragService.uploadDocument(file, userId);
             soundManager.play('questComplete');
             confetti && confetti({ particleCount: 50, spread: 45, origin: { y: 0.8 } });
 
-            setChatMessages(prev => [...prev, {
-                id: Date.now().toString(),
-                type: 'assistant',
-                content: `I've successfully processed "${file.name}". I'm now ready to answer questions about this document and help you extract insights for your startup journey!`,
-                timestamp: new Date()
-            }]);
+            // Deduct gold for document upload
+            if (updateGold) {
+                updateGold(-ENERGY_COSTS.DOCUMENT_UPLOAD);
+            }
 
-            await loadDocuments();
+            const newDoc = {
+                id: documentId,
+                name: file.name,
+                uploadedAt: new Date().toISOString(),
+                size: file.size
+            };
+
+            setDocuments(prev => [...prev, newDoc]);
+
+            // Rest of function...
         } catch (error) {
             console.error('Upload error:', error);
             setError('Failed to upload document. Please try again.');
@@ -350,10 +441,11 @@ export const DocumentRAG: React.FC<DocumentRAGProps> = ({ userId, ceoAvatar, ope
     };
 
     const handleAskQuestion = async () => {
-        if (!currentQuestion.trim() || isProcessing) return;
+        if (!currentQuestion.trim() || isProcessing || !selectedDocument) return;
 
+        const messageId = uuidv4();
         const userMessage: ChatMessage = {
-            id: Date.now().toString(),
+            id: messageId,
             type: 'user',
             content: currentQuestion,
             timestamp: new Date()
@@ -372,23 +464,189 @@ export const DocumentRAG: React.FC<DocumentRAGProps> = ({ userId, ceoAvatar, ope
             confetti && confetti({ particleCount: 30, spread: 45, origin: { y: 0.3 } });
 
             const assistantMessage: ChatMessage = {
-                id: (Date.now() + 1).toString(),
+                id: uuidv4(),
                 type: 'assistant',
                 content: response,
                 timestamp: new Date()
             };
 
             setChatMessages(prev => [...prev, assistantMessage]);
+
+            // Auto-save conversation after each question
+            await saveConversation([...chatMessages, userMessage, assistantMessage]);
         } catch (error) {
             console.error('Question error:', error);
             setChatMessages(prev => [...prev, {
-                id: (Date.now() + 1).toString(),
+                id: uuidv4(),
                 type: 'assistant',
                 content: 'I encountered an error processing your question. Please try again.',
                 timestamp: new Date()
             }]);
         } finally {
             setIsProcessing(false);
+        }
+    };
+
+    const handleGenerateWithSage = async () => {
+        if (!currentQuestion.trim()) {
+            setError('Please enter a topic or instruction for the Sage.');
+            return;
+        }
+
+        setIsProcessing(true);
+        setError(null);
+
+        try {
+            // 1. Consume energy
+            await consumeEnergy('DOCUMENT_GENERATION');
+            soundManager.play('magicCast');
+
+            // 2. Generate document
+            const { data: generatedContent } = await generateDocument(currentQuestion);
+
+            const assistantMessage: ChatMessage = {
+                id: uuidv4(),
+                type: 'assistant',
+                content: generatedContent,
+                timestamp: new Date(),
+            };
+            setChatMessages(prev => [...prev, assistantMessage]);
+            setCurrentQuestion(''); // Clear input after sending
+            confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+
+            // Auto-save conversation after generation
+            await saveConversation([...chatMessages, assistantMessage]);
+        } catch (err: any) {
+            console.error('Sage generation error:', err);
+            const errorMessage =
+                err.response?.data?.message ||
+                'The Sage failed to generate the document. Please try again.';
+            setError(errorMessage);
+            // Optionally add a message to the chat
+            setChatMessages(prev => [
+                ...prev,
+                {
+                    id: uuidv4(),
+                    type: 'assistant',
+                    content: `I am sorry, but I encountered a problem: ${errorMessage}`,
+                    timestamp: new Date(),
+                },
+            ]);
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    // Save current conversation to backend
+    const saveConversation = async (messagesToSave: ChatMessage[]) => {
+        if (!selectedDocument) return;
+
+        setSavingConversation(true);
+
+        try {
+            const conversationData = {
+                documentId: selectedDocument.id,
+                documentName: selectedDocument.name,
+                messages: messagesToSave.map(({ id, type, content, timestamp }) => ({ id, type, content, timestamp })),
+                title: (currentConversation as any)?.title || selectedDocument.name,
+            };
+
+            // Save conversation
+            const response = await saveDocumentConversation(
+                conversationData.documentId,
+                conversationData.documentName,
+                conversationData.messages,
+                conversationData.title
+            );
+
+            // Update current conversation with the saved one
+            const savedConversation = response.data.conversation;
+            setCurrentConversation(savedConversation);
+
+            // Update the main conversations list to refresh the sidebar
+            setConversations(prevConvos => {
+                const existingConvoIndex = prevConvos.findIndex(c => c._id === savedConversation._id);
+                if (existingConvoIndex > -1) {
+                    // Update existing conversation
+                    const updatedConvos = [...prevConvos];
+                    updatedConvos[existingConvoIndex] = savedConversation;
+                    return updatedConvos;
+                } else {
+                    // Add new conversation
+                    return [...prevConvos, savedConversation];
+                }
+            });
+        } catch (error) {
+            console.error('Error saving conversation:', error);
+            setError('Failed to save conversation progress.');
+        } finally {
+            setSavingConversation(false);
+        }
+    };
+
+    const handleSelectConversation = async (conversation: any) => {
+        try {
+            setLoading(true);
+
+            // Find the document associated with this conversation
+            const doc = documents.find(d => d.id === conversation.documentId);
+            if (doc) {
+                setSelectedDocument(doc);
+            }
+
+            // Get the full conversation (in case it was updated)
+            const response = await getDocumentConversationById(conversation._id);
+            setCurrentConversation(response.data);
+
+            // In handleSelectConversation:
+            const chatMsgs: ChatMessage[] = Array.isArray(response.data.messages)
+                ? response.data.messages.map((msg: Message) => ({
+                    id: msg.id,
+                    type: msg.type,
+                    content: msg.content,
+                    timestamp: new Date(msg.timestamp)
+                }))
+                : [];
+            setChatMessages(chatMsgs);
+
+        } catch (error) {
+            console.error('Error loading conversation:', error);
+            setError('Failed to load the selected conversation');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleNewConversation = () => {
+        if (selectedDocument) {
+            // Start a new conversation
+            setChatMessages([
+                {
+                    id: Date.now().toString(),
+                    type: 'assistant',
+                    content: `I've loaded "${selectedDocument.name}". What would you like to know about this document?`,
+                    timestamp: new Date(),
+                },
+            ]);
+            setCurrentConversation(null);
+            setShowSidebar(false);
+        }
+    };
+
+    const handleDeleteConversation = async (conversationId: string) => {
+        try {
+            await deleteDocumentConversation(conversationId);
+            // Remove from local state
+            const updatedConversations = conversations.filter(c => c._id !== conversationId);
+            setConversations(updatedConversations);
+
+            // If the deleted conversation was the current one, reset the chat
+            if ((currentConversation as any)?._id === conversationId) {
+                handleNewConversation();
+            }
+        } catch (err) {
+            console.error('Error deleting conversation:', err);
+            setError('Failed to delete conversation.');
         }
     };
 
@@ -399,8 +657,12 @@ export const DocumentRAG: React.FC<DocumentRAGProps> = ({ userId, ceoAvatar, ope
         return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
     };
 
-    const handlePreviewDocument = async (doc: UploadedDocument) => {
-        setSelectedDocument(doc);
+    const handlePreviewDocument = async (doc: UploadedDocument, e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (selectedDocument?.id !== doc.id) {
+            setSelectedDocument(doc);
+        }
+        setDocumentToPreview(doc);
         setDocumentContent(null);
         setPreviewLoading(true);
         setPdfUrl(null);
@@ -477,163 +739,217 @@ export const DocumentRAG: React.FC<DocumentRAGProps> = ({ userId, ceoAvatar, ope
                             </div>
 
                             {/* Main Content */}
-                            <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 pt-8">
-                                {/* Left Column - Document Management */}
-                                <div className="xl:col-span-1 space-y-6">
-                                    {/* Upload Section */}
-                                    <div className="parchment-inner rounded-lg p-5">
-                                        <h3 className="text-lg font-semibold old-paper-text mb-3 flex items-center space-x-2">
-                                            <FileText className="w-5 h-5 text-amber-700" />
-                                            <span>Upload Document</span>
-                                        </h3>
-                                        <DocumentUpload onUpload={handleUpload} />
-                                    </div>
+                            <div className="flex flex-row gap-8 pt-8 h-[70vh]">
+                                {/* Left Sidebar - Document Conversations */}
+                                {showSidebar && (
+                                    <DocumentConversationSidebar
+                                        className="w-80 border-r border-amber-700/20"
+                                        conversations={conversations.filter(c => c.documentId === selectedDocument?.id)}
+                                        onSelectConversation={handleSelectConversation}
+                                        onNewConversation={handleNewConversation}
+                                        onDeleteConversation={handleDeleteConversation}
+                                        activeConversationId={currentConversation?._id}
+                                        currentConversation={currentConversation}
+                                    />
+                                )}
 
-                                    {/* Documents List */}
-                                    <div className="parchment-inner rounded-lg p-5">
-                                        <h3 className="text-lg font-semibold old-paper-text mb-3 flex items-center space-x-2">
-                                            <BookOpen className="w-5 h-5 text-amber-700" />
-                                            <span>Your Documents</span>
-                                            {loading && <Loader2 className="w-4 h-4 animate-spin text-amber-700" />}
-                                        </h3>
+                                {/* Content Area */}
+                                <div className="flex-1 grid grid-cols-1 xl:grid-cols-3 gap-8">
+                                    {/* Left Column - Document Management */}
+                                    <div className="xl:col-span-1 space-y-6">
+                                        {/* Upload Section */}
+                                        <div className="parchment-inner rounded-lg p-5">
+                                            <h3 className="text-lg font-semibold old-paper-text mb-3 flex items-center space-x-2">
+                                                <FileText className="w-5 h-5 text-amber-700" />
+                                                <span>Upload Document</span>
+                                            </h3>
+                                            <DocumentUpload onUpload={handleUpload} guildData={guildData} />
+                                        </div>
 
-                                        {documents.length === 0 ? (
-                                            <div className="text-center py-6">
-                                                <FileText className="w-12 h-12 mx-auto mb-2 opacity-50 text-amber-700" />
-                                                <p className="text-base old-paper-text opacity-70">No documents uploaded yet</p>
+                                        {/* Documents List */}
+                                        <div className="parchment-inner rounded-lg p-5 ">
+                                            <div className="flex justify-between items-center mb-3">
+                                                <h3 className="text-lg font-semibold old-paper-text flex items-center space-x-2">
+                                                    <BookOpen className="w-5 h-5 text-amber-700" />
+                                                    <span>Your Documents</span>
+                                                    {loading && <Loader2 className="w-4 h-4 animate-spin text-amber-700" />}
+                                                </h3>
+
+                                                <button
+                                                    className="flex items-center text-amber-700 hover:text-amber-800"
+                                                    onClick={() => setShowSidebar(!showSidebar)}
+                                                    title={showSidebar ? "Hide conversations" : "Show conversations"}
+                                                >
+                                                    <MessageCircle className="w-5 h-5" />
+                                                </button>
                                             </div>
-                                        ) : (
-                                            <div className="space-y-2 max-h-60 overflow-y-auto">
-                                                {documents.map(doc => (
-                                                    <div
-                                                        key={doc.id}
-                                                        className="parchment-inner p-3 rounded hover:shadow-md transition-all cursor-pointer"
-                                                        onClick={() => handlePreviewDocument(doc)}
-                                                    >
-                                                        <div className="flex items-start justify-between">
-                                                            <div className="flex-1 min-w-0">
-                                                                <p className="font-medium old-paper-text text-sm truncate">
-                                                                    {doc.name}
-                                                                </p>
-                                                                <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-3 text-xs old-paper-text opacity-60 mt-1 gap-1 sm:gap-0">
-                                                                    <span className="flex items-center space-x-1">
-                                                                        <Clock className="w-3 h-3" />
-                                                                        <span>{new Date(doc.uploadedAt).toLocaleDateString()}</span>
-                                                                    </span>
-                                                                    <span>{formatFileSize(doc.size)}</span>
+
+                                            {documents.length === 0 ? (
+                                                <div className="text-center py-6">
+                                                    <FileText className="w-12 h-12 mx-auto mb-2 opacity-50 text-amber-700" />
+                                                    <p className="text-base old-paper-text opacity-70">No documents uploaded yet</p>
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-2 max-h-60 overflow-y-auto overflow-x-hidden">
+                                                    {documents.map(doc => (
+                                                        <div
+                                                            key={doc.id}
+                                                            className={`parchment-inner p-3 rounded hover:shadow-md transition-all cursor-pointer ${selectedDocument?.id === doc.id ? 'border-2 border-amber-700' : ''
+                                                                }`}
+                                                            onClick={() => setSelectedDocument(doc)}
+                                                        >
+                                                            <div className="flex items-start justify-between">
+                                                                <div className="flex-1 min-w-0">
+                                                                    <p className="font-medium old-paper-text text-sm truncate">
+                                                                        {doc.name}
+                                                                    </p>
+                                                                    <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-3 text-xs old-paper-text opacity-60 mt-1 gap-1 sm:gap-0">
+                                                                        <span className="flex items-center space-x-1">
+                                                                            <Clock className="w-3 h-3" />
+                                                                            <span>{new Date(doc.uploadedAt).toLocaleDateString()}</span>
+                                                                        </span>
+                                                                        <span>{formatFileSize(doc.size)}</span>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="flex items-center space-x-1 ml-2">
+                                                                    <button
+                                                                        className="p-1 text-amber-700 hover:text-amber-800 rounded-full hover:bg-amber-100/50 transition-colors"
+                                                                        title="Preview document"
+                                                                        onClick={(e) => handlePreviewDocument(doc, e)}
+                                                                    >
+                                                                        <BookOpen className="w-4 h-4" />
+                                                                    </button>
+                                                                    {deleteDocument && (
+                                                                        <button
+                                                                            className="text-red-700 hover:text-red-900 text-lg font-bold px-2"
+                                                                            title="Delete document"
+                                                                            onClick={async (e) => {
+                                                                                e.stopPropagation();
+                                                                                if (window.confirm('Are you sure you want to delete this document?')) {
+                                                                                    await deleteDocument(doc.id);
+                                                                                    await loadDocuments();
+                                                                                }
+                                                                            }}
+                                                                        >
+                                                                            ×
+                                                                        </button>
+                                                                    )}
                                                                 </div>
                                                             </div>
-                                                            {deleteDocument && (
-                                                                <button
-                                                                    className="ml-2 text-red-700 hover:text-red-900 text-lg font-bold px-2"
-                                                                    title="Delete document"
-                                                                    onClick={async (e) => {
-                                                                        e.stopPropagation();
-                                                                        if (window.confirm('Are you sure you want to delete this document?')) {
-                                                                            await deleteDocument(doc.id);
-                                                                            await loadDocuments();
-                                                                        }
-                                                                    }}
-                                                                >
-                                                                    ×
-                                                                </button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Right Column - Chat Interface */}
+                                    <div className="xl:col-span-2 parchment-inner rounded-lg p-6 flex flex-col h-full">
+                                        {/* Chat Header */}
+                                        <div className="mb-4 flex justify-between items-center">
+                                            <div className="flex items-center space-x-2">
+                                                <Sparkles className="w-5 h-5 text-amber-700" />
+                                                <h3 className="text-lg font-bold old-paper-text">Ask the Sage</h3>
+                                            </div>
+
+                                            {savingConversation && (
+                                                <div className="flex items-center text-xs text-amber-700">
+                                                    <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                                                    <span>Saving...</span>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Chat Messages */}
+                                        <div className="flex-1 overflow-y-auto space-y-4 pr-2">
+                                            {chatMessages?.length === 0 ? (
+                                                <div className="text-center py-8 flex flex-col justify-center">
+                                                    <Search className="w-12 h-12 text-amber-700 opacity-50 mx-auto mb-3" />
+                                                    <p className="old-paper-text opacity-70 text-base px-4">
+                                                        Upload a document and start asking questions!
+                                                    </p>
+                                                    <div className="mt-4 space-y-2 text-sm old-paper-text opacity-60 px-4 italic">
+                                                        <p>Try questions like:</p>
+                                                        <p>"What are the key insights from this document?"</p>
+                                                        <p>"How can I apply this to my guild?"</p>
+                                                        <p>"Summarize the main points"</p>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                (chatMessages ?? []).map(message => (
+                                                    <div
+                                                        key={message.id}
+                                                        className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
+                                                    >
+                                                        <div
+                                                            className={`max-w-[85%] rounded-lg p-4 ${message.type === 'user'
+                                                                ? 'bg-amber-100/50 border border-amber-700/30'
+                                                                : 'bg-amber-50/30 border border-amber-600/20'
+                                                                }`}
+                                                        >
+                                                            {message.type === 'assistant' ? (
+                                                                <div className="prose prose-sm max-w-none old-paper-text">
+                                                                    <ReactMarkdown>{message.content}</ReactMarkdown>
+                                                                </div>
+                                                            ) : (
+                                                                <p className="text-base old-paper-text">{message.content}</p>
                                                             )}
+                                                            <p className="text-xs old-paper-text opacity-50 mt-2">
+                                                                {message.timestamp.toLocaleTimeString()}
+                                                            </p>
                                                         </div>
                                                     </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Right Column - Chat Interface */}
-                                <div className="xl:col-span-2 parchment-inner rounded-lg p-6 flex flex-col h-[70vh]">
-                                    {/* Chat Header */}
-                                    <div className="mb-4 flex items-center space-x-2">
-                                        <Sparkles className="w-5 h-5 text-amber-700" />
-                                        <h3 className="text-lg font-bold old-paper-text">Ask the Sage</h3>
-                                    </div>
-
-                                    {/* Chat Messages */}
-                                    <div className="flex-1 overflow-y-auto space-y-4 pr-2">
-                                        {chatMessages.length === 0 ? (
-                                            <div className="text-center py-8 flex flex-col justify-center">
-                                                <Search className="w-12 h-12 text-amber-700 opacity-50 mx-auto mb-3" />
-                                                <p className="old-paper-text opacity-70 text-base px-4">
-                                                    Upload a document and start asking questions!
-                                                </p>
-                                                <div className="mt-4 space-y-2 text-sm old-paper-text opacity-60 px-4 italic">
-                                                    <p>Try questions like:</p>
-                                                    <p>"What are the key insights from this document?"</p>
-                                                    <p>"How can I apply this to my guild?"</p>
-                                                    <p>"Summarize the main points"</p>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            chatMessages.map(message => (
-                                                <div
-                                                    key={message.id}
-                                                    className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
-                                                >
-                                                    <div
-                                                        className={`max-w-[85%] rounded-lg p-4 ${message.type === 'user'
-                                                            ? 'bg-amber-100/50 border border-amber-700/30'
-                                                            : 'bg-amber-50/30 border border-amber-600/20'
-                                                            }`}
-                                                    >
-                                                        {message.type === 'assistant' ? (
-                                                            <div className="prose prose-sm max-w-none old-paper-text">
-                                                                <ReactMarkdown>{message.content}</ReactMarkdown>
-                                                            </div>
-                                                        ) : (
-                                                            <p className="text-base old-paper-text">{message.content}</p>
-                                                        )}
-                                                        <p className="text-xs old-paper-text opacity-50 mt-2">
-                                                            {message.timestamp.toLocaleTimeString()}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            ))
-                                        )}
-                                        {isProcessing && (
-                                            <div className="flex justify-start">
-                                                <div className="parchment-inner rounded-lg p-4 max-w-[85%]">
-                                                    <div className="flex items-center space-x-2">
-                                                        <Loader2 className="w-4 h-4 animate-spin text-amber-700" />
-                                                        <p className="text-base old-paper-text italic">The Sage is processing your request...</p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )}
-                                        <div ref={messagesEndRef} />
-                                    </div>
-
-                                    {/* Chat Input */}
-                                    <div className="mt-4 flex gap-2">
-                                        <input
-                                            type="text"
-                                            value={currentQuestion}
-                                            onChange={(e) => setCurrentQuestion(e.target.value)}
-                                            onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleAskQuestion()}
-                                            placeholder="Ask the Sage about your documents..."
-                                            className="flex-1 p-3 bg-amber-50/30 old-paper-text rounded-lg placeholder-amber-700/50 
-                                                     border border-amber-700/30 focus:outline-none focus:border-amber-700/50 text-base
-                                                     transition-all"
-                                            disabled={isProcessing || documents.length === 0}
-                                        />
-                                        <button
-                                            onClick={handleAskQuestion}
-                                            disabled={isProcessing || !currentQuestion.trim() || documents.length === 0}
-                                            className="px-4 py-3 bg-amber-700 text-amber-50 rounded-lg hover:bg-amber-800 
-                                                     active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all 
-                                                     flex items-center justify-center min-w-[48px] shadow-md"
-                                        >
-                                            {isProcessing ? (
-                                                <Loader2 className="w-5 h-5 animate-spin" />
-                                            ) : (
-                                                <Send className="w-5 h-5" />
+                                                ))
                                             )}
-                                        </button>
+                                            {isProcessing && (
+                                                <div className="flex justify-start">
+                                                    <div className="parchment-inner rounded-lg p-4 max-w-[85%]">
+                                                        <div className="flex items-center space-x-2">
+                                                            <Loader2 className="w-4 h-4 animate-spin text-amber-700" />
+                                                            <p className="text-base old-paper-text italic">The Sage is processing your request...</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+                                            <div ref={messagesEndRef} />
+                                        </div>
+
+                                        {/* Chat Input */}
+                                        <div className="mt-4 flex gap-2">
+                                            <input
+                                                type="text"
+                                                value={currentQuestion}
+                                                onChange={(e) => setCurrentQuestion(e.target.value)}
+                                                onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleAskQuestion()}
+                                                placeholder="Ask the Sage about your documents..."
+                                                className="flex-1 p-3 bg-amber-50/30 old-paper-text rounded-lg placeholder-amber-700/50 
+                                                         border border-amber-700/30 focus:outline-none focus:border-amber-700/50 text-base
+                                                         transition-all"
+                                                disabled={isProcessing || !selectedDocument}
+                                            />
+                                            <button
+                                                onClick={handleAskQuestion}
+                                                disabled={isProcessing || !currentQuestion.trim() || !selectedDocument}
+                                                className="px-4 py-3 bg-amber-700 text-amber-50 rounded-lg hover:bg-amber-800 
+                                                         active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all 
+                                                         flex items-center justify-center min-w-[48px] shadow-md"
+                                            >
+                                                {isProcessing ? (
+                                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                                ) : (
+                                                    <Send className="w-5 h-5" />
+                                                )}
+                                            </button>
+                                            <button
+                                                onClick={handleGenerateWithSage}
+                                                disabled={isProcessing || !currentQuestion.trim()}
+                                                className="px-4 py-3 bg-purple-700 text-amber-50 rounded-lg hover:bg-purple-800 
+                                                         active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all 
+                                                         flex items-center justify-center shadow-md"
+                                            >
+                                                <Sparkles className="w-5 h-5" />
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -650,15 +966,15 @@ export const DocumentRAG: React.FC<DocumentRAGProps> = ({ userId, ceoAvatar, ope
             </div>
 
             {/* Document Preview Modal */}
-            <Modal open={!!selectedDocument} onClose={() => { setSelectedDocument(null); setDocumentContent(null); setPdfUrl(null); setPdfError(null); }} size="xl">
-                {selectedDocument && (
+            <Modal open={!!documentToPreview} onClose={() => { setDocumentToPreview(null); setDocumentContent(null); setPdfUrl(null); setPdfError(null); }} size="xl">
+                {documentToPreview && (
                     <div className="p-6 max-w-4xl w-full parchment-container rounded-lg">
                         <div className="paper-texture"></div>
                         <div className="relative z-10">
                             <div className="flex items-center justify-between mb-4">
-                                <h3 className="text-2xl font-bold old-paper-text">{selectedDocument.name}</h3>
+                                <h3 className="text-2xl font-bold old-paper-text">{documentToPreview.name}</h3>
                                 <button
-                                    onClick={() => { setSelectedDocument(null); setDocumentContent(null); setPdfUrl(null); setPdfError(null); }}
+                                    onClick={() => { setDocumentToPreview(null); setDocumentContent(null); setPdfUrl(null); setPdfError(null); }}
                                     className="old-paper-text hover:text-amber-900 text-2xl font-bold"
                                 >
                                     ×
@@ -669,59 +985,21 @@ export const DocumentRAG: React.FC<DocumentRAGProps> = ({ userId, ceoAvatar, ope
                                     <div className="flex items-center justify-center h-full">
                                         <Loader2 className="w-8 h-8 animate-spin text-amber-700" />
                                     </div>
-                                ) : selectedDocument.name.split('.').pop()?.toLowerCase() === 'pdf' ? (
+                                ) : documentToPreview.name.split('.').pop()?.toLowerCase() === 'pdf' ? (
                                     pdfUrl ? (
                                         <div className="bg-white p-2 rounded-lg h-full overflow-auto">
                                             <Worker workerUrl="https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js">
-                                                <Viewer
-                                                    fileUrl={pdfUrl}
-                                                    defaultScale={SpecialZoomLevel.PageWidth}
-                                                />
+                                                <div style={{ height: '75vh' }}>
+                                                    <Viewer fileUrl={pdfUrl} defaultScale={SpecialZoomLevel.PageFit} />
+                                                </div>
                                             </Worker>
                                         </div>
-                                    ) : pdfError ? (
-                                        <div className="p-4 rounded-lg text-red-700 h-full flex items-center justify-center text-center">
-                                            <div>
-                                                <p className="text-base">{pdfError}</p>
-                                                <button
-                                                    onClick={() => handlePreviewDocument(selectedDocument)}
-                                                    className="mt-2 px-4 py-2 bg-amber-700 text-white rounded hover:bg-amber-800 text-base"
-                                                >
-                                                    Try Again
-                                                </button>
-                                            </div>
-                                        </div>
                                     ) : (
-                                        <div className="p-4 rounded-lg old-paper-text h-full flex items-center justify-center">
-                                            <p className="text-base">Loading PDF preview...</p>
-                                        </div>
+                                        <div className="text-center text-red-700">{pdfError || 'Loading PDF...'}</div>
                                     )
-                                ) : documentContent ? (
-                                    (() => {
-                                        const ext = selectedDocument.name.split('.').pop()?.toLowerCase();
-                                        if (ext === 'md') {
-                                            return (
-                                                <div className="prose prose-sm max-w-none p-4 rounded-lg h-full overflow-auto old-paper-text">
-                                                    <ReactMarkdown>{documentContent}</ReactMarkdown>
-                                                </div>
-                                            );
-                                        } else if (ext === 'txt' || ext === 'csv') {
-                                            return (
-                                                <pre className="p-4 rounded-lg old-paper-text overflow-auto h-full whitespace-pre-wrap text-sm font-mono">
-                                                    {documentContent}
-                                                </pre>
-                                            );
-                                        } else {
-                                            return (
-                                                <div className="p-4 rounded-lg old-paper-text h-full flex items-center justify-center">
-                                                    <p className="text-base text-center">Preview not supported for this file type.</p>
-                                                </div>
-                                            );
-                                        }
-                                    })()
                                 ) : (
-                                    <div className="p-4 rounded-lg old-paper-text h-full flex items-center justify-center">
-                                        <p className="text-base">No content to preview.</p>
+                                    <div className="prose prose-sm max-w-none old-paper-text h-full overflow-auto">
+                                        <ReactMarkdown>{documentContent || ''}</ReactMarkdown>
                                     </div>
                                 )}
                             </div>

@@ -1,18 +1,31 @@
 import React, { useState } from 'react';
-import { Upload, Loader2, X } from 'lucide-react';
+import { Upload, Loader2, X, AlertTriangle } from 'lucide-react';
+import { ENERGY_COSTS } from '../config/energy';
 
 interface DocumentUploadProps {
     onUpload: (file: File) => Promise<void>;
     maxSizeMB?: number;
+    guildData?: any; // Add guild data to check gold balance
 }
 
+/**
+ * DocumentUpload Component
+ * 
+ * Handles file upload with drag-and-drop functionality.
+ * Requires 10 gold per upload and shows appropriate warnings.
+ */
 export const DocumentUpload: React.FC<DocumentUploadProps> = ({
     onUpload,
-    maxSizeMB = 25
+    maxSizeMB = 25,
+    guildData
 }) => {
     const [isDragging, setIsDragging] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    const uploadCost = ENERGY_COSTS.DOCUMENT_UPLOAD;
+    const userGold = guildData?.gold ?? 0;
+    const hasEnoughGold = userGold >= uploadCost;
 
     const handleDragOver = (e: React.DragEvent) => {
         e.preventDefault();
@@ -44,6 +57,12 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
     const handleFile = async (file: File) => {
         setError(null);
 
+        // Check gold before processing
+        if (!hasEnoughGold) {
+            setError(`Insufficient gold! Need ${uploadCost} gold to upload (Current: ${userGold})`);
+            return;
+        }
+
         // Validate file size
         const maxSize = maxSizeMB * 1024 * 1024; // Convert MB to bytes
         if (file.size > maxSize) {
@@ -58,11 +77,12 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
             'application/msword',
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             'text/markdown',
-            'text/csv'
+            'text/csv',
+            'application/json'
         ];
 
         if (!allowedTypes.includes(file.type)) {
-            setError('Please upload PDF, Word, TXT, MD, or CSV files');
+            setError('Please upload PDF, Word, TXT, MD, CSV, JSON, or DOCX files');
             return;
         }
 
@@ -79,87 +99,82 @@ export const DocumentUpload: React.FC<DocumentUploadProps> = ({
 
     return (
         <div className="w-full">
-            <div
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-                className={`
-                    border-2 border-dashed rounded-lg 
-                    p-4 sm:p-6 md:p-8 
-                    text-center transition-all duration-200 
-                    ${isDragging
-                        ? 'border-purple-500 bg-purple-500/10 scale-[1.02]'
-                        : 'border-gray-600 hover:border-gray-500 hover:bg-gray-800/30'
-                    } 
-                    ${uploading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer active:scale-[0.98]'}
-                    touch-manipulation
-                `}
-            >
-                <input
-                    type="file"
-                    id="file-upload"
-                    className="hidden"
-                    onChange={handleFileInput}
-                    accept=".pdf,.doc,.docx,.txt,.md,.csv"
-                    disabled={uploading}
-                    aria-describedby="file-upload-description"
-                />
-
-                <label
-                    htmlFor="file-upload"
-                    className="cursor-pointer block w-full h-full"
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            document.getElementById('file-upload')?.click();
-                        }
-                    }}
-                >
-                    <div className="flex flex-col items-center space-y-3 sm:space-y-4">
-                        {uploading ? (
-                            <Loader2 className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-purple-500 animate-spin" />
-                        ) : (
-                            <Upload className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-gray-400 group-hover:text-gray-300 transition-colors" />
+            {/* Gold cost indicator */}
+            <div className="mb-4 p-3 bg-gray-800/50 rounded-lg border border-gray-600">
+                <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-300">Upload Cost:</span>
+                    <span className="text-yellow-400 font-semibold">{uploadCost} Gold</span>
+                </div>
+                <div className="flex items-center justify-between mt-1">
+                    <span className="text-sm text-gray-300">Your Gold:</span>
+                    <span className={`font-semibold ${hasEnoughGold ? 'text-green-400' : 'text-red-400'}`}>
+                        {userGold} Gold
+                        {!hasEnoughGold && (
+                            <span className="ml-2 text-red-300 text-xs">
+                                (Need {uploadCost - userGold} more)
+                            </span>
                         )}
-
-                        <div className="space-y-1 sm:space-y-2">
-                            <p className="text-base sm:text-lg md:text-xl font-medium text-white">
-                                {uploading ? 'Uploading...' : 'Upload your file here'}
-                            </p>
-                            <p
-                                id="file-upload-description"
-                                className="text-xs sm:text-sm text-gray-400 px-2"
-                            >
-                                or click to browse
-                            </p>
-                            <p className="text-xs text-gray-500 px-2">
-                                PDF, Word, TXT, MD, CSV • Max {maxSizeMB}MB
-                            </p>
-                        </div>
-                    </div>
-                </label>
+                    </span>
+                </div>
             </div>
 
-            {error && (
-                <div
-                    className="mt-3 p-3 sm:p-4 bg-red-900/30 border border-red-700 rounded-lg 
-                               flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4"
-                    role="alert"
-                    aria-live="polite"
-                >
-                    <p className="text-sm text-red-400 flex-1">{error}</p>
-                    <button
-                        onClick={() => setError(null)}
-                        className="text-red-400 hover:text-red-300 active:scale-95 transition-all
-                                 self-end sm:self-auto p-1 rounded focus:outline-none focus:ring-2 focus:ring-red-400/50"
-                        aria-label="Dismiss error"
-                    >
-                        <X className="w-4 h-4" />
-                    </button>
+            <div
+                className={`
+                    relative border-2 border-dashed rounded-lg p-8 text-center transition-all duration-200
+                    ${isDragging ? 'border-blue-400 bg-blue-50/10' : 'border-gray-600'}
+                    ${hasEnoughGold ? 'hover:border-gray-500 cursor-pointer' : 'opacity-50 cursor-not-allowed'}
+                `}
+                onDragOver={hasEnoughGold ? handleDragOver : undefined}
+                onDragLeave={hasEnoughGold ? handleDragLeave : undefined}
+                onDrop={hasEnoughGold ? handleDrop : undefined}
+                onClick={hasEnoughGold && !uploading ? () => document.getElementById('file-input')?.click() : undefined}
+            >
+                <input
+                    id="file-input"
+                    type="file"
+                    className="hidden"
+                    onChange={handleFileInput}
+                    accept=".pdf,.txt,.md,.csv,.json,.docx"
+                    disabled={uploading || !hasEnoughGold}
+                />
+
+                <div className="flex flex-col items-center space-y-4">
+                    {uploading ? (
+                        <Loader2 className="w-12 h-12 text-blue-500 animate-spin" />
+                    ) : !hasEnoughGold ? (
+                        <AlertTriangle className="w-12 h-12 text-red-400" />
+                    ) : (
+                        <Upload className="w-12 h-12 text-gray-400" />
+                    )}
+
+                    <div>
+                        <p className={`text-lg font-medium ${hasEnoughGold ? 'text-gray-300' : 'text-red-400'}`}>
+                            {uploading
+                                ? 'Uploading...'
+                                : !hasEnoughGold
+                                    ? `Need ${uploadCost} Gold to Upload`
+                                    : 'Drop files here or click to browse'
+                            }
+                        </p>
+                        <p className="text-sm text-gray-500 mt-1">
+                            Supports: PDF, TXT, MD, CSV, JSON, DOCX (Max {maxSizeMB}MB)
+                        </p>
+                        <div className={`text-xs flex items-center gap-1 ${hasEnoughGold ? 'text-amber-700' : 'text-red-600'}`}>
+                            Cost: {uploadCost} Gold (Your Gold: {userGold})
+                            {!hasEnoughGold && <AlertTriangle className="w-4 h-4" />}
+                        </div>
+                    </div>
                 </div>
-            )}
+
+                {error && (
+                    <div className="mt-4 p-3 bg-red-900/20 border border-red-500/30 rounded-lg">
+                        <div className="flex items-center space-x-2">
+                            <X className="w-4 h-4 text-red-400" />
+                            <span className="text-red-400 text-sm">{error}</span>
+                        </div>
+                    </div>
+                )}
+            </div>
         </div>
     );
 };
