@@ -206,43 +206,6 @@ export const getDefaultResources = (questTopic: string) => {
     return defaults[questTopic] || defaults.vision;
 };
 
-export const rateQuestSubmission = async (
-    questData: any,
-    userData: any,
-    bedrockClient: BedrockRuntimeClient
-) => {
-    try {
-        const ratingPrompt = `As a business mentor, rate this Quest submission on a scale of 1-5 stars.\n\nQuest: ${questData.questName}\nSubmission: ${JSON.stringify(questData.inputs)}\n\nProvide your feedback as a JSON object:\n{\n  "rating": [1-5],\n  "feedback": "Brief feedback",\n  "suggestions": ["Improvement suggestion 1", "Improvement suggestion 2"]\n}`;
-        const command = new InvokeModelCommand({
-            modelId: import.meta.env.VITE_NOVA_INFERENCE_PROFILE_ARN || "arn:aws:bedrock:us-east-1:148123604300:inference-profile/us.amazon.nova-pro-v1:0",
-            body: JSON.stringify({
-                messages: [
-                    {
-                        role: "user",
-                        content: [{ text: ratingPrompt }]
-                    }
-                ],
-            }),
-            contentType: "application/json",
-        });
-        const response = await bedrockClient.send(command);
-        const responseBody = JSON.parse(new TextDecoder().decode(response.body));
-        const content = responseBody.output?.message?.content?.[0]?.text || "{}";
-        try {
-            const rating = JSON.parse(content);
-            if (userData.activeEffects?.includes('ratingBoost')) {
-                rating.rating = Math.min(5, rating.rating + 1);
-            }
-            return rating;
-        } catch (e) {
-            return { rating: 3, feedback: "Good effort!", suggestions: [] };
-        }
-    } catch (error) {
-        console.error('Rating error:', error);
-        return { rating: 3, feedback: "Good effort!", suggestions: [] };
-    }
-};
-
 export const generateFollowUpQuestions = async (
     context: string,
     conversation: any[],
@@ -719,4 +682,77 @@ export const checkAndAwardAchievements = (
         ...newEngagementAchievements,
         ...newGuildAchievements,
     ];
+};
+
+/**
+ * Determines the guild's current level based on completed quests
+ * @param guildData The guild data object containing completed quests
+ * @returns Object with level number, name, and other level info
+ */
+export const determineGuildLevel = (guildData: any) => {
+    // Default to level 1 (Campfire)
+    let currentLevel = 1;
+
+    // Get completed quest IDs from guild data
+    const completedQuestIds = guildData?.completedQuests?.map((q: any) => q.id) || [];
+
+    // Helper function to check if all quests in a category are completed
+    const isQuestCategoryComplete = (category: string) => {
+        // Get all quest IDs for the given category
+        const categoryQuests = Object.values(QUEST_STAGES)
+            .find(stage => stage.name.toLowerCase() === category.toLowerCase())
+            ?.quests.map((q: any) => q.id) || [];
+
+        // Check if all quests in the category are completed
+        return categoryQuests.length > 0 &&
+            categoryQuests.every(questId => completedQuestIds.includes(questId));
+    };
+
+    // Check each level's unlock criteria
+    if (isQuestCategoryComplete('Fundamentals')) {
+        currentLevel = 2; // Outpost
+
+        if (isQuestCategoryComplete('Kickoff')) {
+            currentLevel = 3; // Hovel
+
+            if (isQuestCategoryComplete('Go-to-Market')) {
+                currentLevel = 4; // Manor
+
+                if (isQuestCategoryComplete('Growth')) {
+                    currentLevel = 5; // Tower
+
+                    if (isQuestCategoryComplete('Prestige')) {
+                        currentLevel = 6; // Castle
+
+                        // Check if all quests are completed for the final level
+                        const allQuests = Object.values(QUEST_STAGES)
+                            .flatMap(stage => stage.quests.map((q: any) => q.id));
+
+                        if (allQuests.every(questId => completedQuestIds.includes(questId))) {
+                            currentLevel = 7; // Stronghold
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Import from constants to get the level details
+    const { GUILD_LEVELS } = require('./constant');
+
+    // Return level number and all associated level details
+    return {
+        level: currentLevel,
+        ...GUILD_LEVELS[currentLevel]
+    };
+};
+
+/**
+ * Gets the guild level name based on level number
+ * @param level Guild level number
+ * @returns The name of the level (e.g. "Campfire")
+ */
+export const getGuildLevelName = (level: number) => {
+    const { GUILD_LEVELS } = require('./constant');
+    return GUILD_LEVELS[level]?.name || 'Unknown';
 };

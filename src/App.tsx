@@ -18,8 +18,6 @@ import {
   checkEnergyReset as checkEnergyResetApi,
   consumeEnergy as consumeEnergyApi,
   purchaseEnergy as purchaseEnergyApi,
-  getGuildActivityLogs,
-  getRecentActivities,
 } from './services/api';
 
 import backgroundImage from './assets/wallpaper_7.png';
@@ -1221,7 +1219,6 @@ export default function App() {
             vision={guildData?.vision}
             savePersonalizedQuestDetails={savePersonalizedQuestDetails}
             currentUserRole={currentUserRole}
-            user={user}
           />
         )}
         {showGuildManagement && (

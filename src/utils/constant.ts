@@ -378,15 +378,57 @@ export const DOCUMENT_TEMPLATES = [
     }
 ];
 
-// Guild Level Structure - Standard business themed
+// Guild Level Structure - Fantasy-themed progression
 export const GUILD_LEVELS = {
-    1: { name: 'Startup', icon: '🚀', description: 'Getting started', dailyGold: 0 },
-    2: { name: 'Small Business', icon: '🏢', description: 'Building the foundation', dailyGold: 0 },
-    3: { name: 'Growing Company', icon: '🏬', description: 'Expanding operations', dailyGold: 0 },
-    4: { name: 'Established Firm', icon: '🏦', description: 'Recognized in the market', dailyGold: 50 },
-    5: { name: 'Industry Leader', icon: '🏆', description: 'Leading the industry', dailyGold: 100 },
-    6: { name: 'Enterprise', icon: '🏛️', description: 'Major market presence', dailyGold: 200 },
-    7: { name: 'Global Corporation', icon: '🌍', description: 'Global influence', dailyGold: 500 }
+    1: {
+        name: 'Campfire',
+        icon: '�',
+        description: 'The starting level, where every journey begins.',
+        dailyGold: 0,
+        unlockCriteria: { type: 'default' }
+    },
+    2: {
+        name: 'Outpost',
+        icon: '�️',
+        description: 'Unlocked by completing all "Fundamentals" quests.',
+        dailyGold: 0,
+        unlockCriteria: { type: 'quests', category: 'Fundamentals' }
+    },
+    3: {
+        name: 'Hovel',
+        icon: '�️',
+        description: 'Unlocked by completing all "Kickoff" quests.',
+        dailyGold: 25,
+        unlockCriteria: { type: 'quests', category: 'Kickoff' }
+    },
+    4: {
+        name: 'Manor',
+        icon: '�',
+        description: 'Unlocked by completing all "Go-to-Market" quests.',
+        dailyGold: 50,
+        unlockCriteria: { type: 'quests', category: 'Go-to-Market' }
+    },
+    5: {
+        name: 'Tower',
+        icon: '🗼',
+        description: 'Unlocked by completing all "Growth" quests.',
+        dailyGold: 100,
+        unlockCriteria: { type: 'quests', category: 'Growth' }
+    },
+    6: {
+        name: 'Castle',
+        icon: '�',
+        description: 'Unlocked via advanced "Prestige" quests.',
+        dailyGold: 200,
+        unlockCriteria: { type: 'quests', category: 'Prestige' }
+    },
+    7: {
+        name: 'Stronghold',
+        icon: '⚔️',
+        description: 'The final, pinnacle achievement.',
+        dailyGold: 500,
+        unlockCriteria: { type: 'special', requirement: 'Complete all quests' }
+    }
 };
 
 export const QUEST_INPUT_TEMPLATES = {

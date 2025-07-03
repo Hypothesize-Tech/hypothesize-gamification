@@ -311,14 +311,13 @@ export const DocumentRAG: React.FC<DocumentRAGProps> = ({ userId, guildData, upd
     const [pdfUrl, setPdfUrl] = useState<string | null>(null);
     const [pdfError, setPdfError] = useState<string | null>(null);
 
-    // New state for conversation features
-    const [showSidebar, setShowSidebar] = useState(false);
+    // New state for conversation features - showSidebar set to true by default
+    const [showSidebar, setShowSidebar] = useState(true);
     const [conversations, setConversations] = useState<any[]>([]);
     const [currentConversation, setCurrentConversation] = useState<any>(null);
     const [savingConversation, setSavingConversation] = useState(false);
-    console.log("currentConversation", currentConversation)
-    console.log("chatMessages", chatMessages)
-    // Load user documents on mount
+
+    // Load user documents and conversations independently on mount
     useEffect(() => {
         loadDocuments();
         loadConversations();
@@ -330,16 +329,30 @@ export const DocumentRAG: React.FC<DocumentRAGProps> = ({ userId, guildData, upd
         }
     }, [chatMessages, isProcessing]);
 
-    // Handle selected document change to reset chat when document changes
+    // When document changes, update the UI but don't clear conversations
     useEffect(() => {
         if (selectedDocument) {
-            setChatMessages([{
-                id: Date.now().toString(),
-                type: 'assistant',
-                content: `I've loaded "${selectedDocument.name}". What would you like to know about this document?`,
-                timestamp: new Date()
-            }]);
-            setCurrentConversation(null);
+            // Only update the conversation/messages if we don't have a current conversation
+            // or if we're changing documents
+            if (!currentConversation || (currentConversation.documentId !== selectedDocument.id)) {
+                // Check if there's a conversation for this document
+                const docConversation = conversations.find(c => c.documentId === selectedDocument.id);
+
+                if (docConversation) {
+                    // If there's an existing conversation for this document, use it
+                    setCurrentConversation(docConversation);
+                    setChatMessages(Array.isArray(docConversation.messages) ? docConversation.messages : []);
+                } else {
+                    // Otherwise create a new default message for this document
+                    setCurrentConversation(null);
+                    setChatMessages([{
+                        id: Date.now().toString(),
+                        type: 'assistant',
+                        content: `I've loaded "${selectedDocument.name}". What would you like to know about this document?`,
+                        timestamp: new Date()
+                    }]);
+                }
+            }
         }
     }, [selectedDocument]);
 
@@ -360,23 +373,31 @@ export const DocumentRAG: React.FC<DocumentRAGProps> = ({ userId, guildData, upd
         try {
             setLoading(true);
             const response = await getDocumentConversations();
+
             // Sort conversations by lastUpdated in descending order (newest first)
             const sortedConversations = response.data.sort((a: any, b: any) =>
                 new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime()
             );
+
+            // Always set all conversations regardless of document selection
             setConversations(sortedConversations);
 
-            // Only consider conversations for the selected document
-            const docConvos = selectedDocument
-                ? sortedConversations.filter((c: any) => c.documentId === selectedDocument.id)
-                : sortedConversations;
-
-            if (docConvos.length > 0) {
-                const mostRecent = docConvos[0];
+            // If we have a current conversation, keep it selected
+            // Otherwise, if we have any conversations, select the most recent one
+            if (!currentConversation && sortedConversations.length > 0) {
+                const mostRecent = sortedConversations[0];
                 setCurrentConversation(mostRecent);
                 setChatMessages(Array.isArray(mostRecent.messages) ? mostRecent.messages : []);
-            } else {
-                setCurrentConversation(null);
+
+                // If this conversation has a document associated, also select that document
+                if (mostRecent.documentId) {
+                    const associatedDoc = documents.find(d => d.id === mostRecent.documentId);
+                    if (associatedDoc) {
+                        setSelectedDocument(associatedDoc);
+                    }
+                }
+            } else if (!currentConversation) {
+                // No conversations available, set default message
                 setChatMessages([{
                     id: Date.now().toString(),
                     type: 'assistant',
@@ -393,23 +414,6 @@ export const DocumentRAG: React.FC<DocumentRAGProps> = ({ userId, guildData, upd
             setLoading(false);
         }
     };
-
-    // Handle selected document change to load its conversations
-    useEffect(() => {
-        if (selectedDocument) {
-            loadConversations();
-        } else {
-            // Clear conversations when no document is selected
-            setConversations([]);
-            setCurrentConversation(null);
-            setChatMessages([{
-                id: Date.now().toString(),
-                type: 'assistant',
-                content: 'Please select a document to start a conversation.',
-                timestamp: new Date()
-            }]);
-        }
-    }, [selectedDocument]);
 
     const handleUpload = async (file: File) => {
         try {
@@ -588,17 +592,24 @@ export const DocumentRAG: React.FC<DocumentRAGProps> = ({ userId, guildData, upd
         try {
             setLoading(true);
 
-            // Find the document associated with this conversation
-            const doc = documents.find(d => d.id === conversation.documentId);
-            if (doc) {
-                setSelectedDocument(doc);
+            // Set current conversation and load its messages regardless of document
+            setCurrentConversation(conversation);
+
+            // If the conversation has an associated document, select it as well
+            if (conversation.documentId) {
+                const doc = documents.find(d => d.id === conversation.documentId);
+                if (doc) {
+                    setSelectedDocument(doc);
+                }
             }
 
             // Get the full conversation (in case it was updated)
             const response = await getDocumentConversationById(conversation._id);
+
+            // Update current conversation with complete data
             setCurrentConversation(response.data);
 
-            // In handleSelectConversation:
+            // Update chat messages with conversation messages
             const chatMsgs: ChatMessage[] = Array.isArray(response.data.messages)
                 ? response.data.messages.map((msg: Message) => ({
                     id: msg.id,
@@ -607,6 +618,7 @@ export const DocumentRAG: React.FC<DocumentRAGProps> = ({ userId, guildData, upd
                     timestamp: new Date(msg.timestamp)
                 }))
                 : [];
+
             setChatMessages(chatMsgs);
 
         } catch (error) {
@@ -618,19 +630,20 @@ export const DocumentRAG: React.FC<DocumentRAGProps> = ({ userId, guildData, upd
     };
 
     const handleNewConversation = () => {
-        if (selectedDocument) {
-            // Start a new conversation
-            setChatMessages([
-                {
-                    id: Date.now().toString(),
-                    type: 'assistant',
-                    content: `I've loaded "${selectedDocument.name}". What would you like to know about this document?`,
-                    timestamp: new Date(),
-                },
-            ]);
-            setCurrentConversation(null);
-            setShowSidebar(false);
-        }
+        // Reset current conversation
+        setCurrentConversation(null);
+
+        // Create welcome message based on document selection
+        setChatMessages([
+            {
+                id: Date.now().toString(),
+                type: 'assistant',
+                content: selectedDocument
+                    ? `I've loaded "${selectedDocument.name}". What would you like to know about this document?`
+                    : 'Please select a document to start a conversation.',
+                timestamp: new Date(),
+            },
+        ]);
     };
 
     const handleDeleteConversation = async (conversationId: string) => {
@@ -740,16 +753,17 @@ export const DocumentRAG: React.FC<DocumentRAGProps> = ({ userId, guildData, upd
 
                             {/* Main Content */}
                             <div className="flex flex-row gap-8 pt-8 h-[70vh]">
-                                {/* Left Sidebar - Document Conversations */}
+                                {/* Left Sidebar - Document Conversations - always shows all conversations */}
                                 {showSidebar && (
                                     <DocumentConversationSidebar
                                         className="w-80 border-r border-amber-700/20"
-                                        conversations={conversations.filter(c => c.documentId === selectedDocument?.id)}
+                                        conversations={conversations}
                                         onSelectConversation={handleSelectConversation}
                                         onNewConversation={handleNewConversation}
                                         onDeleteConversation={handleDeleteConversation}
                                         activeConversationId={currentConversation?._id}
                                         currentConversation={currentConversation}
+                                        selectedDocumentId={selectedDocument?.id}
                                     />
                                 )}
 

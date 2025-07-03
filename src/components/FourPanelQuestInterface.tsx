@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { QUEST_INPUT_TEMPLATES } from "../utils/constant";
-import { calculateGoldReward, calculateLevel, calculateXPWithBonuses, consultAISage, fetchDynamicResources, getPersonalizedQuestDetails, getSuggestedSageQuestions, rateQuestSubmission, triggerConfetti } from "../utils/helper";
-import SwordIcon from "./DiamondSword3D";
+import { calculateGoldReward, calculateLevel, calculateXPWithBonuses, consultAISage, fetchDynamicResources, getPersonalizedQuestDetails, getSuggestedSageQuestions, triggerConfetti } from "../utils/helper";
 import { BookOpen, Coins, Edit3, ExternalLink, Loader2, RefreshCw, Save, Scroll, Send, Sparkles, Swords, Trophy, X, ChevronDown, ChevronUp, Zap, Wand2, MessageSquare, Users, Share2 } from "lucide-react";
 import ReactMarkdown from 'react-markdown';
 import { BedrockRuntimeClient } from '@aws-sdk/client-bedrock-runtime';
@@ -9,10 +8,9 @@ import { EnergyWarning } from './EnergySystem';
 import { ENERGY_COSTS } from '../config/energy';
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import "./FourPanelQuestInterface.css";
-import { addDoc, collection, onSnapshot, orderBy, query, serverTimestamp } from "firebase/firestore";
-import { db } from "../config/config";
 import ShareAchievementModal from "./ShareAchievementModal";
 import QuestCompletionModal from "./QuestCompletionModal";
+import { rateQuestSubmission } from "../services/api";
 
 
 export const FourPanelQuestInterface = ({
@@ -29,8 +27,6 @@ export const FourPanelQuestInterface = ({
     setGuildData,
     vision,
     savePersonalizedQuestDetails,
-    currentUserRole,
-    user
 }: {
     quest: any;
     guildData: any;
@@ -49,17 +45,12 @@ export const FourPanelQuestInterface = ({
     vision: string;
     savePersonalizedQuestDetails: (questKey: string, personalizedData: any) => Promise<void>;
     currentUserRole: 'leader' | 'knight' | 'scout';
-    user: any;
 }) => {
     const questKey = `${quest.stageId}_${quest.id}`;
     const questProgress = guildData?.questProgress?.[questKey];
     const isCompleted = !!questProgress?.completed;
 
     const [activeTab, setActiveTab] = useState<'sage' | 'war_room'>('sage');
-    const [comments, setComments] = useState<any[]>([]);
-    const [commentInput, setCommentInput] = useState('');
-    const [commentsLoading, setCommentsLoading] = useState(true);
-
     const [sageMessages, setSageMessages] = useState<Array<{ type: 'user' | 'sage', content: string }>>(isCompleted ? (questProgress?.sageConversation || []) : []);
     const [sageInput, setSageInput] = useState('');
     const [sageLoading, setSageLoading] = useState(false);
@@ -75,33 +66,6 @@ export const FourPanelQuestInterface = ({
     const [showShareModal, setShowShareModal] = useState(false);
     const [showCompletionModal, setShowCompletionModal] = useState(false);
     const [completionData, setCompletionData] = useState<any>(null);
-
-    // War Room: Fetch Comments
-    useEffect(() => {
-        if (!guildData?.guildId || !questKey) {
-            setCommentsLoading(false);
-            return;
-        }
-        console.log(`Setting up listener for questKey: ${questKey} in guild: ${guildData.guildId}`);
-
-        const commentsRef = collection(db, 'guilds', guildData.guildId, 'quests', questKey, 'comments');
-        const q = query(commentsRef, orderBy('createdAt', 'asc'));
-
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const fetchedComments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            setComments(fetchedComments);
-            setCommentsLoading(false);
-            console.log("Comments fetched: ", fetchedComments);
-        }, (error) => {
-            console.error("Error fetching comments: ", error);
-            setCommentsLoading(false);
-        });
-
-        return () => {
-            console.log(`Cleaning up listener for questKey: ${questKey}`);
-            unsubscribe();
-        };
-    }, [guildData?.guildId, questKey]);
 
     useEffect(() => {
         const fetchInitialData = async () => {
@@ -139,26 +103,6 @@ export const FourPanelQuestInterface = ({
     }, [questKey]);
 
     const inputTemplate = QUEST_INPUT_TEMPLATES[quest.id as keyof typeof QUEST_INPUT_TEMPLATES];
-
-    const handleAddComment = async () => {
-        if (!commentInput.trim()) return;
-
-        const newComment = {
-            text: commentInput,
-            authorName: user.displayName,
-            authorUid: user.uid,
-            createdAt: serverTimestamp(),
-        };
-
-        try {
-            const commentsRef = collection(db, 'guilds', guildData.guildId, 'quests', questKey, 'comments');
-            await addDoc(commentsRef, newComment);
-            setCommentInput('');
-        } catch (error) {
-            console.error("Error adding comment:", error);
-            alert("Failed to post comment.");
-        }
-    };
 
     const handleSageChat = async () => {
         if (isCompleted || !sageInput.trim() || sageLoading) return;
@@ -215,9 +159,13 @@ export const FourPanelQuestInterface = ({
         const questRating = await rateQuestSubmission({
             questName: quest.name,
             inputs: userInputs
-        }, guildData, bedrockClient);
+        });
 
-        setRating(questRating);
+        // Update: Access data from the nested data property in the API response
+        setRating({
+            rating: questRating.data.rating,
+            feedback: questRating.data.feedback
+        });
 
         const hasEnergy = await consumeEnergy('SUBMIT_QUEST');
         if (!hasEnergy) {
@@ -225,21 +173,21 @@ export const FourPanelQuestInterface = ({
             return;
         }
 
-        const calculatedXpReward = calculateXPWithBonuses(quest.xp, questRating.rating, quest.attribute || 'general', guildData);
-        const calculatedGoldReward = calculateGoldReward(quest.xp / 2, questRating.rating, guildData);
+        const calculatedXpReward = calculateXPWithBonuses(quest.xp, questRating.data.rating, quest.attribute || 'general', guildData);
+        const calculatedGoldReward = calculateGoldReward(quest.xp / 2, questRating.data.rating, guildData);
 
         // Format improvement feedback from suggestions
         let improvementFeedback = '';
-        if (questRating.suggestions && questRating.suggestions.length > 0) {
-            improvementFeedback = questRating.suggestions.join('\n\n');
+        if (questRating.data.suggestions && questRating.data.suggestions.length > 0) {
+            improvementFeedback = questRating.data.suggestions.join('\n\n');
         }
 
         const data = {
             inputs: userInputs,
             sageConversation: sageMessages,
             completedAt: new Date().toISOString(),
-            rating: questRating.rating,
-            feedback: questRating.feedback,
+            rating: questRating.data.rating,
+            feedback: questRating.data.feedback,
             improvementFeedback: improvementFeedback,
             xpReward: calculatedXpReward,
             goldReward: calculatedGoldReward,
@@ -322,13 +270,6 @@ export const FourPanelQuestInterface = ({
 
     return (
         <div className="fixed inset-0 bg-black/90 z-50 flex flex-col">
-            {/* 3D Weapon Display */}
-            <div className="absolute left-4 top-1/2 -translate-y-1/2 w-32 h-32 z-10">
-                <div className="w-full h-full flex items-center justify-center">
-                    <SwordIcon width={100} height={100} />
-                </div>
-            </div>
-
             {/* Header */}
             <div className="parchment border-b border-yellow-700 px-6 py-4 flex-shrink-0">
                 <div className="flex items-center justify-between">
@@ -642,7 +583,6 @@ export const FourPanelQuestInterface = ({
                             </Panel>
                             <PanelResizeHandle className="resize-handle-vertical" />
                             <Panel defaultSize={50}>
-                                {/* Bottom Right - AI Sage Chat & War Room */}
                                 <div className="parchment flex flex-col overflow-hidden h-full">
                                     <div className="p-3 border-b border-yellow-700 flex items-center justify-between flex-shrink-0">
                                         <div className="flex items-center space-x-2">
@@ -652,13 +592,6 @@ export const FourPanelQuestInterface = ({
                                             >
                                                 <Sparkles className="w-4 h-4" />
                                                 <span>AI Sage</span>
-                                            </button>
-                                            <button
-                                                className={`px-3 py-1 text-sm rounded-md flex items-center space-x-2 transition-colors ${activeTab === 'war_room' ? 'bg-purple-800 text-white' : 'bg-transparent text-gray-400 hover:bg-gray-700/50'}`}
-                                                onClick={() => setActiveTab('war_room')}
-                                            >
-                                                <Users className="w-4 h-4" />
-                                                <span>War Room</span>
                                             </button>
                                         </div>
                                         {activeTab === 'sage' && (
@@ -730,39 +663,7 @@ export const FourPanelQuestInterface = ({
                                                 </button>
                                             </div>
                                         </div>
-                                    ) : (
-                                        <div className="p-6 flex flex-col overflow-hidden h-full">
-                                            {/* War Room Content */}
-                                            <div className="flex-1 overflow-y-auto space-y-4 pr-2">
-                                                {commentsLoading ? (
-                                                    <div className="flex justify-center items-center h-full"><Loader2 className="animate-spin text-yellow-400" /></div>
-                                                ) : comments.length === 0 ? (
-                                                    <div className="text-center text-gray-400 py-10"><MessageSquare className="w-12 h-12 mx-auto mb-2 opacity-50" /><p>The War Room is silent. Be the first to strategize.</p></div>
-                                                ) : (
-                                                    comments.map((comment) => (
-                                                        <div key={comment.id} className="flex items-start gap-3">
-                                                            <div className="text-sm w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-full bg-gray-600" title={comment.authorName}>
-                                                                {comment.authorName?.charAt(0) || '?'}
-                                                            </div>
-                                                            <div className="flex-1">
-                                                                <div className="flex items-center space-x-2">
-                                                                    <p className="font-bold text-yellow-100">{comment.authorName}</p>
-                                                                    <p className="text-xs text-gray-400">{comment.createdAt ? new Date(comment.createdAt?.toDate()).toLocaleTimeString() : ''}</p>
-                                                                </div>
-                                                                <p className="text-gray-300">{comment.text}</p>
-                                                            </div>
-                                                        </div>
-                                                    ))
-                                                )}
-                                            </div>
-                                            <div className="mt-4 flex gap-2 flex-shrink-0">
-                                                <input type="text" value={commentInput} onChange={(e) => setCommentInput(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && handleAddComment()} placeholder={currentUserRole === 'scout' ? "Scouts can only observe" : "Your message..."} className="flex-1 p-3 bg-gray-700 rounded-lg text-white" disabled={currentUserRole === 'scout' || isCompleted} />
-                                                <button onClick={handleAddComment} disabled={currentUserRole === 'scout' || isCompleted || !commentInput.trim()} className="px-4 py-3 bg-blue-800 rounded-lg hover:bg-blue-700 disabled:opacity-50">
-                                                    <Send className="w-5 h-5" />
-                                                </button>
-                                            </div>
-                                        </div>
-                                    )}
+                                    ) : null}
                                 </div>
                             </Panel>
                         </PanelGroup>

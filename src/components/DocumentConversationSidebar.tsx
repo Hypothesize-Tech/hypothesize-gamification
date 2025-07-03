@@ -31,6 +31,7 @@ interface DocumentConversation {
     _id: string;
     title: string;
     documentName: string;
+    documentId?: string;
     lastUpdated: Date;
 }
 
@@ -42,6 +43,7 @@ interface DocumentConversationSidebarProps {
     currentConversation: DocumentConversation | null;
     className?: string;
     activeConversationId?: string;
+    selectedDocumentId?: string;  // Added prop for highlighting conversations related to selected document
 }
 
 const DocumentConversationSidebar: React.FC<DocumentConversationSidebarProps> = ({
@@ -51,7 +53,8 @@ const DocumentConversationSidebar: React.FC<DocumentConversationSidebarProps> = 
     onDeleteConversation,
     currentConversation,
     className,
-    activeConversationId
+    activeConversationId,
+    selectedDocumentId
 }) => {
     const [loading, setLoading] = useState(false); // Simplified loading state
     const [error, setError] = useState<string | null>(null);
@@ -134,36 +137,49 @@ const DocumentConversationSidebar: React.FC<DocumentConversationSidebarProps> = 
                         </div>
                     ) : (
                         <ul>
-                            {filteredConversations.map(conv => (
-                                <li
-                                    key={conv._id}
-                                    onClick={() => onSelectConversation(conv)}
-                                    className={`cursor-pointer rounded px-3 py-2 transition-colors
-                                        ${conv._id === activeConversationId ? 'bg-amber-200/60 border border-amber-700 font-bold shadow' : 'hover:bg-amber-100/40'}
-                                      `}
-                                >
-                                    <div className="p-4">
-                                        <div className="flex justify-between items-start">
-                                            <p className="font-bold text-base mb-1 pr-2 truncate">{conv.title || 'Untitled Conversation'}</p>
-                                            <button
-                                                onClick={(e) => handleDelete(conv._id, e)}
-                                                className="text-amber-700/50 hover:text-red-600 transition-colors duration-150 p-1"
-                                                title="Delete conversation"
-                                            >
-                                                <Trash className="w-4 h-4" />
-                                            </button>
+                            {filteredConversations.map(conv => {
+                                // Check if this conversation is related to the currently selected document
+                                const isRelatedToSelectedDocument = selectedDocumentId && conv.documentId === selectedDocumentId;
+
+                                return (
+                                    <li
+                                        key={conv._id}
+                                        onClick={() => onSelectConversation(conv)}
+                                        className={`cursor-pointer rounded px-3 py-2 transition-colors
+                                            ${conv._id === activeConversationId ? 'bg-amber-200/60 border border-amber-700 font-bold shadow' : 'hover:bg-amber-100/40'}
+                                            ${isRelatedToSelectedDocument && conv._id !== activeConversationId ? 'border border-amber-500/40 bg-amber-50/40' : ''}
+                                        `}
+                                    >
+                                        <div className="p-4">
+                                            <div className="flex justify-between items-start">
+                                                <p className="font-bold text-base mb-1 pr-2 truncate">
+                                                    {conv.title || 'Untitled Conversation'}
+                                                    {isRelatedToSelectedDocument && (
+                                                        <span className="ml-1 inline-block text-xs bg-amber-500/30 text-amber-800 px-1 py-0.5 rounded">
+                                                            Current Doc
+                                                        </span>
+                                                    )}
+                                                </p>
+                                                <button
+                                                    onClick={(e) => handleDelete(conv._id, e)}
+                                                    className="text-amber-700/50 hover:text-red-600 transition-colors duration-150 p-1"
+                                                    title="Delete conversation"
+                                                >
+                                                    <Trash className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                            <p className="text-sm opacity-80 flex items-center mb-2">
+                                                <FileText className="w-3 h-3 mr-2 flex-shrink-0" />
+                                                <span className="truncate">{conv.documentName}</span>
+                                            </p>
+                                            <div className="text-xs opacity-60 flex items-center">
+                                                <Clock className="w-3 h-3 mr-2" />
+                                                <span>{formatDate(conv.lastUpdated)}</span>
+                                            </div>
                                         </div>
-                                        <p className="text-sm opacity-80 flex items-center mb-2">
-                                            <FileText className="w-3 h-3 mr-2 flex-shrink-0" />
-                                            <span className="truncate">{conv.documentName}</span>
-                                        </p>
-                                        <div className="text-xs opacity-60 flex items-center">
-                                            <Clock className="w-3 h-3 mr-2" />
-                                            <span>{formatDate(conv.lastUpdated)}</span>
-                                        </div>
-                                    </div>
-                                </li>
-                            ))}
+                                    </li>
+                                );
+                            })}
                         </ul>
                     )}
                 </div>
