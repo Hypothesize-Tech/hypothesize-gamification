@@ -5,7 +5,6 @@ import {
     Loader2,
     Clock,
     Database,
-    Search,
     BookOpen,
     Sparkles,
     MessageCircle
@@ -22,6 +21,7 @@ import Modal from './Modal';
 import confetti from 'canvas-confetti';
 import paperBg from '../assets/wallpaper_2.jpg';
 import DocumentConversationSidebar from './DocumentConversationSidebar';
+import BusinessModelCanvas from './BusinessModelCanvas';
 import { v4 as uuidv4 } from 'uuid';
 
 const parchmentStyles = `
@@ -329,6 +329,40 @@ export const DocumentRAG: React.FC<DocumentRAGProps> = ({ userId, guildData, upd
         }
     }, [chatMessages, isProcessing]);
 
+    const getBusinessModelCanvasData = (content: string) => {
+        try {
+            // Check if the content contains a JSON object structure
+            const jsonMatch = content.match(/{[\s\S]*}/);
+            if (!jsonMatch) {
+                return null; // No JSON-like structure found
+            }
+
+            const jsonString = jsonMatch[0];
+            const parsed = JSON.parse(jsonString);
+
+            // Validate that the parsed object is a Business Model Canvas
+            if (
+                parsed &&
+                typeof parsed === 'object' &&
+                'keyPartners' in parsed &&
+                'keyActivities' in parsed &&
+                'valuePropositions' in parsed &&
+                'customerRelationships' in parsed &&
+                'customerSegments' in parsed &&
+                'keyResources' in parsed &&
+                'channels' in parsed &&
+                'costStructure' in parsed &&
+                'revenueStreams' in parsed
+            ) {
+                // Remove the JSON string from the content to prevent it from being displayed
+                return parsed;
+            }
+            return null;
+        } catch (e) {
+            return null; // Parsing failed or structure is invalid
+        }
+    };
+
     // When document changes, update the UI but don't clear conversations
     useEffect(() => {
         if (selectedDocument) {
@@ -506,12 +540,12 @@ export const DocumentRAG: React.FC<DocumentRAGProps> = ({ userId, guildData, upd
             soundManager.play('magicCast');
 
             // 2. Generate document
-            const { data: generatedContent } = await generateDocument(currentQuestion);
+            const { data: responseData } = await generateDocument(currentQuestion);
 
             const assistantMessage: ChatMessage = {
                 id: uuidv4(),
                 type: 'assistant',
-                content: generatedContent,
+                content: responseData.content,
                 timestamp: new Date(),
             };
             setChatMessages(prev => [...prev, assistantMessage]);
@@ -876,51 +910,59 @@ export const DocumentRAG: React.FC<DocumentRAGProps> = ({ userId, guildData, upd
 
                                         {/* Chat Messages */}
                                         <div className="flex-1 overflow-y-auto space-y-4 pr-2">
-                                            {chatMessages?.length === 0 ? (
-                                                <div className="text-center py-8 flex flex-col justify-center">
-                                                    <Search className="w-12 h-12 text-amber-700 opacity-50 mx-auto mb-3" />
-                                                    <p className="old-paper-text opacity-70 text-base px-4">
-                                                        Upload a document and start asking questions!
+                                            {(!chatMessages || chatMessages.length === 0) && !isProcessing ? (
+                                                <div className="text-center p-8 old-paper-text">
+                                                    <BookOpen className="mx-auto h-12 w-12 text-amber-700/50" />
+                                                    <h3 className="mt-2 text-lg font-medium">Document Sage</h3>
+                                                    <p className="mt-1 text-base text-amber-800/70">
+                                                        {selectedDocument ? `Ask a question about ${selectedDocument.name}` : 'Generate a new document or select one to begin'}
                                                     </p>
                                                     <div className="mt-4 space-y-2 text-sm old-paper-text opacity-60 px-4 italic">
                                                         <p>Try questions like:</p>
                                                         <p>"What are the key insights from this document?"</p>
-                                                        <p>"How can I apply this to my guild?"</p>
-                                                        <p>"Summarize the main points"</p>
+                                                        <p>"Generate a Business Model Canvas for a space-themed cookie company"</p>
                                                     </div>
                                                 </div>
                                             ) : (
-                                                (chatMessages ?? []).map(message => (
-                                                    <div
-                                                        key={message.id}
-                                                        className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
-                                                    >
+                                                chatMessages.map((message) => {
+                                                    const canvasData = getBusinessModelCanvasData(message.content);
+                                                    return (
                                                         <div
-                                                            className={`max-w-[85%] rounded-lg p-4 ${message.type === 'user'
-                                                                ? 'bg-amber-100/50 border border-amber-700/30'
-                                                                : 'bg-amber-50/30 border border-amber-600/20'
-                                                                }`}
+                                                            key={message.id}
+                                                            className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
                                                         >
-                                                            {message.type === 'assistant' ? (
-                                                                <div className="prose prose-sm max-w-none old-paper-text">
-                                                                    <ReactMarkdown>{message.content}</ReactMarkdown>
-                                                                </div>
-                                                            ) : (
-                                                                <p className="text-base old-paper-text">{message.content}</p>
-                                                            )}
-                                                            <p className="text-xs old-paper-text opacity-50 mt-2">
-                                                                {message.timestamp.toLocaleTimeString()}
-                                                            </p>
+                                                            <div
+                                                                className={`max-w-[85%] rounded-lg p-4 ${message.type === 'user'
+                                                                    ? 'bg-amber-100/50 border border-amber-700/30'
+                                                                    : 'bg-amber-50/30 border border-amber-600/20'
+                                                                    }`}
+                                                            >
+                                                                {message.type === 'assistant' ? (
+                                                                    canvasData ? (
+                                                                        <BusinessModelCanvas data={canvasData} />
+                                                                    ) : (
+                                                                        <div className="prose prose-sm max-w-none old-paper-text">
+                                                                            <ReactMarkdown>{message.content}</ReactMarkdown>
+                                                                        </div>
+                                                                    )
+                                                                ) : (
+                                                                    <p className="text-base old-paper-text">{message.content}</p>
+                                                                )}
+                                                                <p className="text-xs old-paper-text opacity-50 mt-2">
+                                                                    {new Date(message.timestamp).toLocaleTimeString()}
+                                                                </p>
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                ))
+                                                    );
+                                                })
                                             )}
+
                                             {isProcessing && (
                                                 <div className="flex justify-start">
-                                                    <div className="parchment-inner rounded-lg p-4 max-w-[85%]">
+                                                    <div className="max-w-[85%] rounded-lg p-4 bg-amber-50/30 border border-amber-600/20">
                                                         <div className="flex items-center space-x-2">
-                                                            <Loader2 className="w-4 h-4 animate-spin text-amber-700" />
-                                                            <p className="text-base old-paper-text italic">The Sage is processing your request...</p>
+                                                            <Loader2 className="animate-spin h-5 w-5 old-paper-text" />
+                                                            <p className="text-base old-paper-text">The Sage is thinking...</p>
                                                         </div>
                                                     </div>
                                                 </div>

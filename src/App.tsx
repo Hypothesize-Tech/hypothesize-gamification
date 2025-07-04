@@ -3,7 +3,7 @@ import { useGoogleLogin } from '@react-oauth/google';
 import {
   createGuild,
   joinGuild,
-  resetGuild, // Import resetGuild
+  resetGuild,
   getConversations,
   saveConversation as saveConversationApi,
   getDocuments,
@@ -43,6 +43,7 @@ import {
 import ReactMarkdown from 'react-markdown';
 import Modal from './components/Modal';
 import DocumentRAG from './components/DocumentRAG';
+import BusinessModelCanvas from './components/BusinessModelCanvas';
 import SwordIcon from './components/DiamondSword3D';
 import GuildActivityLog from './components/GuildActivityLog';
 import { medievalStyles } from './utils/medievalStyles';
@@ -143,6 +144,49 @@ const bedrockClient = new BedrockRuntimeClient({
     sessionToken: import.meta.env.VITE_AWS_SESSION_TOKEN
   }
 });
+
+// Helper function to check if content is a Business Model Canvas JSON object
+const isBusinessModelCanvas = (content: string): boolean => {
+  try {
+    // Check if the content contains a JSON object structure
+    const jsonMatch = content.match(/{[\s\S]*}/);
+    if (!jsonMatch) return false;
+
+    const jsonString = jsonMatch[0];
+    const parsed = JSON.parse(jsonString);
+
+    // Validate that the parsed object is a Business Model Canvas
+    return !!(
+      parsed &&
+      typeof parsed === 'object' &&
+      'keyPartners' in parsed &&
+      'keyActivities' in parsed &&
+      'valuePropositions' in parsed &&
+      'customerRelationships' in parsed &&
+      'customerSegments' in parsed &&
+      'keyResources' in parsed &&
+      'channels' in parsed &&
+      'costStructure' in parsed &&
+      'revenueStreams' in parsed
+    );
+  } catch (e) {
+    return false;
+  }
+};
+
+// Helper function to parse Business Model Canvas data from content
+const parseBusinessModelCanvas = (content: string) => {
+  try {
+    const jsonMatch = content.match(/{[\s\S]*}/);
+    if (!jsonMatch) return null;
+
+    const jsonString = jsonMatch[0];
+    return JSON.parse(jsonString);
+  } catch (e) {
+    console.error('Error parsing Business Model Canvas data:', e);
+    return null;
+  }
+};
 
 export default function App() {
   const { user, guildData, loading, signIn, signOut, refetch, setGuildData } = useAuth();
@@ -487,7 +531,6 @@ export default function App() {
     if (!user || !guildData) return;
 
     // --- Optimistic Update ---
-    const originalGuildData = guildData;
     const optimisticGuildData = {
       ...guildData,
       gold: (guildData.gold || 0) + ENERGY_CONFIG.DAILY_BONUS_GOLD,
@@ -1239,15 +1282,17 @@ export default function App() {
           />
         )}
         {generatedDocForReview && (
-          <Modal open={!!generatedDocForReview} onClose={() => setGeneratedDocForReview(null)} size="lg">
+          <Modal open={!!generatedDocForReview} onClose={() => setGeneratedDocForReview(null)} size={isBusinessModelCanvas(generatedDocForReview.content) ? "full" : "lg"}>
             <div className="p-6 parchment-container">
               <div className="paper-texture"></div>
               <div className="relative z-10">
                 <h3 className="text-2xl font-bold old-paper-text mb-4">{generatedDocForReview.template.name}</h3>
-                <div className="my-4 p-4 parchment-inner rounded-lg max-h-96 overflow-y-auto bg-white/5 prose prose-sm max-w-none old-paper-text">
-                  <ReactMarkdown>
-                    {generatedDocForReview.content}
-                  </ReactMarkdown>
+                <div className="my-4 p-4 parchment-inner rounded-lg max-h-[calc(100vh-200px)] overflow-y-auto bg-white/5 prose prose-sm max-w-none old-paper-text">
+                  {isBusinessModelCanvas(generatedDocForReview.content) ? (
+                    <BusinessModelCanvas data={parseBusinessModelCanvas(generatedDocForReview.content)} />
+                  ) : (
+                    <ReactMarkdown>{generatedDocForReview.content}</ReactMarkdown>
+                  )}
                 </div>
                 <div className="flex justify-end space-x-4 mt-4">
                   <button
