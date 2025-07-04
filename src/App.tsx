@@ -931,7 +931,7 @@ export default function App() {
             {/* Left side: Guild Info */}
             <div className="flex items-center space-x-4">
               <span className="text-yellow-100 font-bold text-lg">{guildData?.guildName}</span>
-              <span className="text-sm text-gray-300 hidden md:block">Level {levelInfo.level} - {guildLevel.name}</span>
+              <span className="text-sm text-gray-300 hidden md:block">{guildLevel.icon} {guildLevel.name}</span>
             </div>
 
             {/* Right side: Stats and Actions */}
@@ -1161,7 +1161,7 @@ export default function App() {
                     <p className="text-xl font-bold text-yellow-400">{guildData?.gold || 0}</p>
                   </div>
                   <div className="parchment rounded-lg p-3 text-center">
-                    <p className="text-sm text-gray-300 mb-1">Level</p>
+                    <p className="text-sm text-gray-300 mb-1">Player Level</p>
                     <p className="text-xl font-bold text-blue-400">{levelInfo.level}</p>
                   </div>
                   <div className="parchment rounded-lg p-3 text-center">

@@ -382,28 +382,28 @@ export const DOCUMENT_TEMPLATES = [
 export const GUILD_LEVELS = {
     1: {
         name: 'Campfire',
-        icon: '�',
+        icon: '🔥',
         description: 'The starting level, where every journey begins.',
         dailyGold: 0,
         unlockCriteria: { type: 'default' }
     },
     2: {
         name: 'Outpost',
-        icon: '�️',
+        icon: '🏕️',
         description: 'Unlocked by completing all "Fundamentals" quests.',
         dailyGold: 0,
         unlockCriteria: { type: 'quests', category: 'Fundamentals' }
     },
     3: {
         name: 'Hovel',
-        icon: '�️',
+        icon: '🏠',
         description: 'Unlocked by completing all "Kickoff" quests.',
         dailyGold: 25,
         unlockCriteria: { type: 'quests', category: 'Kickoff' }
     },
     4: {
         name: 'Manor',
-        icon: '�',
+        icon: '🏛️',
         description: 'Unlocked by completing all "Go-to-Market" quests.',
         dailyGold: 50,
         unlockCriteria: { type: 'quests', category: 'Go-to-Market' }
@@ -417,7 +417,7 @@ export const GUILD_LEVELS = {
     },
     6: {
         name: 'Castle',
-        icon: '�',
+        icon: '🏰',
         description: 'Unlocked via advanced "Prestige" quests.',
         dailyGold: 200,
         unlockCriteria: { type: 'quests', category: 'Prestige' }

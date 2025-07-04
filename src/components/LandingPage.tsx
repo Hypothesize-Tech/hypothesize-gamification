@@ -1,6 +1,10 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { sendEmail } from '../services/api';
-import heroLogo from '../assets/hero-logo.png';
+import heroSectionBg from '../assets/hero-section.png';
+import questWindow from '../assets/quest-window.png';
+import guildActivity from '../assets/activity.png';
+import guildQuest from '../assets/four-panel.png';
+import tenzing from '../assets/ai_sage.png';
 
 const LandingPage: React.FC = () => {
     // Refs for form fields
@@ -10,6 +14,35 @@ const LandingPage: React.FC = () => {
     const messageRef = useRef<HTMLTextAreaElement>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitMessage, setSubmitMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+    const [showIndianPricing, setShowIndianPricing] = useState(false);
+    const [isPricingLoading, setIsPricingLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchLocationAndSetPricing = async () => {
+            setIsPricingLoading(true);
+            try {
+                // Using a free geo-IP service to determine country.
+                const response = await fetch('https://ipapi.co/json/');
+                if (!response.ok) {
+                    throw new Error('Failed to fetch location');
+                }
+                const data = await response.json();
+                if (data.country_code === 'IN') {
+                    setShowIndianPricing(true);
+                } else {
+                    setShowIndianPricing(false);
+                }
+            } catch (error) {
+                console.error('Error fetching location:', error);
+                // Default to global pricing on error
+                setShowIndianPricing(false);
+            } finally {
+                setIsPricingLoading(false);
+            }
+        };
+
+        fetchLocationAndSetPricing();
+    }, []);
 
     // Handler to send contact form through backend API
     const handleSendCrow = async (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -59,7 +92,11 @@ const LandingPage: React.FC = () => {
     return (
         <div className="scroll-smooth">
             {/* Header */}
-            <header className="sticky top-0 z-50 backdrop-blur-md bg-amber-50/90 border-b border-amber-200/50 shadow-sm">
+            <header className="sticky top-0 z-50 backdrop-blur-md bg-amber-50/90 border-b border-amber-200/50 shadow-sm"
+
+
+
+            >
                 <nav className="container mx-auto px-6 py-4 flex justify-between items-center">
                     <a href="#" className="text-3xl font-cinzel font-bold text-amber-900 hover:text-amber-700 transition-colors">
                         The Startup Quest
@@ -82,9 +119,9 @@ const LandingPage: React.FC = () => {
                 <section id="hero" className="relative min-h-screen flex items-center justify-center overflow-hidden">
                     {/* Animated Background */}
                     <div className="absolute inset-0 z-0">
-                        <div className="absolute inset-0 bg-gradient-to-br from-amber-900 via-amber-800 to-amber-900"></div>
+                        <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${heroSectionBg})`, backgroundSize: 'cover', backgroundPosition: 'center', }}></div>
+                        <div className="absolute inset-0 bg-black opacity-50"></div> {/* Added black overlay for depth */}
                         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZmZmZjEwIiBzdHJva2Utd2lkdGg9IjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] opacity-20"></div>
-                        <div className="absolute inset-0 bg-gradient-to-t from-amber-900/80 via-transparent to-transparent"></div>
 
                         {/* Floating particles */}
                         <div className="absolute inset-0">
@@ -97,7 +134,7 @@ const LandingPage: React.FC = () => {
 
                     {/* Hero Content */}
                     <div className="relative z-10 container mx-auto px-6 text-center">
-                        <div className="flex flex-col md:flex-row items-center justify-center">
+                        <div className="flex flex-col md:flex-row items-center justify-start">
                             <div className="md:w-1/2 mb-8 md:mb-0">
                                 <h1 className="text-6xl md:text-8xl font-cinzel font-black text-white mb-6 animate-fade-in-up" style={{ textShadow: '3px 3px 6px rgba(0, 0, 0, 0.7)' }}>
                                     Forge Your Legacy
@@ -113,9 +150,6 @@ const LandingPage: React.FC = () => {
                                         Resume Your Journey
                                     </a>
                                 </div>
-                            </div>
-                            <div className="md:w-1/2 flex justify-center">
-                                <img src={heroLogo} alt="The Startup Quest Logo" className="w-full max-w-sm animate-fade-in-up animation-delay-600 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 rounded-lg shadow-xl p-4" />
                             </div>
                         </div>
                     </div>
@@ -133,7 +167,7 @@ const LandingPage: React.FC = () => {
                     <div className="container mx-auto px-6 text-center">
                         <h3 className="font-cinzel text-lg text-amber-700 tracking-widest mb-8">TRUSTED BY THE REALM'S FINEST GUILDS & INSTITUTIONS</h3>
                         <div className="flex flex-wrap justify-center items-center gap-8 md:gap-16">
-                            <p className="font-cinzel text-xl md:text-2xl text-amber-800/60 hover:text-amber-800 transition-colors">Founders University</p>
+                            <p className="font-cinzel text-xl md:text-2xl text-amber-800/60 hover:text-amber-800 transition-colors">HYPOTHESIZE</p>
                             <p className="font-cinzel text-xl md:text-2xl text-amber-800/60 hover:text-amber-800 transition-colors">Venture Academy</p>
                             <p className="font-cinzel text-xl md:text-2xl text-amber-800/60 hover:text-amber-800 transition-colors">The Alchemist's Circle</p>
                         </div>
@@ -150,24 +184,24 @@ const LandingPage: React.FC = () => {
                                 <div className="flex items-center justify-center h-20 w-20 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
                                     <svg className="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                                 </div>
-                                <h3 className="text-2xl font-cinzel font-bold text-amber-900 mb-3">1. Define Your Idea</h3>
-                                <p className="text-lg text-amber-700">The AI customizes your roadmap according to your input.</p>
+                                <h3 className="text-2xl font-cinzel font-bold text-amber-900 mb-3 text-center">1. Define Your Idea</h3>
+                                <p className="text-lg text-amber-700 text-center">The AI customizes your roadmap according to your input.</p>
                             </div>
                             {/* Step 2 */}
                             <div className="group p-8 bg-white rounded-2xl shadow-lg hover:shadow-2xl transform hover:-translate-y-2 transition-all duration-300">
                                 <div className="flex items-center justify-center h-20 w-20 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
                                     <svg className="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" /></svg>
                                 </div>
-                                <h3 className="text-2xl font-cinzel font-bold text-amber-900 mb-3">2. Choose Your Path</h3>
-                                <p className="text-lg text-amber-700">Select your role, and tell the AI about yourself. The AI will guide you accordingly.</p>
+                                <h3 className="text-2xl font-cinzel font-bold text-amber-900 mb-3 text-center">2. Choose Your Path</h3>
+                                <p className="text-lg text-amber-700 text-center">Select your role, and tell the AI about yourself. The AI will guide you accordingly.</p>
                             </div>
                             {/* Step 3 */}
                             <div className="group p-8 bg-white rounded-2xl shadow-lg hover:shadow-2xl transform hover:-translate-y-2 transition-all duration-300">
                                 <div className="flex items-center justify-center h-20 w-20 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
                                     <svg className="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
                                 </div>
-                                <h3 className="text-2xl font-cinzel font-bold text-amber-900 mb-3">3. Build Your Team</h3>
-                                <p className="text-lg text-amber-700">Build your team to complete the quest together.</p>
+                                <h3 className="text-2xl font-cinzel font-bold text-amber-900 mb-3 text-center">3. Build Your Team</h3>
+                                <p className="text-lg text-amber-700 text-center">Build your team to complete the quest together.</p>
                             </div>
                         </div>
                     </div>
@@ -213,7 +247,7 @@ const LandingPage: React.FC = () => {
                         <div className="px-4">
                             <div className="relative group">
                                 <div className="absolute -inset-1 bg-gradient-to-r from-amber-400 to-amber-600 rounded-lg blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
-                                <img src="https://placehold.co/1200x800/1e293b/f59e0b?text=Quest+Window+UI+Mockup" alt="Screenshot of The Startup Quest gameplay window" className="relative rounded-lg shadow-2xl w-full max-w-5xl mx-auto" />
+                                <img src={questWindow} alt="Screenshot of The Startup Quest gameplay window" className="relative rounded-lg shadow-2xl w-full max-w-5xl mx-auto" />
                             </div>
                         </div>
                     </div>
@@ -224,43 +258,47 @@ const LandingPage: React.FC = () => {
                     <div className="container mx-auto px-6">
                         <h2 className="text-4xl md:text-5xl font-cinzel font-bold text-amber-900 text-center mb-4">The Chronicle of a Guild</h2>
                         <p className="text-xl text-center max-w-3xl mx-auto mb-16 text-amber-700">Follow the epic journey of a legendary guild. Every action, every decision, is recorded in the Great Library.</p>
-                        <div className="max-w-3xl mx-auto">
-                            <div className="border-l-4 border-amber-400 ml-4 pl-8 space-y-8">
+                        <div className="mx-auto flex flex-row items-center justify-center">
+                            <div className="w-1/2 flex-col h-[70vh] rounded-lg">
+                                <img src={guildActivity} alt="Guild Activity" className="h-full object-contain border-[10px] border-amber-400 rounded-lg w-fit ml-auto mr-4 p-2" />
+                            </div>
+                            <div className="border-l-4 border-amber-400 ml-4 pl-8 space-y-8 w-1/2 flex-col">
                                 {/* Timeline Items */}
                                 <div className="relative timeline-item group">
                                     <div className="p-6 bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-x-2">
-                                        <h3 className="text-2xl font-cinzel font-bold text-amber-900">Quest: Competitive Landscape</h3>
+                                        <h3 className="font-cinzel font-bold text-amber-900">Quest: Competitive Landscape</h3>
                                         <p className="text-lg text-amber-700">Completed by: <span className="font-bold">Elara, the Loremaster</span></p>
                                         <p className="text-sm text-amber-600">Duration: 3 Days | Consultations: 1 | Rating: ★★★★☆</p>
                                     </div>
                                 </div>
                                 <div className="relative timeline-item group">
                                     <div className="p-6 bg-gradient-to-r from-amber-100 to-amber-50 rounded-lg shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-x-2">
-                                        <h3 className="text-2xl font-cinzel font-bold text-amber-600">Achievement Unlocked: Mission Ready!</h3>
+                                        <h3 className="font-cinzel font-bold text-amber-600">Achievement Unlocked: Mission Ready!</h3>
                                         <p className="text-lg text-amber-700 italic">The 'Innovatech' Guild has completed the Kickoff phase.</p>
                                     </div>
                                 </div>
                                 <div className="relative timeline-item group">
                                     <div className="p-6 bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-x-2">
-                                        <h3 className="text-2xl font-cinzel font-bold text-amber-900">Quest: Define Brand</h3>
+                                        <h3 className="font-cinzel font-bold text-amber-900">Quest: Define Brand</h3>
                                         <p className="text-lg text-amber-700">Completed by: <span className="font-bold">Kael, the Herald</span></p>
                                         <p className="text-sm text-amber-600">Duration: 2 Days | Consultations: 0 | Rating: ★★★★★</p>
                                     </div>
                                 </div>
                                 <div className="relative timeline-item group">
                                     <div className="p-6 bg-gradient-to-r from-green-100 to-green-50 rounded-lg shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-x-2">
-                                        <h3 className="text-2xl font-cinzel font-bold text-green-700">Level Up: Kael is now a Level 12 Herald!</h3>
+                                        <h3 className="font-cinzel font-bold text-green-700">Level Up: Kael is now a Level 12 Herald!</h3>
                                         <p className="text-lg text-green-600 italic">New abilities and bonuses have been unlocked.</p>
                                     </div>
                                 </div>
                                 <div className="relative timeline-item group">
                                     <div className="p-6 bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-x-2">
-                                        <h3 className="text-2xl font-cinzel font-bold text-amber-900">Quest: Build Supply Chain</h3>
+                                        <h3 className="font-cinzel font-bold text-amber-900">Quest: Build Supply Chain</h3>
                                         <p className="text-lg text-amber-700">Completed by: <span className="font-bold">Bram, the Quartermaster</span></p>
                                         <p className="text-sm text-amber-600">Duration: 5 Days | Consultations: 2 | Rating: ★★★★☆</p>
                                     </div>
                                 </div>
                             </div>
+
                         </div>
                     </div>
                 </section>
@@ -270,6 +308,9 @@ const LandingPage: React.FC = () => {
                     <div className="container mx-auto px-6">
                         <h2 className="text-4xl md:text-5xl font-cinzel font-bold text-amber-900 text-center mb-4">The Anatomy of a Quest</h2>
                         <p className="text-xl text-center max-w-3xl mx-auto mb-16 text-amber-700">Every step on your journey is taken through the Quest Window—your central hub for action and insight.</p>
+                        <div className="flex flex-row items-center justify-center">
+                            <img src={guildQuest} alt="Guild Quest" className="w-full h-full object-contain rounded-lg border-[10px] border-amber-400 p-2 mb-4" />
+                        </div>
                         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
                             <div className="p-8 bg-white rounded-2xl shadow-lg hover:shadow-2xl transform hover:-translate-y-2 transition-all duration-300">
                                 <div className="w-16 h-16 bg-gradient-to-br from-amber-400 to-amber-600 rounded-full flex items-center justify-center mb-4">
@@ -315,10 +356,8 @@ const LandingPage: React.FC = () => {
                             <div className="flex justify-center">
                                 <div className="relative">
                                     <div className="absolute inset-0 bg-gradient-to-r from-amber-400 to-amber-600 rounded-full blur-2xl opacity-50 animate-pulse"></div>
-                                    <div className="relative h-64 w-64 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center p-8 shadow-2xl">
-                                        <svg className="h-40 w-40 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M4.26 10.147a60.436 60.436 0 00-.491 6.347A48.627 48.627 0 0112 20.904a48.627 48.627 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.57 50.57 0 00-2.658-.813A59.905 59.905 0 0112 3.493a59.902 59.902 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0l15.482 0m-15.482 0L12 5.343l2.74 4.804m-5.48 0l5.48 0m0 0l-5.48 0" />
-                                        </svg>
+                                    <div className="relative h-64 w-64 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-2xl">
+                                        <img src={tenzing} alt="Tenzing" className="h-full w-full object-contain rounded-full border-[10px] border-amber-400" />
                                     </div>
                                 </div>
                             </div>
@@ -357,7 +396,7 @@ const LandingPage: React.FC = () => {
                                     <span className="text-2xl text-white">📊</span>
                                 </div>
                                 <h3 className="text-xl font-cinzel font-bold text-amber-900 mb-3">Strategic Artifacts</h3>
-                                <p className="text-amber-700">Generate powerful tools like Business Model Canvas.</p>
+                                <p className="text-amber-700">Generate powerful tools like Business Model Canvas, Pitch Deck, User Surveys, Product Roadmaps etc.</p>
                             </div>
                         </div>
                     </div>
@@ -419,22 +458,223 @@ const LandingPage: React.FC = () => {
                     <div className="container mx-auto px-6">
                         <h2 className="text-4xl md:text-5xl font-cinzel font-bold text-white text-center mb-4">The Treasury</h2>
                         <p className="text-xl text-center max-w-3xl mx-auto mb-16 text-amber-100">Your quest is free to begin. Acquire Gold from the Treasury to gain a strategic edge for your Guild.</p>
-                        <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-                            <div className="p-8 bg-white/10 backdrop-blur-sm rounded-2xl text-center transform hover:scale-105 transition-all duration-300">
-                                <h3 className="text-2xl font-cinzel font-bold text-white mb-4">Pouch of Gold</h3>
-                                <p className="text-5xl font-cinzel font-bold text-amber-400 my-6">$10</p>
-                                <p className="text-lg text-amber-100">A starter pack for essential consultations and minor treasures.</p>
+
+                        {isPricingLoading ? (
+                            <div className="text-center text-white py-12">
+                                <p className="text-xl font-cinzel animate-pulse">Summoning the exchequer...</p>
                             </div>
-                            <div className="p-8 bg-gradient-to-br from-amber-400/20 to-amber-600/20 backdrop-blur-sm rounded-2xl text-center border-2 border-amber-400 shadow-2xl transform hover:scale-105 transition-all duration-300">
-                                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-amber-400 text-amber-900 px-4 py-1 rounded-full text-sm font-bold">MOST POPULAR</div>
-                                <h3 className="text-2xl font-cinzel font-bold text-white mb-4">Adventurer's Chest</h3>
-                                <p className="text-5xl font-cinzel font-bold text-amber-300 my-6">$25</p>
-                                <p className="text-lg text-amber-100">The most popular choice for ambitious Guilds looking to upgrade and grow.</p>
-                            </div>
-                            <div className="p-8 bg-white/10 backdrop-blur-sm rounded-2xl text-center transform hover:scale-105 transition-all duration-300">
-                                <h3 className="text-2xl font-cinzel font-bold text-white mb-4">Dragon's Hoard</h3>
-                                <p className="text-5xl font-cinzel font-bold text-amber-400 my-6">$50</p>
-                                <p className="text-lg text-amber-100">For legendary ventures seeking to dominate the realm.</p>
+                        ) : (
+                            <>
+                                {/* Global Pricing */}
+                                {!showIndianPricing && (
+                                    <div className="grid md:grid-cols-4 gap-6 max-w-6xl mx-auto">
+                                        {/* Card 1 */}
+                                        <div className="flex flex-col h-full p-8 bg-white/10 backdrop-blur-sm rounded-2xl text-center transform hover:scale-105 transition-all duration-300">
+                                            <div>
+                                                <div className="text-4xl mb-3">⚡</div>
+                                                <h3 className="text-2xl font-cinzel font-bold text-white mb-2">Starter</h3>
+                                                <p className="text-amber-200 mb-4">200 Gold Coins</p>
+                                                <p className="text-5xl font-cinzel font-bold text-amber-400 mb-2">$5</p>
+                                                <p className="text-sm text-amber-200 mb-6">Perfect for beginners</p>
+                                            </div>
+                                            <div className="mt-auto">
+                                                <a
+                                                    href="/"
+                                                    className="w-full block bg-gradient-to-r from-yellow-600 to-yellow-500 text-white font-bold py-3 px-6 rounded-lg hover:from-yellow-500 hover:to-yellow-400 transition-all text-center"
+                                                >
+                                                    Select
+                                                </a>
+                                            </div>
+                                        </div>
+                                        {/* Card 2 */}
+                                        <div className="flex flex-col h-full p-8 bg-white/10 backdrop-blur-sm rounded-2xl text-center transform hover:scale-105 transition-all duration-300">
+                                            <div>
+                                                <div className="text-4xl mb-3">⚔️</div>
+                                                <h3 className="text-2xl font-cinzel font-bold text-white mb-2">Warrior</h3>
+                                                <p className="text-amber-200 mb-4">500 Gold Coins</p>
+                                                <p className="text-5xl font-cinzel font-bold text-amber-400 mb-2">$10</p>
+                                                <p className="text-sm text-amber-200 mb-6">For active questers</p>
+                                            </div>
+                                            <div className="mt-auto">
+                                                <a
+                                                    href="/"
+                                                    className="w-full block bg-gradient-to-r from-orange-600 to-orange-500 text-white font-bold py-3 px-6 rounded-lg hover:from-orange-500 hover:to-orange-400 transition-all text-center"
+                                                >
+                                                    Select
+                                                </a>
+                                            </div>
+                                        </div>
+                                        {/* Card 3 */}
+                                        <div className="flex flex-col h-full p-8 bg-gradient-to-br from-amber-400/20 to-amber-600/20 backdrop-blur-sm rounded-2xl text-center border-2 border-amber-400 shadow-2xl transform hover:scale-105 transition-all duration-300 relative">
+                                            <div>
+                                                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-amber-400 text-amber-900 px-4 py-1 rounded-full text-sm font-bold">MOST POPULAR</div>
+                                                <div className="text-4xl mb-3">🛡️</div>
+                                                <h3 className="text-2xl font-cinzel font-bold text-white mb-2">Knight</h3>
+                                                <p className="text-amber-200 mb-2">1500 Gold Coins</p>
+                                                <p className="text-green-400 text-sm mb-2">+10 Bonus Coins!</p>
+                                                <p className="text-5xl font-cinzel font-bold text-amber-300 mb-2">$20</p>
+                                                <p className="text-sm text-amber-200 mb-6">Best value for teams</p>
+                                            </div>
+                                            <div className="mt-auto">
+                                                <a
+                                                    href="/"
+                                                    className="w-full block bg-gradient-to-r from-purple-600 to-purple-500 text-white font-bold py-3 px-6 rounded-lg hover:from-purple-500 hover:to-purple-400 transition-all text-center"
+                                                >
+                                                    Select
+                                                </a>
+                                            </div>
+                                        </div>
+                                        {/* Card 4 */}
+                                        <div className="flex flex-col h-full p-8 bg-white/10 backdrop-blur-sm rounded-2xl text-center transform hover:scale-105 transition-all duration-300">
+                                            <div>
+                                                <div className="text-4xl mb-3">👑</div>
+                                                <h3 className="text-2xl font-cinzel font-bold text-white mb-2">Legend</h3>
+                                                <p className="text-amber-200 mb-2">5000 Gold Coins</p>
+                                                <p className="text-green-400 text-sm mb-2">+20 Bonus Coins!</p>
+                                                <p className="text-5xl font-cinzel font-bold text-amber-400 mb-2">$50</p>
+                                                <p className="text-sm text-amber-200 mb-6">For serious ventures</p>
+                                            </div>
+                                            <div className="mt-auto">
+                                                <a
+                                                    href="/"
+                                                    className="w-full block bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold py-3 px-6 rounded-lg hover:from-blue-500 hover:to-indigo-500 transition-all text-center"
+                                                >
+                                                    Select
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* India Pricing */}
+                                {showIndianPricing && (
+                                    <div className="grid md:grid-cols-3 lg:grid-cols-5 gap-6 max-w-7xl mx-auto">
+                                        {/* Card 1 */}
+                                        <div className="flex flex-col h-full p-6 bg-white/10 backdrop-blur-sm rounded-2xl text-center transform hover:scale-105 transition-all duration-300">
+                                            <div>
+                                                <div className="text-4xl mb-3">⚡</div>
+                                                <h3 className="text-xl font-cinzel font-bold text-white mb-2">Starter</h3>
+                                                <p className="text-amber-200 mb-2 text-sm">100 Gold Coins</p>
+                                                <p className="text-4xl font-cinzel font-bold text-amber-400 mb-2">₹100</p>
+                                                <p className="text-xs text-amber-200 mb-4">Quick boost</p>
+                                            </div>
+                                            <div className="mt-auto">
+                                                <a
+                                                    href="/"
+                                                    className="w-full block bg-gradient-to-r from-yellow-600 to-yellow-500 text-white font-bold py-2 px-4 rounded-lg hover:from-yellow-500 hover:to-yellow-400 transition-all text-sm text-center"
+                                                >
+                                                    Select
+                                                </a>
+                                            </div>
+                                        </div>
+                                        {/* Card 2 */}
+                                        <div className="flex flex-col h-full p-6 bg-white/10 backdrop-blur-sm rounded-2xl text-center transform hover:scale-105 transition-all duration-300">
+                                            <div>
+                                                <div className="text-4xl mb-3">⚔️</div>
+                                                <h3 className="text-xl font-cinzel font-bold text-white mb-2">Warrior</h3>
+                                                <p className="text-amber-200 mb-1 text-sm">250 Gold Coins</p>
+                                                <p className="text-green-400 text-xs mb-1">+25 Bonus!</p>
+                                                <p className="text-4xl font-cinzel font-bold text-amber-400 mb-2">₹200</p>
+                                                <p className="text-xs text-amber-200 mb-4">Great value</p>
+                                            </div>
+                                            <div className="mt-auto">
+                                                <a
+                                                    href="/"
+                                                    className="w-full block bg-gradient-to-r from-orange-600 to-orange-500 text-white font-bold py-2 px-4 rounded-lg hover:from-orange-500 hover:to-orange-400 transition-all text-sm text-center"
+                                                >
+                                                    Select
+                                                </a>
+                                            </div>
+                                        </div>
+                                        {/* Card 3 */}
+                                        <div className="flex flex-col h-full p-6 bg-gradient-to-br from-amber-400/20 to-amber-600/20 backdrop-blur-sm rounded-2xl text-center border-2 border-amber-400 shadow-2xl transform hover:scale-105 transition-all duration-300 relative">
+                                            <div>
+                                                <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-amber-400 text-amber-900 px-3 py-0.5 rounded-full text-xs font-bold">POPULAR</div>
+                                                <div className="text-4xl mb-3">🛡️</div>
+                                                <h3 className="text-xl font-cinzel font-bold text-white mb-2">Knight</h3>
+                                                <p className="text-amber-200 mb-1 text-sm">600 Gold Coins</p>
+                                                <p className="text-green-400 text-xs mb-1">+50 Bonus!</p>
+                                                <p className="text-4xl font-cinzel font-bold text-amber-300 mb-2">₹400</p>
+                                                <p className="text-xs text-amber-200 mb-4">Best for teams</p>
+                                            </div>
+                                            <div className="mt-auto">
+                                                <a
+                                                    href="/"
+                                                    className="w-full block bg-gradient-to-r from-purple-600 to-purple-500 text-white font-bold py-2 px-4 rounded-lg hover:from-purple-500 hover:to-purple-400 transition-all text-sm text-center"
+                                                >
+                                                    Select
+                                                </a>
+                                            </div>
+                                        </div>
+                                        {/* Card 4 */}
+                                        <div className="flex flex-col h-full p-6 bg-white/10 backdrop-blur-sm rounded-2xl text-center transform hover:scale-105 transition-all duration-300">
+                                            <div>
+                                                <div className="text-4xl mb-3">👑</div>
+                                                <h3 className="text-xl font-cinzel font-bold text-white mb-2">Legend</h3>
+                                                <p className="text-amber-200 mb-1 text-sm">1500 Gold Coins</p>
+                                                <p className="text-green-400 text-xs mb-1">+125 Bonus!</p>
+                                                <p className="text-4xl font-cinzel font-bold text-amber-400 mb-2">₹800</p>
+                                                <p className="text-xs text-amber-200 mb-4">Pro package</p>
+                                            </div>
+                                            <div className="mt-auto">
+                                                <a
+                                                    href="/"
+                                                    className="w-full block bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold py-2 px-4 rounded-lg hover:from-blue-500 hover:to-indigo-500 transition-all text-sm text-center"
+                                                >
+                                                    Select
+                                                </a>
+                                            </div>
+                                        </div>
+                                        {/* Card 5 */}
+                                        <div className="flex flex-col h-full p-6 bg-white/10 backdrop-blur-sm rounded-2xl text-center transform hover:scale-105 transition-all duration-300">
+                                            <div>
+                                                <div className="text-4xl mb-3">🏰</div>
+                                                <h3 className="text-xl font-cinzel font-bold text-white mb-2">Emperor</h3>
+                                                <p className="text-amber-200 mb-1 text-sm">3000 Gold Coins</p>
+                                                <p className="text-green-400 text-xs mb-1">+300 Bonus!</p>
+                                                <p className="text-4xl font-cinzel font-bold text-amber-400 mb-2">₹1500</p>
+                                                <p className="text-xs text-amber-200 mb-4">Ultimate power</p>
+                                            </div>
+                                            <div className="mt-auto">
+                                                <a
+                                                    href="/"
+                                                    className="w-full block bg-gradient-to-r from-red-600 to-pink-600 text-white font-bold py-2 px-4 rounded-lg hover:from-red-500 hover:to-pink-500 transition-all text-sm text-center"
+                                                >
+                                                    Select
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </>
+                        )}
+
+                        {/* Payment Methods & Features */}
+                        <div className="mt-16 max-w-4xl mx-auto">
+                            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8">
+                                <h3 className="text-2xl font-cinzel font-bold text-white mb-6 text-center">Secure Payment Options</h3>
+                                <div className="grid md:grid-cols-2 gap-8">
+                                    <div>
+                                        <h4 className="text-lg font-bold text-amber-300 mb-3">🌍 Global Payments</h4>
+                                        <ul className="space-y-2 text-amber-100">
+                                            <li className="flex items-center"><span className="mr-2">✓</span> PayPal (All major cards)</li>
+                                            <li className="flex items-center"><span className="mr-2">✓</span> Multiple currencies supported</li>
+                                            <li className="flex items-center"><span className="mr-2">✓</span> Instant gold delivery</li>
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <h4 className="text-lg font-bold text-amber-300 mb-3">🇮🇳 India Payments</h4>
+                                        <ul className="space-y-2 text-amber-100">
+                                            <li className="flex items-center"><span className="mr-2">✓</span> UPI, Cards, Net Banking</li>
+                                            <li className="flex items-center"><span className="mr-2">✓</span> Razorpay secure gateway</li>
+                                            <li className="flex items-center"><span className="mr-2">✓</span> Special regional pricing</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                <div className="mt-6 text-center">
+                                    <p className="text-amber-200 text-sm">🔒 All transactions are secure and encrypted</p>
+                                    <p className="text-amber-300 text-sm mt-2">⚡ Weekend Special: +25% bonus coins on all purchases!</p>
+                                </div>
                             </div>
                         </div>
                     </div>

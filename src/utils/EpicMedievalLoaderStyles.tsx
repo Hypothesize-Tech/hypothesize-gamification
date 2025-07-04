@@ -17,7 +17,7 @@ const EpicMedievalLoaderStyles: React.FC = () => (
       to { transform: rotate(0deg); }
     }
     @keyframes glow-pulse {
-      0%, 100% { filter: drop-shadow(0 0 20px rgba(255, 215, 0, 0.8)); }
+      0%, 100% { filter: drop-shadow(0 0 20px rgba(255, 215, 0, 0.8)); } 
       50% { filter: drop-shadow(0 0 40px rgba(255, 215, 0, 1)); }
     }
     @keyframes shimmer {
