@@ -2,6 +2,7 @@ import { Canvas } from "@react-three/fiber";
 import { Suspense, useEffect, useState } from "react";
 import { Sword3D } from "./Sword3D";
 import EpicMedievalLoaderStyles from "../utils/EpicMedievalLoaderStyles";
+import logo from "../assets/logo.png";
 
 export const EpicMedievalLoader = () => {
     const [loadingPhrase, setLoadingPhrase] = useState(0);
@@ -66,7 +67,7 @@ export const EpicMedievalLoader = () => {
 
             {/* Main loader content */}
             <div className="relative z-10 flex flex-col items-center">
-                {/* Magical circle background */}
+                {/* Magical circle background with logo integration */}
                 <div className="absolute inset-0 flex items-center justify-center">
                     <div className="w-96 h-96 animate-spin-slow">
                         <svg viewBox="0 0 200 200" className="w-full h-full">
@@ -110,10 +111,37 @@ export const EpicMedievalLoader = () => {
                             })}
                         </svg>
                     </div>
+
+                    {/* Logo integrated in the center with epic styling */}
+                    <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="relative w-32 h-32 animate-logo-float">
+                            {/* Glowing backdrop for logo */}
+                            <div className="absolute inset-0 bg-gradient-radial from-yellow-400/30 via-orange-500/20 to-transparent rounded-full blur-xl animate-pulse" />
+
+                            {/* Logo with epic effects */}
+                            <img
+                                src={logo}
+                                alt="Logo"
+                                className="w-full h-full object-contain relative z-10 animate-logo-glow"
+                                style={{
+                                    filter: 'drop-shadow(0 0 20px rgba(255, 215, 0, 0.8)) drop-shadow(0 0 40px rgba(255, 107, 53, 0.6))',
+                                }}
+                            />
+
+                            {/* Rotating magical aura around logo */}
+                            <div className="absolute inset-0 animate-spin-reverse">
+                                <div className="w-full h-full border-2 border-yellow-400/40 rounded-full"
+                                    style={{
+                                        boxShadow: 'inset 0 0 20px rgba(255, 215, 0, 0.4), 0 0 30px rgba(255, 215, 0, 0.3)',
+                                    }}
+                                />
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                {/* 3D Sword Animation */}
-                <div className="w-64 h-64 mb-8">
+                {/* 3D Sword Animation - positioned below logo */}
+                <div className="w-64 h-64 mb-8 mt-40">
                     <Canvas camera={{ position: [0, 0, 8], fov: 45 }}>
                         <ambientLight intensity={0.3} />
                         <pointLight position={[10, 10, 10]} intensity={1} color="#ffd700" />

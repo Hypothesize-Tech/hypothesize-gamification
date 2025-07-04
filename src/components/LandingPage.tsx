@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { sendEmail } from '../services/api';
+import heroLogo from '../assets/hero-logo.png';
 
 const LandingPage: React.FC = () => {
     // Refs for form fields
@@ -96,19 +97,26 @@ const LandingPage: React.FC = () => {
 
                     {/* Hero Content */}
                     <div className="relative z-10 container mx-auto px-6 text-center">
-                        <h1 className="text-6xl md:text-8xl font-cinzel font-black text-white mb-6 animate-fade-in-up" style={{ textShadow: '3px 3px 6px rgba(0, 0, 0, 0.7)' }}>
-                            Forge Your Legacy
-                        </h1>
-                        <p className="text-xl md:text-2xl text-amber-100 max-w-3xl mx-auto mb-12 animate-fade-in-up animation-delay-200">
-                            Navigate the chaos of creation with an AI Alchemist as your guide. Your legendary journey from idea to icon begins now.
-                        </p>
-                        <div className="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-6 animate-fade-in-up animation-delay-400">
-                            <a href="#contact" className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-cinzel font-bold py-4 px-10 rounded-lg shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-200 w-full sm:w-auto">
-                                Start Your Quest
-                            </a>
-                            <a href="/" className="bg-white/10 backdrop-blur-sm border-2 border-amber-300/50 hover:bg-white/20 text-white font-cinzel font-bold py-4 px-10 rounded-lg shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-200 w-full sm:w-auto">
-                                Resume Your Journey
-                            </a>
+                        <div className="flex flex-col md:flex-row items-center justify-center">
+                            <div className="md:w-1/2 mb-8 md:mb-0">
+                                <h1 className="text-6xl md:text-8xl font-cinzel font-black text-white mb-6 animate-fade-in-up" style={{ textShadow: '3px 3px 6px rgba(0, 0, 0, 0.7)' }}>
+                                    Forge Your Legacy
+                                </h1>
+                                <p className="text-xl md:text-2xl text-amber-100 max-w-3xl mx-auto mb-12 animate-fade-in-up animation-delay-200">
+                                    Navigate the chaos of creation with an AI Alchemist as your guide. Your legendary journey from idea to icon begins now.
+                                </p>
+                                <div className="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-6 animate-fade-in-up animation-delay-400">
+                                    <a href="#contact" className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-cinzel font-bold py-4 px-10 rounded-lg shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-200 w-full sm:w-auto">
+                                        Start Your Quest
+                                    </a>
+                                    <a href="/" className="bg-white/10 backdrop-blur-sm border-2 border-amber-300/50 hover:bg-white/20 text-white font-cinzel font-bold py-4 px-10 rounded-lg shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-200 w-full sm:w-auto">
+                                        Resume Your Journey
+                                    </a>
+                                </div>
+                            </div>
+                            <div className="md:w-1/2 flex justify-center">
+                                <img src={heroLogo} alt="The Startup Quest Logo" className="w-full max-w-sm animate-fade-in-up animation-delay-600 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 rounded-lg shadow-xl p-4" />
+                            </div>
                         </div>
                     </div>
 
