@@ -140,10 +140,10 @@ const LandingPage: React.FC = () => {
                                     Forge Your Legacy
                                 </h1>
                                 <p className="text-xl md:text-2xl text-amber-100 max-w-3xl mx-auto mb-12 animate-fade-in-up animation-delay-200">
-                                    Navigate the chaos of creation with an AI Alchemist as your guide. Your legendary journey from idea to icon begins now.
+                                    The Startup Quest provides an engaging, gamified roadmap based on a successful, real-world venture-building process. We break down this complicated process of building your startup into a clear sequence of manageable quests, so you can focus your energy on what truly matters: bringing your idea to life.
                                 </p>
                                 <div className="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-6 animate-fade-in-up animation-delay-400">
-                                    <a href="#contact" className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-cinzel font-bold py-4 px-10 rounded-lg shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-200 w-full sm:w-auto">
+                                    <a href="/" className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-cinzel font-bold py-4 px-10 rounded-lg shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-200 w-full sm:w-auto">
                                         Start Your Quest
                                     </a>
                                     <a href="/" className="bg-white/10 backdrop-blur-sm border-2 border-amber-300/50 hover:bg-white/20 text-white font-cinzel font-bold py-4 px-10 rounded-lg shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-200 w-full sm:w-auto">
@@ -165,11 +165,92 @@ const LandingPage: React.FC = () => {
                 {/* Social Proof Section */}
                 <section id="social-proof" className="py-16 bg-gradient-to-b from-amber-50 to-white">
                     <div className="container mx-auto px-6 text-center">
-                        <h3 className="font-cinzel text-lg text-amber-700 tracking-widest mb-8">TRUSTED BY THE REALM'S FINEST GUILDS & INSTITUTIONS</h3>
-                        <div className="flex flex-wrap justify-center items-center gap-8 md:gap-16">
-                            <p className="font-cinzel text-xl md:text-2xl text-amber-800/60 hover:text-amber-800 transition-colors">HYPOTHESIZE</p>
-                            <p className="font-cinzel text-xl md:text-2xl text-amber-800/60 hover:text-amber-800 transition-colors">Venture Academy</p>
-                            <p className="font-cinzel text-xl md:text-2xl text-amber-800/60 hover:text-amber-800 transition-colors">The Alchemist's Circle</p>
+                        <h3 className="font-cinzel text-lg text-amber-700 tracking-widest mb-8">Trusted by hundreds of Founders Across the Realms</h3>
+                        <div
+                            className="flex flex-row flex-wrap justify-center items-stretch gap-6 md:gap-12"
+                            style={{
+                                rowGap: '1.5rem',
+                                columnGap: '2.5rem',
+                                width: '100%',
+                                maxWidth: '1100px',
+                                margin: '0 auto',
+                            }}
+                        >
+                            <div
+                                className="font-cinzel text-xl md:text-2xl text-amber-800/60 hover:text-amber-800 transition-colors"
+                                style={{
+                                    flex: '1 1 250px',
+                                    minWidth: '220px',
+                                    maxWidth: '340px',
+                                    wordBreak: 'break-word',
+                                    textAlign: 'center',
+                                    padding: '0.5rem 1rem',
+                                }}
+                            >
+                                <span
+                                    style={{
+                                        color: '#d97706', // amber-600
+                                        fontWeight: 700,
+                                        fontSize: '2.1rem',
+                                        display: 'block',
+                                        marginBottom: '0.25rem',
+                                        lineHeight: 1.1,
+                                    }}
+                                >
+                                    200+
+                                </span>
+                                Ventures Currently on the Platform
+                            </div>
+                            <div
+                                className="font-cinzel text-xl md:text-2xl text-amber-800/60 hover:text-amber-800 transition-colors"
+                                style={{
+                                    flex: '1 1 250px',
+                                    minWidth: '220px',
+                                    maxWidth: '340px',
+                                    wordBreak: 'break-word',
+                                    textAlign: 'center',
+                                    padding: '0.5rem 1rem',
+                                }}
+                            >
+                                <span
+                                    style={{
+                                        color: '#d97706',
+                                        fontWeight: 700,
+                                        fontSize: '2.1rem',
+                                        display: 'block',
+                                        marginBottom: '0.25rem',
+                                        lineHeight: 1.1,
+                                    }}
+                                >
+                                    1000+
+                                </span>
+                                Case Studies Put into Training Tenzing
+                            </div>
+                            <div
+                                className="font-cinzel text-xl md:text-2xl text-amber-800/60 hover:text-amber-800 transition-colors"
+                                style={{
+                                    flex: '1 1 250px',
+                                    minWidth: '220px',
+                                    maxWidth: '340px',
+                                    wordBreak: 'break-word',
+                                    textAlign: 'center',
+                                    padding: '0.5rem 1rem',
+                                }}
+                            >
+                                <span
+                                    style={{
+                                        color: '#d97706',
+                                        fontWeight: 700,
+                                        fontSize: '2.1rem',
+                                        display: 'block',
+                                        marginBottom: '0.25rem',
+                                        lineHeight: 1.1,
+                                    }}
+                                >
+                                    50+
+                                </span>
+                                Ventures In Finalize Stage
+                            </div>
                         </div>
                     </div>
                 </section>
@@ -185,7 +266,7 @@ const LandingPage: React.FC = () => {
                                     <svg className="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                                 </div>
                                 <h3 className="text-2xl font-cinzel font-bold text-amber-900 mb-3 text-center">1. Define Your Idea</h3>
-                                <p className="text-lg text-amber-700 text-center">The AI customizes your roadmap according to your input.</p>
+                                <p className="text-lg text-amber-700 text-center">The AI learns about you and your idea and customizes a unique roadmap just for you.</p>
                             </div>
                             {/* Step 2 */}
                             <div className="group p-8 bg-white rounded-2xl shadow-lg hover:shadow-2xl transform hover:-translate-y-2 transition-all duration-300">
@@ -193,7 +274,7 @@ const LandingPage: React.FC = () => {
                                     <svg className="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" /></svg>
                                 </div>
                                 <h3 className="text-2xl font-cinzel font-bold text-amber-900 mb-3 text-center">2. Choose Your Path</h3>
-                                <p className="text-lg text-amber-700 text-center">Select your role, and tell the AI about yourself. The AI will guide you accordingly.</p>
+                                <p className="text-lg text-amber-700 text-center">Select your role, and tell the AI about what aspect of business you want to handle. The AI will guide you accordingly.</p>
                             </div>
                             {/* Step 3 */}
                             <div className="group p-8 bg-white rounded-2xl shadow-lg hover:shadow-2xl transform hover:-translate-y-2 transition-all duration-300">
@@ -201,7 +282,7 @@ const LandingPage: React.FC = () => {
                                     <svg className="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
                                 </div>
                                 <h3 className="text-2xl font-cinzel font-bold text-amber-900 mb-3 text-center">3. Build Your Team</h3>
-                                <p className="text-lg text-amber-700 text-center">Build your team to complete the quest together.</p>
+                                <p className="text-lg text-amber-700 text-center">Invite members with different core attributes and build your team to complete the quest together.</p>
                             </div>
                         </div>
                     </div>
@@ -350,8 +431,8 @@ const LandingPage: React.FC = () => {
                         <div className="grid md:grid-cols-2 gap-12 items-center">
                             <div className="text-center md:text-left">
                                 <h2 className="text-4xl md:text-5xl font-cinzel font-bold text-white mb-6">Meet Tenzing</h2>
-                                <p className="text-xl text-amber-100 mb-6">Your personal AI Sage, named after the legendary guide Tenzing Norgay. Pre-trained on over 7,000 business case studies—both successful and unsuccessful—Tenzing provides just-in-time advice to help you summit your peak.</p>
-                                <p className="text-lg text-amber-200">Tenzing is more than a guide; it's a learning entity. It enriches itself with knowledge from your input and the collective, anonymized journey of every founder on the platform.</p>
+                                <p className="text-xl text-amber-100 mb-6">Meet Tenzing, your AI personal guide on the perilous journey of entrepreneurship. It doesn't just provide answers; it helps you ask the right questions and build the right way. Tenzing learns about your unique idea to forge a personalized roadmap, offers expert counsel drawn from over thousands of case studies, judges your progress with actionable feedback, and generates strategic artifacts like a Business Model Canvas on command. With every step you take, Tenzing learns more about your vision, making your journey smoother and its guidance more attuned to you.</p>
+                                <p className="text-lg text-amber-200">The Inspiration Behind the Name: We named our AI Sage after Tenzing Norgay, the legendary Sherpa who guided the first successful ascent of Mount Everest. Our Tenzing is designed to guide founders through the treacherous startup landscape to help them reach their own peak of success.</p>
                             </div>
                             <div className="flex justify-center">
                                 <div className="relative">
