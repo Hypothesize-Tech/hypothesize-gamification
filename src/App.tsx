@@ -789,16 +789,29 @@ export default function App() {
           </div>
           <h1 className="text-3xl font-bold text-yellow-100 mb-2">The Startup Quest</h1>
           <p className="text-gray-300 mb-6">Start your journey to building your company</p>
-          <button
-            onClick={() => handleSignIn()}
-            className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-8 py-4 rounded-lg hover:from-purple-500 hover:to-pink-500 transition-all transform hover:scale-105 magic-border"
-          >
-            <span className="flex items-center space-x-3">
-              <Swords className="w-5 h-5" />
-              <span>Sign in with Google</span>
-              <Swords className="w-5 h-5 transform scale-x-[-1]" />
-            </span>
-          </button>
+          <div className="space-y-4">
+            <button
+              onClick={() => handleSignIn()}
+              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white px-8 py-4 rounded-lg hover:from-purple-500 hover:to-pink-500 transition-all transform hover:scale-105 magic-border"
+            >
+              <span className="flex items-center justify-center space-x-3">
+                <Swords className="w-5 h-5" />
+                <span>Sign in with Google</span>
+                <Swords className="w-5 h-5 transform scale-x-[-1]" />
+              </span>
+            </button>
+            <button
+              onClick={() => navigate('/landing-page')}
+              className="w-full bg-gradient-to-r from-amber-600 to-amber-700 text-white px-8 py-3 rounded-lg hover:from-amber-500 hover:to-amber-600 transition-all transform hover:scale-105"
+            >
+              <span className="flex items-center justify-center space-x-2">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>What is The Startup Quest?</span>
+              </span>
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -936,6 +949,15 @@ export default function App() {
 
             {/* Right side: Stats and Actions */}
             <div className="flex items-center space-x-4">
+              <button
+                onClick={() => navigate('/landing-page')}
+                className="text-gray-400 hover:text-white transition-colors"
+                title="View Landing Page"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </button>
               {guildData && (
                 <EnergyBar
                   currentEnergy={guildData.currentEnergy}
