@@ -16,6 +16,7 @@ const LandingPage: React.FC = () => {
     const [submitMessage, setSubmitMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
     const [showIndianPricing, setShowIndianPricing] = useState(false);
     const [isPricingLoading, setIsPricingLoading] = useState(true);
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     useEffect(() => {
         const fetchLocationAndSetPricing = async () => {
@@ -92,25 +93,49 @@ const LandingPage: React.FC = () => {
     return (
         <div className="scroll-smooth">
             {/* Header */}
-            <header className="sticky top-0 z-50 backdrop-blur-md bg-amber-50/90 border-b border-amber-200/50 shadow-sm"
-
-
-
-            >
-                <nav className="container mx-auto px-6 py-4 flex justify-between items-center">
-                    <a href="#" className="text-3xl font-cinzel font-bold text-amber-900 hover:text-amber-700 transition-colors">
+            <header className="sticky top-0 z-50 backdrop-blur-md bg-amber-50/90 border-b border-amber-200/50 shadow-sm">
+                <nav className="container mx-auto px-4 sm:px-6 py-4 flex justify-between items-center">
+                    <a href="#" className="text-2xl sm:text-3xl font-cinzel font-bold text-amber-900 hover:text-amber-700 transition-colors">
                         The Startup Quest
                     </a>
+
+                    {/* Desktop Navigation */}
                     <div className="hidden md:flex space-x-8 text-lg">
                         <a href="#gameplay" className="text-amber-800 hover:text-amber-600 transition-colors font-medium">Gameplay</a>
                         <a href="#pricing" className="text-amber-800 hover:text-amber-600 transition-colors font-medium">The Treasury</a>
                         <a href="#ai-sage" className="text-amber-800 hover:text-amber-600 transition-colors font-medium">Tenzing</a>
                         <a href="#faq" className="text-amber-800 hover:text-amber-600 transition-colors font-medium">FAQ</a>
                     </div>
+
                     <a href="/" className="hidden md:inline-block bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white font-cinzel font-bold py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200">
                         Begin Your Quest
                     </a>
+
+                    {/* Mobile Menu Button */}
+                    <button
+                        className="md:hidden p-2 rounded-lg bg-amber-100 hover:bg-amber-200 transition-colors"
+                        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                    >
+                        <svg className="w-6 h-6 text-amber-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                        </svg>
+                    </button>
                 </nav>
+
+                {/* Mobile Navigation Menu */}
+                {isMobileMenuOpen && (
+                    <div className="md:hidden bg-amber-50/95 backdrop-blur-md border-t border-amber-200/50">
+                        <div className="container mx-auto px-4 py-4 space-y-4">
+                            <a href="#gameplay" className="block text-amber-800 hover:text-amber-600 transition-colors font-medium py-2" onClick={() => setIsMobileMenuOpen(false)}>Gameplay</a>
+                            <a href="#pricing" className="block text-amber-800 hover:text-amber-600 transition-colors font-medium py-2" onClick={() => setIsMobileMenuOpen(false)}>The Treasury</a>
+                            <a href="#ai-sage" className="block text-amber-800 hover:text-amber-600 transition-colors font-medium py-2" onClick={() => setIsMobileMenuOpen(false)}>Tenzing</a>
+                            <a href="#faq" className="block text-amber-800 hover:text-amber-600 transition-colors font-medium py-2" onClick={() => setIsMobileMenuOpen(false)}>FAQ</a>
+                            <a href="/" className="block bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white font-cinzel font-bold py-3 px-6 rounded-lg shadow-lg text-center mt-4">
+                                Begin Your Quest
+                            </a>
+                        </div>
+                    </div>
+                )}
             </header>
 
             {/* Main Content */}
@@ -133,20 +158,20 @@ const LandingPage: React.FC = () => {
                     </div>
 
                     {/* Hero Content */}
-                    <div className="relative z-10 container mx-auto px-6 text-center">
-                        <div className="flex flex-col md:flex-row items-center justify-start">
-                            <div className="md:w-1/2 mb-8 md:mb-0">
-                                <h1 className="text-6xl md:text-8xl font-cinzel font-black text-white mb-6 animate-fade-in-up" style={{ textShadow: '3px 3px 6px rgba(0, 0, 0, 0.7)' }}>
+                    <div className="relative z-10 container mx-auto px-4 sm:px-6 text-center">
+                        <div className="flex flex-col items-center justify-center min-h-[60vh] sm:min-h-[70vh]">
+                            <div className="w-full max-w-4xl">
+                                <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-cinzel font-black text-white mb-6 animate-fade-in-up leading-tight" style={{ textShadow: '3px 3px 6px rgba(0, 0, 0, 0.7)' }}>
                                     Forge Your Legacy
                                 </h1>
-                                <p className="text-xl md:text-2xl text-amber-100 max-w-3xl mx-auto mb-12 animate-fade-in-up animation-delay-200">
+                                <p className="text-lg sm:text-xl md:text-2xl text-amber-100 max-w-3xl mx-auto mb-8 sm:mb-12 animate-fade-in-up animation-delay-200 leading-relaxed">
                                     The Startup Quest provides an engaging, gamified roadmap based on a successful, real-world venture-building process. We break down this complicated process of building your startup into a clear sequence of manageable quests, so you can focus your energy on what truly matters: bringing your idea to life.
                                 </p>
                                 <div className="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-6 animate-fade-in-up animation-delay-400">
-                                    <a href="/" className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-cinzel font-bold py-4 px-10 rounded-lg shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-200 w-full sm:w-auto">
+                                    <a href="/" className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-cinzel font-bold py-3 sm:py-4 px-8 sm:px-10 rounded-lg shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-200 w-full sm:w-auto text-center">
                                         Start Your Quest
                                     </a>
-                                    <a href="/" className="bg-white/10 backdrop-blur-sm border-2 border-amber-300/50 hover:bg-white/20 text-white font-cinzel font-bold py-4 px-10 rounded-lg shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-200 w-full sm:w-auto">
+                                    <a href="/" className="bg-white/10 backdrop-blur-sm border-2 border-amber-300/50 hover:bg-white/20 text-white font-cinzel font-bold py-3 sm:py-4 px-8 sm:px-10 rounded-lg shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-200 w-full sm:w-auto text-center">
                                         Resume Your Journey
                                     </a>
                                 </div>
@@ -163,102 +188,36 @@ const LandingPage: React.FC = () => {
                 </section>
 
                 {/* Social Proof Section */}
-                <section id="social-proof" className="py-16 bg-gradient-to-b from-amber-50 to-white">
-                    <div className="container mx-auto px-6 text-center">
-                        <h3 className="font-cinzel text-lg text-amber-700 tracking-widest mb-8">Trusted by hundreds of Founders Across the Realms</h3>
-                        <div
-                            className="flex flex-row flex-wrap justify-center items-stretch gap-6 md:gap-12"
-                            style={{
-                                rowGap: '1.5rem',
-                                columnGap: '2.5rem',
-                                width: '100%',
-                                maxWidth: '1100px',
-                                margin: '0 auto',
-                            }}
-                        >
-                            <div
-                                className="font-cinzel text-xl md:text-2xl text-amber-800/60 hover:text-amber-800 transition-colors"
-                                style={{
-                                    flex: '1 1 250px',
-                                    minWidth: '220px',
-                                    maxWidth: '340px',
-                                    wordBreak: 'break-word',
-                                    textAlign: 'center',
-                                    padding: '0.5rem 1rem',
-                                }}
-                            >
-                                <span
-                                    style={{
-                                        color: '#d97706', // amber-600
-                                        fontWeight: 700,
-                                        fontSize: '2.1rem',
-                                        display: 'block',
-                                        marginBottom: '0.25rem',
-                                        lineHeight: 1.1,
-                                    }}
-                                >
+                <section id="social-proof" className="py-12 sm:py-16 bg-gradient-to-b from-amber-50 to-white">
+                    <div className="container mx-auto px-4 sm:px-6 text-center">
+                        <h3 className="font-cinzel text-base sm:text-lg text-amber-700 tracking-widest mb-8">Trusted by hundreds of Founders Across the Realms</h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 max-w-4xl mx-auto">
+                            <div className="font-cinzel text-center text-amber-800/60 hover:text-amber-800 transition-colors p-4">
+                                <span className="text-3xl sm:text-4xl lg:text-5xl font-bold text-amber-600 block mb-2">
                                     200+
                                 </span>
-                                Ventures Currently on the Platform
+                                <span className="text-lg sm:text-xl lg:text-2xl">Ventures Currently on the Platform</span>
                             </div>
-                            <div
-                                className="font-cinzel text-xl md:text-2xl text-amber-800/60 hover:text-amber-800 transition-colors"
-                                style={{
-                                    flex: '1 1 250px',
-                                    minWidth: '220px',
-                                    maxWidth: '340px',
-                                    wordBreak: 'break-word',
-                                    textAlign: 'center',
-                                    padding: '0.5rem 1rem',
-                                }}
-                            >
-                                <span
-                                    style={{
-                                        color: '#d97706',
-                                        fontWeight: 700,
-                                        fontSize: '2.1rem',
-                                        display: 'block',
-                                        marginBottom: '0.25rem',
-                                        lineHeight: 1.1,
-                                    }}
-                                >
+                            <div className="font-cinzel text-center text-amber-800/60 hover:text-amber-800 transition-colors p-4">
+                                <span className="text-3xl sm:text-4xl lg:text-5xl font-bold text-amber-600 block mb-2">
                                     1000+
                                 </span>
-                                Case Studies Put into Training Tenzing
+                                <span className="text-lg sm:text-xl lg:text-2xl">Case Studies Put into Training Tenzing</span>
                             </div>
-                            <div
-                                className="font-cinzel text-xl md:text-2xl text-amber-800/60 hover:text-amber-800 transition-colors"
-                                style={{
-                                    flex: '1 1 250px',
-                                    minWidth: '220px',
-                                    maxWidth: '340px',
-                                    wordBreak: 'break-word',
-                                    textAlign: 'center',
-                                    padding: '0.5rem 1rem',
-                                }}
-                            >
-                                <span
-                                    style={{
-                                        color: '#d97706',
-                                        fontWeight: 700,
-                                        fontSize: '2.1rem',
-                                        display: 'block',
-                                        marginBottom: '0.25rem',
-                                        lineHeight: 1.1,
-                                    }}
-                                >
+                            <div className="font-cinzel text-center text-amber-800/60 hover:text-amber-800 transition-colors p-4 sm:col-span-2 lg:col-span-1">
+                                <span className="text-3xl sm:text-4xl lg:text-5xl font-bold text-amber-600 block mb-2">
                                     50+
                                 </span>
-                                Ventures In Finalize Stage
+                                <span className="text-lg sm:text-xl lg:text-2xl">Ventures In Finalize Stage</span>
                             </div>
                         </div>
                     </div>
                 </section>
 
                 {/* How to Start Your Journey */}
-                <section id="start-journey" className="py-24 bg-white">
-                    <div className="container mx-auto px-6">
-                        <h2 className="text-4xl md:text-5xl font-cinzel font-bold text-amber-900 text-center mb-16">Your Chronicle Begins...</h2>
+                <section id="start-journey" className="py-16 sm:py-24 bg-white">
+                    <div className="container mx-auto px-4 sm:px-6">
+                        <h2 className="text-3xl sm:text-4xl md:text-5xl font-cinzel font-bold text-amber-900 text-center mb-12 sm:mb-16">Your Chronicle Begins...</h2>
                         <div className="grid md:grid-cols-3 gap-8">
                             {/* Step 1 */}
                             <div className="group p-8 bg-white rounded-2xl shadow-lg hover:shadow-2xl transform hover:-translate-y-2 transition-all duration-300">
@@ -292,9 +251,9 @@ const LandingPage: React.FC = () => {
                 <div className="h-px bg-gradient-to-r from-transparent via-amber-300 to-transparent"></div>
 
                 {/* Four Phases Section */}
-                <section id="phases" className="py-24 bg-gradient-to-b from-white to-amber-50">
-                    <div className="container mx-auto px-6">
-                        <h2 className="text-4xl md:text-5xl font-cinzel font-bold text-amber-900 text-center mb-16">The Four Chapters of Your Saga</h2>
+                <section id="phases" className="py-16 sm:py-24 bg-gradient-to-b from-white to-amber-50">
+                    <div className="container mx-auto px-4 sm:px-6">
+                        <h2 className="text-3xl sm:text-4xl md:text-5xl font-cinzel font-bold text-amber-900 text-center mb-12 sm:mb-16">The Four Chapters of Your Saga</h2>
                         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
                             <div className="group relative p-8 bg-white rounded-2xl shadow-lg hover:shadow-2xl transform hover:-translate-y-2 transition-all duration-300 overflow-hidden">
                                 <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-amber-200/20 to-amber-400/20 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500"></div>
@@ -321,25 +280,27 @@ const LandingPage: React.FC = () => {
                 </section>
 
                 {/* Visual Hook Section */}
-                <section id="visual-hook" className="py-24 bg-gradient-to-b from-amber-800 to-amber-900 text-white">
-                    <div className="container mx-auto px-6 text-center">
-                        <h2 className="text-4xl md:text-5xl font-cinzel font-bold mb-4">Behold Your Quest Log</h2>
-                        <p className="text-xl max-w-3xl mx-auto mb-12 text-amber-100">This is not a mere checklist. It is a living chronicle of your venture, where strategy meets action.</p>
-                        <div className="px-4">
+                <section id="visual-hook" className="py-16 sm:py-24 bg-gradient-to-b from-amber-800 to-amber-900 text-white">
+                    <div className="container mx-auto px-4 sm:px-6 text-center">
+                        <h2 className="text-3xl sm:text-4xl md:text-5xl font-cinzel font-bold mb-4">Behold Your Quest Log</h2>
+                        <p className="text-lg sm:text-xl max-w-3xl mx-auto mb-8 sm:mb-12 text-amber-100">This is not a mere checklist. It is a living chronicle of your venture, where strategy meets action.</p>
+                        <div className="px-2 sm:px-4">
                             <div className="relative group">
                                 <div className="absolute -inset-1 bg-gradient-to-r from-amber-400 to-amber-600 rounded-lg blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
-                                <img src={questWindow} alt="Screenshot of The Startup Quest gameplay window" className="relative rounded-lg shadow-2xl w-full max-w-5xl mx-auto" />
+                                <img src={questWindow} alt="Screenshot of The Startup Quest gameplay window" className="relative rounded-lg shadow-2xl w-full max-w-5xl mx-auto h-auto" />
                             </div>
                         </div>
                     </div>
                 </section>
 
                 {/* Chronicle of a Guild Section */}
-                <section id="chronicle" className="py-24 bg-gradient-to-b from-white to-amber-50">
-                    <div className="container mx-auto px-6">
-                        <h2 className="text-4xl md:text-5xl font-cinzel font-bold text-amber-900 text-center mb-4">The Chronicle of a Guild</h2>
-                        <p className="text-xl text-center max-w-3xl mx-auto mb-16 text-amber-700">Follow the epic journey of a legendary guild. Every action, every decision, is recorded in the Great Library.</p>
-                        <div className="mx-auto flex flex-row items-center justify-center">
+                <section id="chronicle" className="py-16 sm:py-24 bg-gradient-to-b from-white to-amber-50">
+                    <div className="container mx-auto px-4 sm:px-6">
+                        <h2 className="text-3xl sm:text-4xl md:text-5xl font-cinzel font-bold text-amber-900 text-center mb-4">The Chronicle of a Guild</h2>
+                        <p className="text-lg sm:text-xl text-center max-w-3xl mx-auto mb-12 sm:mb-16 text-amber-700">Follow the epic journey of a legendary guild. Every action, every decision, is recorded in the Great Library.</p>
+
+                        {/* Desktop Layout */}
+                        <div className="hidden lg:flex flex-row items-center justify-center">
                             <div className="w-1/2 flex-col h-[70vh] rounded-lg">
                                 <img src={guildActivity} alt="Guild Activity" className="h-full object-contain border-[10px] border-amber-400 rounded-lg w-fit ml-auto mr-4 p-2" />
                             </div>
@@ -379,18 +340,60 @@ const LandingPage: React.FC = () => {
                                     </div>
                                 </div>
                             </div>
+                        </div>
 
+                        {/* Mobile/Tablet Layout */}
+                        <div className="lg:hidden space-y-8">
+                            <div className="w-full max-w-2xl mx-auto">
+                                <img src={guildActivity} alt="Guild Activity" className="w-full h-auto object-contain border-8 border-amber-400 rounded-lg p-2" />
+                            </div>
+                            <div className="space-y-6">
+                                {/* Timeline Items */}
+                                <div className="relative group">
+                                    <div className="p-4 sm:p-6 bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300">
+                                        <h3 className="font-cinzel font-bold text-amber-900 text-lg sm:text-xl">Quest: Competitive Landscape</h3>
+                                        <p className="text-base sm:text-lg text-amber-700">Completed by: <span className="font-bold">Elara, the Loremaster</span></p>
+                                        <p className="text-sm text-amber-600">Duration: 3 Days | Consultations: 1 | Rating: ★★★★☆</p>
+                                    </div>
+                                </div>
+                                <div className="relative group">
+                                    <div className="p-4 sm:p-6 bg-gradient-to-r from-amber-100 to-amber-50 rounded-lg shadow-md hover:shadow-xl transition-all duration-300">
+                                        <h3 className="font-cinzel font-bold text-amber-600 text-lg sm:text-xl">Achievement Unlocked: Mission Ready!</h3>
+                                        <p className="text-base sm:text-lg text-amber-700 italic">The 'Innovatech' Guild has completed the Kickoff phase.</p>
+                                    </div>
+                                </div>
+                                <div className="relative group">
+                                    <div className="p-4 sm:p-6 bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300">
+                                        <h3 className="font-cinzel font-bold text-amber-900 text-lg sm:text-xl">Quest: Define Brand</h3>
+                                        <p className="text-base sm:text-lg text-amber-700">Completed by: <span className="font-bold">Kael, the Herald</span></p>
+                                        <p className="text-sm text-amber-600">Duration: 2 Days | Consultations: 0 | Rating: ★★★★★</p>
+                                    </div>
+                                </div>
+                                <div className="relative group">
+                                    <div className="p-4 sm:p-6 bg-gradient-to-r from-green-100 to-green-50 rounded-lg shadow-md hover:shadow-xl transition-all duration-300">
+                                        <h3 className="font-cinzel font-bold text-green-700 text-lg sm:text-xl">Level Up: Kael is now a Level 12 Herald!</h3>
+                                        <p className="text-base sm:text-lg text-green-600 italic">New abilities and bonuses have been unlocked.</p>
+                                    </div>
+                                </div>
+                                <div className="relative group">
+                                    <div className="p-4 sm:p-6 bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300">
+                                        <h3 className="font-cinzel font-bold text-amber-900 text-lg sm:text-xl">Quest: Build Supply Chain</h3>
+                                        <p className="text-base sm:text-lg text-amber-700">Completed by: <span className="font-bold">Bram, the Quartermaster</span></p>
+                                        <p className="text-sm text-amber-600">Duration: 5 Days | Consultations: 2 | Rating: ★★★★☆</p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </section>
 
                 {/* Gameplay Section */}
-                <section id="gameplay" className="py-24 bg-gradient-to-b from-amber-100 to-white">
-                    <div className="container mx-auto px-6">
-                        <h2 className="text-4xl md:text-5xl font-cinzel font-bold text-amber-900 text-center mb-4">The Anatomy of a Quest</h2>
-                        <p className="text-xl text-center max-w-3xl mx-auto mb-16 text-amber-700">Every step on your journey is taken through the Quest Window—your central hub for action and insight.</p>
-                        <div className="flex flex-row items-center justify-center">
-                            <img src={guildQuest} alt="Guild Quest" className="w-full h-full object-contain rounded-lg border-[10px] border-amber-400 p-2 mb-4" />
+                <section id="gameplay" className="py-16 sm:py-24 bg-gradient-to-b from-amber-100 to-white">
+                    <div className="container mx-auto px-4 sm:px-6">
+                        <h2 className="text-3xl sm:text-4xl md:text-5xl font-cinzel font-bold text-amber-900 text-center mb-4">The Anatomy of a Quest</h2>
+                        <p className="text-lg sm:text-xl text-center max-w-3xl mx-auto mb-12 sm:mb-16 text-amber-700">Every step on your journey is taken through the Quest Window—your central hub for action and insight.</p>
+                        <div className="flex flex-row items-center justify-center mb-8 sm:mb-12">
+                            <img src={guildQuest} alt="Guild Quest" className="w-full max-w-5xl h-auto object-contain rounded-lg border-4 sm:border-8 lg:border-[10px] border-amber-400 p-1 sm:p-2" />
                         </div>
                         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
                             <div className="p-8 bg-white rounded-2xl shadow-lg hover:shadow-2xl transform hover:-translate-y-2 transition-all duration-300">
@@ -426,19 +429,19 @@ const LandingPage: React.FC = () => {
                 </section>
 
                 {/* AI Sage (Tenzing) */}
-                <section id="ai-sage" className="py-24 bg-gradient-to-r from-amber-800 to-amber-900">
-                    <div className="container mx-auto px-6">
-                        <div className="grid md:grid-cols-2 gap-12 items-center">
-                            <div className="text-center md:text-left">
-                                <h2 className="text-4xl md:text-5xl font-cinzel font-bold text-white mb-6">Meet Tenzing</h2>
-                                <p className="text-xl text-amber-100 mb-6">Meet Tenzing, your AI personal guide on the perilous journey of entrepreneurship. It doesn't just provide answers; it helps you ask the right questions and build the right way. Tenzing learns about your unique idea to forge a personalized roadmap, offers expert counsel drawn from over thousands of case studies, judges your progress with actionable feedback, and generates strategic artifacts like a Business Model Canvas on command. With every step you take, Tenzing learns more about your vision, making your journey smoother and its guidance more attuned to you.</p>
-                                <p className="text-lg text-amber-200">The Inspiration Behind the Name: We named our AI Sage after Tenzing Norgay, the legendary Sherpa who guided the first successful ascent of Mount Everest. Our Tenzing is designed to guide founders through the treacherous startup landscape to help them reach their own peak of success.</p>
+                <section id="ai-sage" className="py-16 sm:py-24 bg-gradient-to-r from-amber-800 to-amber-900">
+                    <div className="container mx-auto px-4 sm:px-6">
+                        <div className="grid md:grid-cols-2 gap-8 lg:gap-12 items-center">
+                            <div className="text-center md:text-left order-2 md:order-1">
+                                <h2 className="text-3xl sm:text-4xl md:text-5xl font-cinzel font-bold text-white mb-6">Meet Tenzing</h2>
+                                <p className="text-lg sm:text-xl text-amber-100 mb-6 leading-relaxed">Meet Tenzing, your AI personal guide on the perilous journey of entrepreneurship. It doesn't just provide answers; it helps you ask the right questions and build the right way. Tenzing learns about your unique idea to forge a personalized roadmap, offers expert counsel drawn from over thousands of case studies, judges your progress with actionable feedback, and generates strategic artifacts like a Business Model Canvas on command. With every step you take, Tenzing learns more about your vision, making your journey smoother and its guidance more attuned to you.</p>
+                                <p className="text-base sm:text-lg text-amber-200 leading-relaxed">The Inspiration Behind the Name: We named our AI Sage after Tenzing Norgay, the legendary Sherpa who guided the first successful ascent of Mount Everest. Our Tenzing is designed to guide founders through the treacherous startup landscape to help them reach their own peak of success.</p>
                             </div>
-                            <div className="flex justify-center">
+                            <div className="flex justify-center order-1 md:order-2 mb-8 md:mb-0">
                                 <div className="relative">
                                     <div className="absolute inset-0 bg-gradient-to-r from-amber-400 to-amber-600 rounded-full blur-2xl opacity-50 animate-pulse"></div>
-                                    <div className="relative h-64 w-64 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-2xl">
-                                        <img src={tenzing} alt="Tenzing" className="h-full w-full object-contain rounded-full border-[10px] border-amber-400" />
+                                    <div className="relative h-48 w-48 sm:h-64 sm:w-64 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-2xl">
+                                        <img src={tenzing} alt="Tenzing" className="h-full w-full object-contain rounded-full border-4 sm:border-8 lg:border-[10px] border-amber-400" />
                                     </div>
                                 </div>
                             </div>
@@ -447,9 +450,9 @@ const LandingPage: React.FC = () => {
                 </section>
 
                 {/* The Power of Tenzing */}
-                <section id="tenzing-power" className="py-24 bg-gradient-to-b from-amber-50 to-white">
-                    <div className="container mx-auto px-6">
-                        <h2 className="text-4xl md:text-5xl font-cinzel font-bold text-amber-900 text-center mb-16">The Arcane Engine</h2>
+                <section id="tenzing-power" className="py-16 sm:py-24 bg-gradient-to-b from-amber-50 to-white">
+                    <div className="container mx-auto px-4 sm:px-6">
+                        <h2 className="text-3xl sm:text-4xl md:text-5xl font-cinzel font-bold text-amber-900 text-center mb-12 sm:mb-16">The Arcane Engine</h2>
                         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
                             <div className="p-8 bg-white rounded-2xl shadow-lg hover:shadow-2xl transform hover:-translate-y-2 transition-all duration-300">
                                 <div className="w-16 h-16 bg-gradient-to-br from-purple-400 to-purple-600 rounded-full flex items-center justify-center mb-4">
@@ -484,9 +487,9 @@ const LandingPage: React.FC = () => {
                 </section>
 
                 {/* Roles and Attributes Section */}
-                <section id="roles" className="py-24 bg-gradient-to-b from-white to-amber-50">
-                    <div className="container mx-auto px-6">
-                        <h2 className="text-4xl md:text-5xl font-cinzel font-bold text-amber-900 text-center mb-16">Choose Your Calling</h2>
+                <section id="roles" className="py-16 sm:py-24 bg-gradient-to-b from-white to-amber-50">
+                    <div className="container mx-auto px-4 sm:px-6">
+                        <h2 className="text-3xl sm:text-4xl md:text-5xl font-cinzel font-bold text-amber-900 text-center mb-12 sm:mb-16">Choose Your Calling</h2>
                         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                             <div className="group p-8 bg-white rounded-2xl shadow-lg hover:shadow-2xl transform hover:-translate-y-2 transition-all duration-300 text-center">
                                 <div className="w-20 h-20 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
@@ -535,10 +538,10 @@ const LandingPage: React.FC = () => {
                 </section>
 
                 {/* Pricing Section */}
-                <section id="pricing" className="py-24 bg-gradient-to-b from-amber-800 to-amber-900">
-                    <div className="container mx-auto px-6">
-                        <h2 className="text-4xl md:text-5xl font-cinzel font-bold text-white text-center mb-4">The Treasury</h2>
-                        <p className="text-xl text-center max-w-3xl mx-auto mb-16 text-amber-100">Your quest is free to begin. Acquire Gold from the Treasury to gain a strategic edge for your Guild.</p>
+                <section id="pricing" className="py-16 sm:py-24 bg-gradient-to-b from-amber-800 to-amber-900">
+                    <div className="container mx-auto px-4 sm:px-6">
+                        <h2 className="text-3xl sm:text-4xl md:text-5xl font-cinzel font-bold text-white text-center mb-4">The Treasury</h2>
+                        <p className="text-lg sm:text-xl text-center max-w-3xl mx-auto mb-12 sm:mb-16 text-amber-100">Your quest is free to begin. Acquire Gold from the Treasury to gain a strategic edge for your Guild.</p>
 
                         {isPricingLoading ? (
                             <div className="text-center text-white py-12">
@@ -762,9 +765,9 @@ const LandingPage: React.FC = () => {
                 </section>
 
                 {/* FAQ Section */}
-                <section id="faq" className="py-24 bg-gradient-to-b from-white to-amber-50">
-                    <div className="container mx-auto px-6">
-                        <h2 className="text-4xl md:text-5xl font-cinzel font-bold text-amber-900 text-center mb-16">Scrolls of Knowledge</h2>
+                <section id="faq" className="py-16 sm:py-24 bg-gradient-to-b from-white to-amber-50">
+                    <div className="container mx-auto px-4 sm:px-6">
+                        <h2 className="text-3xl sm:text-4xl md:text-5xl font-cinzel font-bold text-amber-900 text-center mb-12 sm:mb-16">Scrolls of Knowledge</h2>
                         <div className="max-w-3xl mx-auto space-y-6">
                             <div className="p-6 bg-white rounded-2xl shadow-lg hover:shadow-xl transition-shadow">
                                 <h3 className="text-xl font-cinzel font-bold text-amber-900 mb-3">Is this for solo founders too?</h3>
@@ -783,9 +786,9 @@ const LandingPage: React.FC = () => {
                 </section>
 
                 {/* Testimonials */}
-                <section id="testimonials" className="py-24 bg-gradient-to-b from-amber-100 to-white">
-                    <div className="container mx-auto px-6">
-                        <h2 className="text-4xl md:text-5xl font-cinzel font-bold text-amber-900 text-center mb-16">Tales from the Realm</h2>
+                <section id="testimonials" className="py-16 sm:py-24 bg-gradient-to-b from-amber-100 to-white">
+                    <div className="container mx-auto px-4 sm:px-6">
+                        <h2 className="text-3xl sm:text-4xl md:text-5xl font-cinzel font-bold text-amber-900 text-center mb-12 sm:mb-16">Tales from the Realm</h2>
                         <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
                             <div className="p-8 bg-white rounded-2xl shadow-xl hover:shadow-2xl transition-shadow">
                                 <div className="flex mb-4">
@@ -822,11 +825,11 @@ const LandingPage: React.FC = () => {
                 </section>
 
                 {/* Contact Us */}
-                <section id="contact" className="py-24 bg-gradient-to-b from-amber-800 to-amber-900">
-                    <div className="container mx-auto px-6">
+                <section id="contact" className="py-16 sm:py-24 bg-gradient-to-b from-amber-800 to-amber-900">
+                    <div className="container mx-auto px-4 sm:px-6">
                         <div className="max-w-2xl mx-auto text-center">
-                            <h2 className="text-4xl md:text-5xl font-cinzel font-bold text-white mb-4">Seek an Audience?</h2>
-                            <p className="text-xl text-amber-100 mb-12">Contact us for a demo or to get a custom AI-driven roadmap for your accelerator, incubator, or university program.</p>
+                            <h2 className="text-3xl sm:text-4xl md:text-5xl font-cinzel font-bold text-white mb-4">Seek an Audience?</h2>
+                            <p className="text-lg sm:text-xl text-amber-100 mb-8 sm:mb-12">Contact us for a demo or to get a custom AI-driven roadmap for your accelerator, incubator, or university program.</p>
                             <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8">
                                 <div className="w-full max-w-xl mx-auto">
                                     <div className="grid md:grid-cols-2 gap-4 mb-4">
@@ -893,14 +896,9 @@ const LandingPage: React.FC = () => {
             </main>
 
             {/* Footer */}
-            <footer className="py-8 bg-amber-950 text-amber-100">
-                <div className="container mx-auto px-6 text-center">
-                    <div className="flex justify-center space-x-6 mb-4">
-                        <a href="#" className="hover:text-amber-300 transition-colors">Twitter</a>
-                        <a href="#" className="hover:text-amber-300 transition-colors">LinkedIn</a>
-                        <a href="#" className="hover:text-amber-300 transition-colors">Medium</a>
-                    </div>
-                    <p className="text-amber-200/70">&copy; 2025 The Startup Quest. All Rights Reserved.</p>
+            <footer className="py-6 sm:py-8 bg-amber-950 text-amber-100">
+                <div className="container mx-auto px-4 sm:px-6 text-center">
+                    <p className="text-amber-200/70 text-sm sm:text-base">&copy; {new Date().getFullYear()} The Startup Quest. All Rights Reserved.</p>
                 </div>
             </footer>
 
@@ -930,6 +928,13 @@ const LandingPage: React.FC = () => {
                     background: linear-gradient(135deg, #f59e0b, #d97706);
                     border: 4px solid #fef3c7;
                     box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.2);
+                }
+                
+                /* Hide timeline dots on mobile */
+                @media (max-width: 1023px) {
+                    .timeline-item::before {
+                        display: none;
+                    }
                 }
                 
                 /* Animations */
