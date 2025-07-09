@@ -456,9 +456,9 @@ export const DocumentRAG: React.FC<DocumentRAGProps> = ({ userId, guildData, upd
             soundManager.play('questComplete');
             confetti && confetti({ particleCount: 50, spread: 45, origin: { y: 0.8 } });
 
-            // Deduct gold for document upload
+            // Deduct gold for document upload (10 gold per upload)
             if (updateGold) {
-                updateGold(-ENERGY_COSTS.DOCUMENT_UPLOAD);
+                updateGold(-10);
             }
 
             const newDoc = {
@@ -734,7 +734,7 @@ export const DocumentRAG: React.FC<DocumentRAGProps> = ({ userId, guildData, upd
     return (
         <>
             <style>{parchmentStyles}</style>
-            <div className="w-full min-h-screen px-2 sm:px-4 md:px-6 py-4 md:py-6">
+            <div className="w-full min-h-screen px-2 sm:px-4 md:px-6 py-2 md:py-4">
                 <div className="max-w-7xl mx-auto">
                     <div className="parchment-container relative rounded-lg shadow-2xl overflow-visible">
                         {/* Paper texture overlay */}
@@ -763,22 +763,22 @@ export const DocumentRAG: React.FC<DocumentRAGProps> = ({ userId, guildData, upd
                         {/* Wax seal */}
                         <div className="wax-seal" style={{ top: '20px', right: '20px' }}>📜</div>
 
-                        <div className="relative z-10 p-8">
+                        <div className="relative z-10 p-4 md:p-8">
                             {/* Header */}
-                            <div className="pb-6 border-b-2 border-dashed border-amber-800/30">
+                            <div className="pb-4 md:pb-6 border-b-2 border-dashed border-amber-800/30">
                                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                                     <div className="flex-1">
-                                        <h2 className="text-3xl font-bold old-paper-text flex items-center space-x-2" style={{ fontFamily: 'Georgia, serif' }}>
-                                            <Database className="w-7 h-7 text-amber-700" />
+                                        <h2 className="text-2xl md:text-3xl font-bold old-paper-text flex items-center space-x-2" style={{ fontFamily: 'Georgia, serif' }}>
+                                            <Database className="w-6 h-6 md:w-7 md:h-7 text-amber-700" />
                                             <span>AI Sage's Archives</span>
                                         </h2>
-                                        <p className="old-paper-text opacity-80 mt-1 text-sm italic">
+                                        <p className="old-paper-text opacity-80 mt-1 text-xs md:text-sm italic">
                                             Upload your documents and let the AI Sage analyze their content
                                         </p>
                                     </div>
                                     {ceoAvatar && (
-                                        <div className="flex items-center space-x-2 px-4 py-2 rounded parchment-inner">
-                                            <span className="text-2xl">{ceoAvatar.avatar}</span>
+                                        <div className="flex items-center space-x-2 px-3 md:px-4 py-2 rounded parchment-inner">
+                                            <span className="text-xl md:text-2xl">{ceoAvatar.avatar}</span>
                                             <span className="text-xs old-paper-text font-semibold">Mystical Guide</span>
                                         </div>
                                     )}
@@ -786,11 +786,11 @@ export const DocumentRAG: React.FC<DocumentRAGProps> = ({ userId, guildData, upd
                             </div>
 
                             {/* Main Content */}
-                            <div className="flex flex-row gap-8 pt-8 h-[70vh]">
+                            <div className="flex flex-col lg:flex-row gap-4 md:gap-8 pt-4 md:pt-8 min-h-[70vh]">
                                 {/* Left Sidebar - Document Conversations - always shows all conversations */}
                                 {showSidebar && (
                                     <DocumentConversationSidebar
-                                        className="w-80 border-r border-amber-700/20"
+                                        className="w-full lg:w-80 border-b lg:border-b-0 lg:border-r border-amber-700/20"
                                         conversations={conversations}
                                         onSelectConversation={handleSelectConversation}
                                         onNewConversation={handleNewConversation}
@@ -802,56 +802,56 @@ export const DocumentRAG: React.FC<DocumentRAGProps> = ({ userId, guildData, upd
                                 )}
 
                                 {/* Content Area */}
-                                <div className="flex-1 grid grid-cols-1 xl:grid-cols-3 gap-8">
+                                <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-8">
                                     {/* Left Column - Document Management */}
-                                    <div className="xl:col-span-1 space-y-6">
+                                    <div className="lg:col-span-1 space-y-4 md:space-y-6">
                                         {/* Upload Section */}
-                                        <div className="parchment-inner rounded-lg p-5">
-                                            <h3 className="text-lg font-semibold old-paper-text mb-3 flex items-center space-x-2">
-                                                <FileText className="w-5 h-5 text-amber-700" />
+                                        <div className="parchment-inner rounded-lg p-4 md:p-5">
+                                            <h3 className="text-base md:text-lg font-semibold old-paper-text mb-3 flex items-center space-x-2">
+                                                <FileText className="w-4 h-4 md:w-5 md:h-5 text-amber-700" />
                                                 <span>Upload Document</span>
                                             </h3>
                                             <DocumentUpload onUpload={handleUpload} guildData={guildData} />
                                         </div>
 
                                         {/* Documents List */}
-                                        <div className="parchment-inner rounded-lg p-5 ">
+                                        <div className="parchment-inner rounded-lg p-4 md:p-5">
                                             <div className="flex justify-between items-center mb-3">
-                                                <h3 className="text-lg font-semibold old-paper-text flex items-center space-x-2">
-                                                    <BookOpen className="w-5 h-5 text-amber-700" />
+                                                <h3 className="text-base md:text-lg font-semibold old-paper-text flex items-center space-x-2">
+                                                    <BookOpen className="w-4 h-4 md:w-5 md:h-5 text-amber-700" />
                                                     <span>Your Documents</span>
                                                     {loading && <Loader2 className="w-4 h-4 animate-spin text-amber-700" />}
                                                 </h3>
 
                                                 <button
-                                                    className="flex items-center text-amber-700 hover:text-amber-800"
+                                                    className="flex items-center text-amber-700 hover:text-amber-800 lg:hidden"
                                                     onClick={() => setShowSidebar(!showSidebar)}
                                                     title={showSidebar ? "Hide conversations" : "Show conversations"}
                                                 >
-                                                    <MessageCircle className="w-5 h-5" />
+                                                    <MessageCircle className="w-4 h-4 md:w-5 md:h-5" />
                                                 </button>
                                             </div>
 
                                             {documents.length === 0 ? (
-                                                <div className="text-center py-6">
-                                                    <FileText className="w-12 h-12 mx-auto mb-2 opacity-50 text-amber-700" />
-                                                    <p className="text-base old-paper-text opacity-70">No documents uploaded yet</p>
+                                                <div className="text-center py-4 md:py-6">
+                                                    <FileText className="w-10 h-10 md:w-12 md:h-12 mx-auto mb-2 opacity-50 text-amber-700" />
+                                                    <p className="text-sm md:text-base old-paper-text opacity-70">No documents uploaded yet</p>
                                                 </div>
                                             ) : (
-                                                <div className="space-y-2 max-h-60 overflow-y-auto overflow-x-hidden">
+                                                <div className="space-y-2 max-h-48 md:max-h-60 overflow-y-auto overflow-x-hidden">
                                                     {documents.map(doc => (
                                                         <div
                                                             key={doc.id}
-                                                            className={`parchment-inner p-3 rounded hover:shadow-md transition-all cursor-pointer ${selectedDocument?.id === doc.id ? 'border-2 border-amber-700' : ''
+                                                            className={`parchment-inner p-2 md:p-3 rounded hover:shadow-md transition-all cursor-pointer ${selectedDocument?.id === doc.id ? 'border-2 border-amber-700' : ''
                                                                 }`}
                                                             onClick={() => setSelectedDocument(doc)}
                                                         >
                                                             <div className="flex items-start justify-between">
                                                                 <div className="flex-1 min-w-0">
-                                                                    <p className="font-medium old-paper-text text-sm truncate">
+                                                                    <p className="font-medium old-paper-text text-xs md:text-sm truncate">
                                                                         {doc.name}
                                                                     </p>
-                                                                    <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-3 text-xs old-paper-text opacity-60 mt-1 gap-1 sm:gap-0">
+                                                                    <div className="flex flex-col text-xs old-paper-text opacity-60 mt-1 gap-1">
                                                                         <span className="flex items-center space-x-1">
                                                                             <Clock className="w-3 h-3" />
                                                                             <span>{new Date(doc.uploadedAt).toLocaleDateString()}</span>
@@ -865,11 +865,11 @@ export const DocumentRAG: React.FC<DocumentRAGProps> = ({ userId, guildData, upd
                                                                         title="Preview document"
                                                                         onClick={(e) => handlePreviewDocument(doc, e)}
                                                                     >
-                                                                        <BookOpen className="w-4 h-4" />
+                                                                        <BookOpen className="w-3 h-3 md:w-4 md:h-4" />
                                                                     </button>
                                                                     {deleteDocument && (
                                                                         <button
-                                                                            className="text-red-700 hover:text-red-900 text-lg font-bold px-2"
+                                                                            className="text-red-700 hover:text-red-900 text-sm md:text-lg font-bold px-1 md:px-2"
                                                                             title="Delete document"
                                                                             onClick={async (e) => {
                                                                                 e.stopPropagation();
@@ -892,35 +892,44 @@ export const DocumentRAG: React.FC<DocumentRAGProps> = ({ userId, guildData, upd
                                     </div>
 
                                     {/* Right Column - Chat Interface */}
-                                    <div className="xl:col-span-2 parchment-inner rounded-lg p-6 flex flex-col h-full">
+                                    <div className="lg:col-span-2 parchment-inner rounded-lg p-4 md:p-6 flex flex-col h-full min-h-[400px]">
                                         {/* Chat Header */}
                                         <div className="mb-4 flex justify-between items-center">
                                             <div className="flex items-center space-x-2">
-                                                <Sparkles className="w-5 h-5 text-amber-700" />
-                                                <h3 className="text-lg font-bold old-paper-text">Ask the Sage</h3>
+                                                <Sparkles className="w-4 h-4 md:w-5 md:h-5 text-amber-700" />
+                                                <h3 className="text-base md:text-lg font-bold old-paper-text">Ask the Sage</h3>
                                             </div>
 
-                                            {savingConversation && (
-                                                <div className="flex items-center text-xs text-amber-700">
-                                                    <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                                                    <span>Saving...</span>
-                                                </div>
-                                            )}
+                                            <div className="flex items-center space-x-2">
+                                                {savingConversation && (
+                                                    <div className="flex items-center text-xs text-amber-700">
+                                                        <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                                                        <span className="hidden sm:inline">Saving...</span>
+                                                    </div>
+                                                )}
+                                                <button
+                                                    className="flex items-center text-amber-700 hover:text-amber-800 lg:hidden"
+                                                    onClick={() => setShowSidebar(!showSidebar)}
+                                                    title={showSidebar ? "Hide conversations" : "Show conversations"}
+                                                >
+                                                    <MessageCircle className="w-4 h-4 md:w-5 md:h-5" />
+                                                </button>
+                                            </div>
                                         </div>
 
                                         {/* Chat Messages */}
-                                        <div className="flex-1 overflow-y-auto space-y-4 pr-2">
+                                        <div className="flex-1 overflow-y-auto space-y-3 md:space-y-4 pr-1 md:pr-2">
                                             {(!chatMessages || chatMessages.length === 0) && !isProcessing ? (
-                                                <div className="text-center p-8 old-paper-text">
-                                                    <BookOpen className="mx-auto h-12 w-12 text-amber-700/50" />
-                                                    <h3 className="mt-2 text-lg font-medium">Document Sage</h3>
-                                                    <p className="mt-1 text-base text-amber-800/70">
+                                                <div className="text-center p-4 md:p-8 old-paper-text">
+                                                    <BookOpen className="mx-auto h-8 w-8 md:h-12 md:w-12 text-amber-700/50" />
+                                                    <h3 className="mt-2 text-base md:text-lg font-medium">Document Sage</h3>
+                                                    <p className="mt-1 text-sm md:text-base text-amber-800/70">
                                                         {selectedDocument ? `Ask a question about ${selectedDocument.name}` : 'Generate a new document or select one to begin'}
                                                     </p>
-                                                    <div className="mt-4 space-y-2 text-sm old-paper-text opacity-60 px-4 italic">
+                                                    <div className="mt-4 space-y-2 text-xs md:text-sm old-paper-text opacity-60 px-2 md:px-4 italic">
                                                         <p>Try questions like:</p>
                                                         <p>"What are the key insights from this document?"</p>
-                                                        <p>"Generate a Business Model Canvas for a space-themed cookie company"</p>
+                                                        <p className="hidden md:block">"Generate a Business Model Canvas for a space-themed cookie company"</p>
                                                     </div>
                                                 </div>
                                             ) : (
@@ -932,7 +941,7 @@ export const DocumentRAG: React.FC<DocumentRAGProps> = ({ userId, guildData, upd
                                                             className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
                                                         >
                                                             <div
-                                                                className={`max-w-[85%] rounded-lg p-4 ${message.type === 'user'
+                                                                className={`max-w-[90%] md:max-w-[85%] rounded-lg p-3 md:p-4 ${message.type === 'user'
                                                                     ? 'bg-amber-100/50 border border-amber-700/30'
                                                                     : 'bg-amber-50/30 border border-amber-600/20'
                                                                     }`}
@@ -946,7 +955,7 @@ export const DocumentRAG: React.FC<DocumentRAGProps> = ({ userId, guildData, upd
                                                                         </div>
                                                                     )
                                                                 ) : (
-                                                                    <p className="text-base old-paper-text">{message.content}</p>
+                                                                    <p className="text-sm md:text-base old-paper-text">{message.content}</p>
                                                                 )}
                                                                 <p className="text-xs old-paper-text opacity-50 mt-2">
                                                                     {new Date(message.timestamp).toLocaleTimeString()}
@@ -978,32 +987,32 @@ export const DocumentRAG: React.FC<DocumentRAGProps> = ({ userId, guildData, upd
                                                 onChange={(e) => setCurrentQuestion(e.target.value)}
                                                 onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleAskQuestion()}
                                                 placeholder="Ask the Sage about your documents..."
-                                                className="flex-1 p-3 bg-amber-50/30 old-paper-text rounded-lg placeholder-amber-700/50 
-                                                         border border-amber-700/30 focus:outline-none focus:border-amber-700/50 text-base
+                                                className="flex-1 p-2 md:p-3 bg-amber-50/30 old-paper-text rounded-lg placeholder-amber-700/50 
+                                                         border border-amber-700/30 focus:outline-none focus:border-amber-700/50 text-sm md:text-base
                                                          transition-all"
                                                 disabled={isProcessing || !selectedDocument}
                                             />
                                             <button
                                                 onClick={handleAskQuestion}
                                                 disabled={isProcessing || !currentQuestion.trim() || !selectedDocument}
-                                                className="px-4 py-3 bg-amber-700 text-amber-50 rounded-lg hover:bg-amber-800 
+                                                className="px-3 md:px-4 py-2 md:py-3 bg-amber-700 text-amber-50 rounded-lg hover:bg-amber-800 
                                                          active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all 
-                                                         flex items-center justify-center min-w-[48px] shadow-md"
+                                                         flex items-center justify-center min-w-[40px] md:min-w-[48px] shadow-md"
                                             >
                                                 {isProcessing ? (
-                                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                                    <Loader2 className="w-4 h-4 md:w-5 md:h-5 animate-spin" />
                                                 ) : (
-                                                    <Send className="w-5 h-5" />
+                                                    <Send className="w-4 h-4 md:w-5 md:h-5" />
                                                 )}
                                             </button>
                                             <button
                                                 onClick={handleGenerateWithSage}
                                                 disabled={isProcessing || !currentQuestion.trim()}
-                                                className="px-4 py-3 bg-purple-700 text-amber-50 rounded-lg hover:bg-purple-800 
+                                                className="px-3 md:px-4 py-2 md:py-3 bg-purple-700 text-amber-50 rounded-lg hover:bg-purple-800 
                                                          active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all 
                                                          flex items-center justify-center shadow-md"
                                             >
-                                                <Sparkles className="w-5 h-5" />
+                                                <Sparkles className="w-4 h-4 md:w-5 md:h-5" />
                                             </button>
                                         </div>
                                     </div>
@@ -1012,8 +1021,8 @@ export const DocumentRAG: React.FC<DocumentRAGProps> = ({ userId, guildData, upd
 
                             {/* Error Display */}
                             {error && (
-                                <div className="mt-6 p-4 bg-red-100/50 border border-red-700/30 rounded-lg">
-                                    <p className="text-red-800 text-base">{error}</p>
+                                <div className="mt-4 md:mt-6 p-3 md:p-4 bg-red-100/50 border border-red-700/30 rounded-lg">
+                                    <p className="text-red-800 text-sm md:text-base">{error}</p>
                                 </div>
                             )}
                         </div>
@@ -1024,37 +1033,37 @@ export const DocumentRAG: React.FC<DocumentRAGProps> = ({ userId, guildData, upd
             {/* Document Preview Modal */}
             <Modal open={!!documentToPreview} onClose={() => { setDocumentToPreview(null); setDocumentContent(null); setPdfUrl(null); setPdfError(null); }} size="xl">
                 {documentToPreview && (
-                    <div className="p-6 max-w-4xl w-full parchment-container rounded-lg">
+                    <div className="p-4 md:p-6 max-w-4xl w-full parchment-container rounded-lg">
                         <div className="paper-texture"></div>
                         <div className="relative z-10">
                             <div className="flex items-center justify-between mb-4">
-                                <h3 className="text-2xl font-bold old-paper-text">{documentToPreview.name}</h3>
+                                <h3 className="text-lg md:text-2xl font-bold old-paper-text truncate mr-4">{documentToPreview.name}</h3>
                                 <button
                                     onClick={() => { setDocumentToPreview(null); setDocumentContent(null); setPdfUrl(null); setPdfError(null); }}
-                                    className="old-paper-text hover:text-amber-900 text-2xl font-bold"
+                                    className="old-paper-text hover:text-amber-900 text-xl md:text-2xl font-bold flex-shrink-0"
                                 >
                                     ×
                                 </button>
                             </div>
-                            <div className="parchment-inner rounded-lg p-6">
+                            <div className="parchment-inner rounded-lg p-4 md:p-6">
                                 {previewLoading ? (
-                                    <div className="flex items-center justify-center h-full">
-                                        <Loader2 className="w-8 h-8 animate-spin text-amber-700" />
+                                    <div className="flex items-center justify-center h-40 md:h-full">
+                                        <Loader2 className="w-6 h-6 md:w-8 md:h-8 animate-spin text-amber-700" />
                                     </div>
                                 ) : documentToPreview.name.split('.').pop()?.toLowerCase() === 'pdf' ? (
                                     pdfUrl ? (
-                                        <div className="bg-white p-2 rounded-lg h-full overflow-auto">
+                                        <div className="bg-white p-1 md:p-2 rounded-lg h-full overflow-auto">
                                             <Worker workerUrl="https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js">
-                                                <div style={{ height: '75vh' }}>
+                                                <div style={{ height: '60vh' }}>
                                                     <Viewer fileUrl={pdfUrl} defaultScale={SpecialZoomLevel.PageFit} />
                                                 </div>
                                             </Worker>
                                         </div>
                                     ) : (
-                                        <div className="text-center text-red-700">{pdfError || 'Loading PDF...'}</div>
+                                        <div className="text-center text-red-700 text-sm md:text-base">{pdfError || 'Loading PDF...'}</div>
                                     )
                                 ) : (
-                                    <div className="prose prose-sm max-w-none old-paper-text h-full overflow-auto">
+                                    <div className="prose prose-sm max-w-none old-paper-text h-full overflow-auto max-h-[60vh]">
                                         <ReactMarkdown>{documentContent || ''}</ReactMarkdown>
                                     </div>
                                 )}

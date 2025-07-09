@@ -39,6 +39,9 @@ import {
   Swords,
   Castle,
   Trophy,
+  HelpCircle,
+  Menu,
+  X,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import Modal from './components/Modal';
@@ -83,6 +86,7 @@ import { UserProfile } from './components/UserProfile';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Beastiary } from './components/Beastiary';
 import { useAuth } from './context/AuthContext';
+import Documentation from './components/Documentation';
 
 // SoundManager class (same as before)
 class SoundManager {
@@ -211,6 +215,7 @@ export default function App() {
   const [showArmory, setShowArmory] = useState(false);
   const [showGuildManagement, setShowGuildManagement] = useState(false);
   const [showBeastiary, setShowBeastiary] = useState(false);
+  const [showDocumentation, setShowDocumentation] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [showGoldPurchase, setShowGoldPurchase] = useState(false);
   const [modalContent, setModalContent] = useState<{ title: string; message: string } | null>(null);
@@ -218,6 +223,7 @@ export default function App() {
   const [newlyAwardedAchievements, setNewlyAwardedAchievements] = useState<any[]>([]);
   const [showUserProfile, setShowUserProfile] = useState(false);
   const [hasCheckedEnergy, setHasCheckedEnergy] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const fundamentalsQuests = QUEST_STAGES.FUNDAMENTALS.quests.map(q => `fundamentals_${q.id}`);
   const allFundamentalsCompleted = fundamentalsQuests.every(questKey => guildData?.questProgress?.[questKey]?.completed);
@@ -715,7 +721,9 @@ export default function App() {
     setShowArmory(false);
     setShowGuildManagement(false);
     setShowBeastiary(false);
+    setShowDocumentation(false);
     setShowDashboard(true);
+    setMobileMenuOpen(false);
     soundManager.play('swordDraw');
   };
 
@@ -724,7 +732,9 @@ export default function App() {
     setShowGuildManagement(false);
     setShowBeastiary(false);
     setShowDashboard(false);
+    setShowDocumentation(false);
     setShowArmory(true);
+    setMobileMenuOpen(false);
     soundManager.play('swordDraw');
   };
 
@@ -733,7 +743,9 @@ export default function App() {
     setShowArmory(false);
     setShowBeastiary(false);
     setShowDashboard(false);
+    setShowDocumentation(false);
     setShowGuildManagement(true);
+    setMobileMenuOpen(false);
     soundManager.play('swordDraw');
   };
 
@@ -743,11 +755,25 @@ export default function App() {
     setShowGuildManagement(false);
     setShowDashboard(false);
     setShowBeastiary(true);
+    setShowDocumentation(false);
+    setMobileMenuOpen(false);
+    soundManager.play('swordDraw');
+  };
+
+  const handleShowDocumentation = () => {
+    setSelectedQuest(null);
+    setShowArmory(false);
+    setShowGuildManagement(false);
+    setShowDashboard(false);
+    setShowBeastiary(false);
+    setShowDocumentation(true);
+    setMobileMenuOpen(false);
     soundManager.play('swordDraw');
   };
 
   const handleOpenQuest = (quest: any) => {
     setSelectedQuest(quest);
+    setMobileMenuOpen(false);
     soundManager.play('swordDraw');
   };
 
@@ -861,14 +887,49 @@ export default function App() {
 
   return (
     <div key={user?._id} className="flex h-screen bg-gray-900 text-white font-sans">
+      {/* Mobile Menu Overlay */}
+      {mobileMenuOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <div className="w-64 bg-gray-800 flex flex-col p-4 border-r border-yellow-700/50">
-        <div className="flex items-center space-x-3 mb-8">
-          <Crown className="w-8 h-8 text-yellow-500" />
-          <h1 className="text-xl font-bold text-yellow-100">The Startup Quest</h1>
+      <div className={`w-64 bg-gray-800 flex flex-col p-4 border-r border-yellow-700/50 fixed md:relative h-full z-50 transition-transform duration-300 transform ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+        } md:translate-x-0`}>
+        <style>
+          {`
+            .scrollbar-thin::-webkit-scrollbar {
+              width: 6px;
+            }
+            .scrollbar-thin::-webkit-scrollbar-track {
+              background: #1f2937;
+              border-radius: 3px;
+            }
+            .scrollbar-thin::-webkit-scrollbar-thumb {
+              background: #b45309;
+              border-radius: 3px;
+            }
+            .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+              background: #d97706;
+            }
+          `}
+        </style>
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center space-x-3">
+            <Crown className="w-8 h-8 text-yellow-500" />
+            <h1 className="text-xl font-bold text-yellow-100">The Startup Quest</h1>
+          </div>
+          <button
+            onClick={() => setMobileMenuOpen(false)}
+            className="md:hidden text-yellow-100 hover:text-yellow-200 transition-colors"
+          >
+            <X className="w-6 h-6" />
+          </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto pr-2 space-y-2">
+        <div className="flex-1 overflow-y-auto pr-2 space-y-2 scrollbar-thin scrollbar-thumb-yellow-700 scrollbar-track-gray-800">
           {/* Navigation Buttons */}
           <button
             onClick={handleShowDashboard}
@@ -906,9 +967,30 @@ export default function App() {
             <span>Side Quests</span>
           </button>
 
+          <button
+            onClick={handleShowDocumentation}
+            className={`w-full flex items-center space-x-3 px-3 py-3 rounded-lg transition-all text-left ${showDocumentation ? 'bg-yellow-400/20 text-yellow-200 border-l-4 border-yellow-400' : 'text-gray-400 hover:bg-gray-700/50'
+              }`}
+          >
+            <HelpCircle className="w-5 h-5" />
+            <span>Documentation</span>
+          </button>
+
         </div>
 
-        <div className="mt-auto p-2 space-y-2">
+        <div className="p-2 space-y-2 border-t border-gray-700 mt-2">
+          {/* Mobile Energy Bar in Sidebar */}
+          {guildData && (
+            <div className="md:hidden mb-4 px-3">
+              <EnergyBar
+                currentEnergy={guildData.currentEnergy}
+                maxEnergy={guildData.maxEnergy}
+                isPremium={guildData.isPremium}
+                onPurchaseClick={() => energyManagement.setShowEnergyPurchase(true)}
+              />
+            </div>
+          )}
+
           {/* User Profile & Logout */}
           <button
             onClick={() => setShowUserProfile(true)}
@@ -928,7 +1010,7 @@ export default function App() {
       </div>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col overflow-hidden" style={{
+      <main className="flex-1 flex flex-col overflow-hidden w-full md:ml-0" style={{
         backgroundImage: `url(${backgroundImage})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
@@ -939,19 +1021,27 @@ export default function App() {
         <div className="absolute inset-0 bg-black/70" style={{ backdropFilter: 'blur(2px)' }}></div>
 
         {/* Top Header Bar */}
-        <header className="parchment shadow-md px-6 py-3 border-b-2 border-yellow-700 flex-shrink-0 relative z-10">
+        <header className="parchment shadow-md px-4 md:px-6 py-3 border-b-2 border-yellow-700 flex-shrink-0 relative z-10">
           <div className="flex items-center justify-between">
-            {/* Left side: Guild Info */}
+            {/* Left side: Mobile Menu + Guild Info */}
             <div className="flex items-center space-x-4">
-              <span className="text-yellow-100 font-bold text-lg">{guildData?.guildName}</span>
+              {/* Mobile Menu Button */}
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="md:hidden text-yellow-100 hover:text-yellow-200 transition-colors"
+              >
+                {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              </button>
+
+              <span className="text-yellow-100 font-bold text-lg truncate">{guildData?.guildName}</span>
               <span className="text-sm text-gray-300 hidden md:block">{guildLevel.icon} {guildLevel.name}</span>
             </div>
 
             {/* Right side: Stats and Actions */}
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2 md:space-x-4">
               <button
                 onClick={() => navigate('/landing-page')}
-                className="text-gray-400 hover:text-white transition-colors"
+                className="text-gray-400 hover:text-white transition-colors hidden sm:block"
                 title="View Landing Page"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -959,19 +1049,21 @@ export default function App() {
                 </svg>
               </button>
               {guildData && (
-                <EnergyBar
-                  currentEnergy={guildData.currentEnergy}
-                  maxEnergy={guildData.maxEnergy}
-                  isPremium={guildData.isPremium}
-                  onPurchaseClick={() => energyManagement.setShowEnergyPurchase(true)}
-                />
+                <div className="hidden sm:block">
+                  <EnergyBar
+                    currentEnergy={guildData.currentEnergy}
+                    maxEnergy={guildData.maxEnergy}
+                    isPremium={guildData.isPremium}
+                    onPurchaseClick={() => energyManagement.setShowEnergyPurchase(true)}
+                  />
+                </div>
               )}
-              <div className="flex items-center space-x-2">
-                <Coins className="w-5 h-5 text-yellow-500" />
-                <span className="font-bold text-yellow-100">{guildData?.gold || 0}</span>
+              <div className="flex items-center space-x-1 md:space-x-2">
+                <Coins className="w-4 h-4 md:w-5 md:h-5 text-yellow-500" />
+                <span className="font-bold text-yellow-100 text-sm md:text-base">{guildData?.gold || 0}</span>
                 <button
                   onClick={() => { setShowGoldPurchase(true); if (userInteracted) soundManager.play('coinCollect'); }}
-                  className="px-2 py-1 bg-gradient-to-r from-yellow-600 to-amber-600 rounded text-xs hover:from-yellow-500 hover:to-amber-500"
+                  className="px-1 md:px-2 py-1 bg-gradient-to-r from-yellow-600 to-amber-600 rounded text-xs hover:from-yellow-500 hover:to-amber-500"
                   title="Purchase Gold"
                 >
                   +
@@ -979,17 +1071,17 @@ export default function App() {
               </div>
               <button
                 onClick={() => { setShowDocuments(true); if (userInteracted) soundManager.play('swordDraw'); }}
-                className="text-gray-400 hover:text-white"
+                className="text-gray-400 hover:text-white hidden sm:block"
                 title="Documents (RAG)"
               >
-                <Scroll className="w-5 h-5" />
+                <Scroll className="w-4 h-4 md:w-5 md:h-5" />
               </button>
               <button
                 onClick={toggleSound}
                 className="text-gray-400 hover:text-white"
                 title={soundEnabled ? "Mute sounds" : "Enable sounds"}
               >
-                {soundEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+                {soundEnabled ? <Volume2 className="w-4 h-4 md:w-5 md:h-5" /> : <VolumeX className="w-4 h-4 md:w-5 md:h-5" />}
               </button>
             </div>
           </div>
@@ -1013,7 +1105,6 @@ export default function App() {
               vision={guildData?.vision}
               savePersonalizedQuestDetails={savePersonalizedQuestDetails}
               currentUserRole={currentUserRole}
-              user={user}
             />
           ) : showArmory ? (
             <ArmoryInterface
@@ -1032,17 +1123,19 @@ export default function App() {
             />
           ) : showBeastiary ? (
             <Beastiary />
+          ) : showDocumentation ? (
+            <Documentation onClose={() => setShowDocumentation(false)} />
           ) : (
             /* Main Dashboard */
-            <div className="flex-1 flex flex-col md:flex-row overflow-hidden h-full">
-              <div className="flex-1 flex flex-col p-4 md:p-6 lg:p-8 overflow-y-auto">
+            <div className="flex-1 flex flex-col lg:flex-row overflow-hidden h-full">
+              <div className="flex-1 flex flex-col p-4 md:p-6 lg:p-8 overflow-y-auto min-h-0">
                 {/* Header inside Dashboard */}
-                <div className="flex items-center justify-between mb-6">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 space-y-4 md:space-y-0">
                   <div>
-                    <h2 className="text-3xl font-bold text-yellow-100">Quests</h2>
-                    <p className="text-gray-400">Your startup journey unfolds here.</p>
+                    <h2 className="text-2xl md:text-3xl font-bold text-yellow-100">Quests</h2>
+                    <p className="text-gray-400 text-sm md:text-base">Your startup journey unfolds here.</p>
                   </div>
-                  <div className="flex items-center space-x-4">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
                     <GuildProgressIndicator
                       level={guildData?.guildLevel || 1}
                       showDescription={true}
@@ -1052,8 +1145,106 @@ export default function App() {
                   </div>
                 </div>
 
+                {/* Mobile Stats Section */}
+                <div className="lg:hidden mb-6">
+                  <h3 className="text-lg font-bold text-yellow-100 mb-4">Guild Overview</h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+                    <div className="parchment rounded-lg p-3 text-center">
+                      <p className="text-xs text-gray-300 mb-1">Total XP</p>
+                      <p className="text-lg font-bold text-purple-400">{guildData?.xp || 0}</p>
+                    </div>
+                    <div className="parchment rounded-lg p-3 text-center">
+                      <p className="text-xs text-gray-300 mb-1">Gold Coins</p>
+                      <p className="text-lg font-bold text-yellow-400">{guildData?.gold || 0}</p>
+                    </div>
+                    <div className="parchment rounded-lg p-3 text-center">
+                      <p className="text-xs text-gray-300 mb-1">Player Level</p>
+                      <p className="text-lg font-bold text-blue-400">{levelInfo.level}</p>
+                    </div>
+                    <div className="parchment rounded-lg p-3 text-center">
+                      <p className="text-xs text-gray-300 mb-1">Quests Done</p>
+                      <p className="text-lg font-bold text-green-400">{stats.completedQuests}</p>
+                    </div>
+                  </div>
+
+                  {/* Mobile Achievements */}
+                  <div className="parchment rounded-lg p-4 mb-4">
+                    <h4 className="text-sm font-bold text-yellow-100 mb-3">Achievements</h4>
+                    <div className="grid grid-cols-4 gap-2">
+                      {ACHIEVEMENTS.slice(0, 8).map((achievement) => {
+                        const earned = guildData?.achievements?.includes(achievement.id);
+                        return (
+                          <div
+                            key={achievement.id}
+                            className={`parchment rounded-lg p-2 text-center transition-all ${earned ? 'magic-border' : 'opacity-40 grayscale'}`}
+                            title={`${achievement.name}: ${achievement.description}${!earned ? ' (Locked)' : ''}`}
+                          >
+                            <div className="text-2xl">{typeof achievement.icon === 'string' ? achievement.icon : null}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="mt-3 text-center">
+                      <span className="text-xs text-gray-400">
+                        {guildData?.achievements?.length || 0} of {ACHIEVEMENTS.length} achievements unlocked
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Mobile Guild Activity */}
+                  <div className="parchment rounded-lg p-4 mb-4">
+                    <h4 className="text-sm font-bold text-yellow-100 mb-3">Guild Activity</h4>
+                    {guildData && (
+                      <GuildActivityLog
+                        guildId={guildData._id}
+                        className="max-h-40 overflow-y-auto scrollbar-thin scrollbar-thumb-yellow-700 scrollbar-track-gray-800"
+                      />
+                    )}
+                  </div>
+
+                  {/* Mobile Document Creation */}
+                  <div className="parchment rounded-lg p-4">
+                    <h4 className="text-sm font-bold text-yellow-100 mb-3">Document Creation</h4>
+                    <div className="flex flex-col space-y-2 mb-3">
+                      <button
+                        onClick={() => { setShowDocuments(true); if (userInteracted) soundManager.play('swordDraw'); }}
+                        className="px-3 py-2 bg-purple-600 text-white rounded-lg text-xs hover:bg-purple-500 transition-all"
+                      >
+                        📜 View All Documents
+                      </button>
+                    </div>
+                    <div className="space-y-2">
+                      {DOCUMENT_TEMPLATES.slice(0, 4).map(template => (
+                        <button
+                          key={template.id}
+                          onClick={() => handleGenerateDocument(template)}
+                          disabled={generatingDoc}
+                          className="w-full px-3 py-2 parchment rounded-lg text-xs hover:transform hover:scale-105 transition-all disabled:opacity-50 flex items-center gap-2"
+                          title={`Create ${template.name} (+${template.xp} XP, ${ENERGY_COSTS.DOCUMENT_GENERATION} energy)`}
+                        >
+                          {typeof template.icon === 'string' ? <span>{template.icon}</span> : null}
+                          <span className="truncate">{template.name}</span>
+                        </button>
+                      ))}
+                      {DOCUMENT_TEMPLATES.length > 4 && (
+                        <button
+                          onClick={() => { setShowDocuments(true); if (userInteracted) soundManager.play('swordDraw'); }}
+                          className="w-full px-3 py-2 bg-gray-700 text-white rounded-lg text-xs hover:bg-gray-600 transition-all"
+                        >
+                          + {DOCUMENT_TEMPLATES.length - 4} more templates
+                        </button>
+                      )}
+                    </div>
+                    {generatingDoc && (
+                      <div className="mt-2 text-center text-xs text-purple-400 animate-pulse">
+                        Generating document...
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 {/* Main Quest Map */}
-                <div className="relative flex flex-col items-center space-y-8">
+                <div className="relative flex flex-col items-center space-y-4 md:space-y-8">
                   {Object.values(QUEST_STAGES).map((stage, index, stages) => {
                     const firstQuestOfStage = stage.quests[0];
                     const firstQuestIndex = allQuests.findIndex(q => q.id === firstQuestOfStage.id && q.stageId === stage.id);
@@ -1068,18 +1259,18 @@ export default function App() {
                     return (
                       <React.Fragment key={stage.id}>
                         <div
-                          className={`w-full max-w-4xl parchment rounded-lg p-6 shadow-xl transition-all duration-500 ${isStageLocked ? 'opacity-50 grayscale' : 'hover:shadow-2xl'
+                          className={`w-full max-w-4xl parchment rounded-lg p-4 md:p-6 shadow-xl transition-all duration-500 ${isStageLocked ? 'opacity-50 grayscale' : 'hover:shadow-2xl'
                             } hero-3d`}
                         >
                           <div className="flex items-center mb-4">
-                            <div className={`p-3 rounded-lg ${stage.color} bg-opacity-20 mr-4`}>
+                            <div className={`p-2 md:p-3 rounded-lg ${stage.color} bg-opacity-20 mr-3 md:mr-4`}>
                               {typeof StageIcon === 'string' ? (
-                                <span className={`w-8 h-8 ${stage.color.replace('bg-', 'text-')}`} style={{ fontSize: '2rem' }}>{StageIcon}</span>
+                                <span className={`w-6 h-6 md:w-8 md:h-8 ${stage.color.replace('bg-', 'text-')}`} style={{ fontSize: '1.5rem' }}>{StageIcon}</span>
                               ) : null}
                             </div>
                             <div>
-                              <h3 className="text-2xl font-bold text-yellow-100">{stage.name}</h3>
-                              <p className="text-sm text-gray-300">{stage.description}</p>
+                              <h3 className="text-xl md:text-2xl font-bold text-yellow-100">{stage.name}</h3>
+                              <p className="text-xs md:text-sm text-gray-300">{stage.description}</p>
                               {isStageLocked && (
                                 <p className="text-xs text-orange-400 mt-1">⚠️ Complete previous quests to unlock</p>
                               )}
@@ -1111,7 +1302,7 @@ export default function App() {
                                     }
                                   }}
                                   onMouseEnter={() => { if (!isQuestLocked && userInteracted) soundManager.play('swordDraw'); }}
-                                  className={`p-4 rounded-lg cursor-pointer transition-all duration-300 ${isQuestLocked
+                                  className={`p-3 md:p-4 rounded-lg cursor-pointer transition-all duration-300 ${isQuestLocked
                                     ? 'bg-gray-700/50 cursor-not-allowed'
                                     : isCompleted
                                       ? 'parchment border-2 border-green-700 bg-green-900/30 relative hover:transform hover:scale-102 hover:shadow-lg'
@@ -1119,41 +1310,41 @@ export default function App() {
                                     }`}
                                 >
                                   <div className="flex items-center justify-between">
-                                    <div className="flex items-center space-x-4">
+                                    <div className="flex items-center space-x-3 md:space-x-4 min-w-0 flex-1">
                                       {isCompleted ? (
-                                        <Trophy className="w-6 h-6 text-green-400" />
+                                        <Trophy className="w-5 h-5 md:w-6 md:h-6 text-green-400 flex-shrink-0" />
                                       ) : (
-                                        <Target className="w-6 h-6 text-gray-400" />
+                                        <Target className="w-5 h-5 md:w-6 md:h-6 text-gray-400 flex-shrink-0" />
                                       )}
-                                      <div>
-                                        <p className="font-semibold text-yellow-100 flex items-center">
-                                          {quest.name}
+                                      <div className="min-w-0 flex-1">
+                                        <p className="font-semibold text-yellow-100 flex flex-col sm:flex-row sm:items-center">
+                                          <span className="truncate">{quest.name}</span>
                                           {isCompleted && (
-                                            <span className="ml-3 px-2 py-0.5 bg-green-700/80 text-xs text-green-100 rounded-full font-semibold">Completed</span>
+                                            <span className="sm:ml-3 mt-1 sm:mt-0 px-2 py-0.5 bg-green-700/80 text-xs text-green-100 rounded-full font-semibold w-fit">Completed</span>
                                           )}
                                         </p>
-                                        <div className="flex items-center space-x-3 text-sm mt-1">
+                                        <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-3 text-xs md:text-sm mt-1 space-y-1 sm:space-y-0">
                                           <span className="text-gray-300">{quest.xp} XP</span>
-                                          <span className="text-gray-500">•</span>
+                                          <span className="text-gray-500 hidden sm:inline">•</span>
                                           <span className={CORE_ATTRIBUTES[quest.attribute as keyof typeof CORE_ATTRIBUTES]?.color || 'text-gray-400'}>
                                             {CORE_ATTRIBUTES[quest.attribute as keyof typeof CORE_ATTRIBUTES]?.name || 'General'}
                                           </span>
                                           {assignedTo && (
                                             <>
-                                              <span className="text-gray-500">•</span>
-                                              <span className="text-sm text-cyan-300">Assigned to: {assignedTo.name}</span>
+                                              <span className="text-gray-500 hidden sm:inline">•</span>
+                                              <span className="text-xs md:text-sm text-cyan-300">Assigned to: {assignedTo.name}</span>
                                             </>
                                           )}
                                         </div>
                                       </div>
                                     </div>
-                                    <div className="flex items-center space-x-2">
+                                    <div className="flex items-center space-x-2 flex-shrink-0">
                                       {isCompleted && xpEarned && (
-                                        <span className="px-2 py-0.5 bg-gradient-to-r from-green-600 to-emerald-600 text-xs text-white rounded-full font-semibold border border-green-400">
+                                        <span className="px-2 py-0.5 bg-gradient-to-r from-green-600 to-emerald-600 text-xs text-white rounded-full font-semibold border border-green-400 hidden sm:inline">
                                           +{xpEarned} XP
                                         </span>
                                       )}
-                                      <ChevronRight className="w-5 h-5 text-gray-400" />
+                                      <ChevronRight className="w-4 h-4 md:w-5 md:h-5 text-gray-400" />
                                     </div>
                                   </div>
                                 </div>
@@ -1171,7 +1362,7 @@ export default function App() {
               </div>
 
               {/* Right sidebar for stats/info inside dashboard */}
-              <div className="w-full md:w-80 lg:w-96 bg-gray-800/50 p-6 border-l border-yellow-700/30 overflow-y-auto">
+              <div className="hidden lg:block w-96 bg-gray-800/50 p-6 border-l border-yellow-700/30 overflow-y-auto">
                 <h3 className="text-xl font-bold text-yellow-100 mb-4">Guild Stats</h3>
                 <div className="grid grid-cols-2 gap-4 mb-6">
                   <div className="parchment rounded-lg p-3 text-center">
@@ -1248,8 +1439,8 @@ export default function App() {
         {/* Modals will float over the main content */}
         {assignmentModal && (
           <Modal open={!!assignmentModal} onClose={() => setAssignmentModal(null)}>
-            <div className="p-6 max-w-md w-full">
-              <h3 className="text-xl font-bold text-yellow-100 mb-4">Assign Quest: {assignmentModal.quest.name}</h3>
+            <div className="p-4 md:p-6 max-w-md w-full">
+              <h3 className="text-lg md:text-xl font-bold text-yellow-100 mb-4">Assign Quest: {assignmentModal.quest.name}</h3>
               <div className="space-y-2">
                 {guildData.members?.map((member: any) => (
                   <button
@@ -1257,8 +1448,8 @@ export default function App() {
                     onClick={() => handleAssignQuest(assignmentModal.questKey, member)}
                     className="w-full text-left parchment p-3 hover:bg-gray-700/50"
                   >
-                    <p className="font-medium text-yellow-100">{member.name}</p>
-                    <p className="text-sm text-gray-300">{member.email}</p>
+                    <p className="font-medium text-yellow-100 truncate">{member.name}</p>
+                    <p className="text-sm text-gray-300 truncate">{member.email}</p>
                   </button>
                 ))}
               </div>
@@ -1359,10 +1550,10 @@ export default function App() {
         )}
         {selectedDocument && (
           <Modal open={!!selectedDocument} onClose={() => { setSelectedDocument(null); if (userInteracted) soundManager.play('swordDraw'); }}>
-            <div className="p-6 max-w-4xl w-full">
+            <div className="p-4 md:p-6 max-w-4xl w-full">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-2xl font-bold text-yellow-100">{selectedDocument?.templateName}</h3>
-                <div className="flex items-center space-x-2">
+                <h3 className="text-xl md:text-2xl font-bold text-yellow-100 truncate mr-4">{selectedDocument?.templateName}</h3>
+                <div className="flex items-center space-x-2 flex-shrink-0">
                   <button
                     onClick={() => {
                       navigator.clipboard.writeText(selectedDocument?.content || '');
@@ -1370,17 +1561,17 @@ export default function App() {
                     }}
                     className="text-gray-400 hover:text-white"
                   >
-                    <Copy className="w-5 h-5" />
+                    <Copy className="w-4 h-4 md:w-5 md:h-5" />
                   </button>
                   <button
                     onClick={() => { setSelectedDocument(null); if (userInteracted) soundManager.play('swordDraw'); }}
-                    className="text-gray-400 hover:text-white text-2xl"
+                    className="text-gray-400 hover:text-white text-xl md:text-2xl"
                   >
                     ×
                   </button>
                 </div>
               </div>
-              <div className="parchment rounded-lg p-6">
+              <div className="parchment rounded-lg p-4 md:p-6">
                 <ReactMarkdown >
                   {selectedDocument?.content}
                 </ReactMarkdown>
@@ -1450,8 +1641,8 @@ export default function App() {
         )}
       </main>
 
-      <button className="fixed bottom-4 right-4 bg-yellow-600 text-white p-3 rounded-full shadow-lg z-20" onClick={toggleSound}>
-        {soundEnabled ? <Volume2 /> : <VolumeX />}
+      <button className="fixed bottom-4 right-4 bg-yellow-600 text-white p-2 md:p-3 rounded-full shadow-lg z-20 touch-manipulation" onClick={toggleSound}>
+        {soundEnabled ? <Volume2 className="w-5 h-5 md:w-6 md:h-6" /> : <VolumeX className="w-5 h-5 md:w-6 md:h-6" />}
       </button>
 
       {newlyAwardedAchievements.length > 0 && (
